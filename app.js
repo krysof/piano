@@ -97,7 +97,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-19', { cache: 'no-store' })
+  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-20', { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +112,9 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-19'), {})
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-20'), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-19', { cache: 'no-store' });
+      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-20', { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -552,6 +552,11 @@ function updateKeyButtons() {
     menuValue.textContent = label;
     menuValue.title = `当前 Key ${label}`;
   }
+  const menuRange = $('menuKeyRange');
+  if (menuRange) {
+    menuRange.value = String(userKeyShift);
+    menuRange.style.setProperty('--pct', `${((userKeyShift + 14) / 28) * 100}%`);
+  }
 }
 
 function previewKeyShift(delta) {
@@ -564,7 +569,7 @@ function previewKeyShift(delta) {
 }
 
 function applyKeyShift(delta) {
-  userKeyShift = Math.max(-12, Math.min(12, userKeyShift + delta));
+  userKeyShift = Math.max(-14, Math.min(14, userKeyShift + delta));
   updateKeyButtons();
   renderManualKeyboard();
   renderPlaybackForMelody();
@@ -2767,6 +2772,17 @@ function setupStartScreen() {
   });
   $('menuKeyDown')?.addEventListener('click', () => applyKeyShift(-1));
   $('menuKeyUp')?.addEventListener('click', () => applyKeyShift(1));
+  $('menuKeyRange')?.addEventListener('input', (ev) => {
+    const next = Math.max(-14, Math.min(14, Number(ev.target.value) || 0));
+    if (next === userKeyShift) return;
+    userKeyShift = next;
+    updateKeyButtons();
+    renderManualKeyboard();
+    renderPlaybackForMelody();
+    updateLyrics();
+    previewKeyShift(0);
+    if (playing) scheduleFrom(currentPlayTime());
+  });
   screen.querySelectorAll('[data-pick]').forEach(btn => {
     btn.addEventListener('click', () => {
       harmonyToneMode = btn.dataset.pick === 'B' ? 2 : 1;

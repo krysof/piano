@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260706-19" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260706-20" />
 </head>
 <body>
 
@@ -15,7 +15,7 @@
     <div class="start-card start-card-v87">
       <div class="start-hero">
         <div>
-          <div class="start-title">Freeza Live <span id="startVersion" class="start-version">v20260706.19</span></div>
+          <div class="start-title">Freeza Live <span id="startVersion" class="start-version">v20260706.20</span></div>
           <div class="settings-title">演奏设置</div>
         </div>
         <div class="freeza-icon start-freeza-icon" aria-label="freeza live icon"><span class="horn left"></span><span class="horn right"></span><span class="crest"></span><span class="temple left"></span><span class="temple right"></span><span class="brow left"></span><span class="brow right"></span><span class="eye left"></span><span class="eye right"></span><span class="nose"></span><span class="mouth"></span><span class="chin"></span></div>
@@ -59,9 +59,15 @@
 
           <div class="volume-label">伴奏</div>
           <button id="menuHarmonyVolDown" class="option volume-step">-</button>
-          <input id="menuHarmonyVolRange" class="volume-range" type="range" min="25" max="200" step="5" value="125" aria-label="伴奏音量" />
+          <input id="menuHarmonyVolRange" class="volume-range" type="range" min="25" max="200" step="5" value="155" aria-label="伴奏音量" />
           <button id="menuHarmonyVolUp" class="option volume-step">+</button>
-          <button id="menuHarmonyVolValue" class="option key-value volume-readout">125%</button>
+          <button id="menuHarmonyVolValue" class="option key-value volume-readout">155%</button>
+
+          <div class="volume-label">Key</div>
+          <button id="menuKeyDown" class="option volume-step">-</button>
+          <input id="menuKeyRange" class="volume-range key-range" type="range" min="-14" max="14" step="1" value="0" aria-label="Key" />
+          <button id="menuKeyUp" class="option volume-step">+</button>
+          <button id="menuKeyValue" class="option key-value volume-readout">0</button>
         </div>
       </div>
 
@@ -86,17 +92,6 @@
           <div class="option-group segmented switch" data-group="mic">
             <button class="option" data-mic="on">开</button>
             <button class="option selected" data-mic="off">关</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="start-section key-section bottom-settings">
-        <div class="start-row simple-row">
-          <div class="row-label with-icon"><span class="section-icon">☼</span>Key</div>
-          <div class="option-group segmented key-menu" data-group="key">
-            <button id="menuKeyDown" class="option">-</button>
-            <button id="menuKeyValue" class="option key-value">0</button>
-            <button id="menuKeyUp" class="option">+</button>
           </div>
         </div>
       </div>
@@ -193,6 +188,6 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="app.js?v=reset-20260706-19"></script>
+  <script src="app.js?v=reset-20260706-20"></script>
 </body>
 </html>

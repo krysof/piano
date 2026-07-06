@@ -5005,3 +5005,23 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
 .start-card-v87 .switch-panel .simple-row {
   grid-template-columns: minmax(96px, 1fr) 138px !important;
 }
+
+
+/* v20: Key 放入音量框，改成 -14~+14 中心滑条。 */
+.start-card-v87 .volume-menu.sliders {
+  grid-template-columns: 62px 28px minmax(0, 1fr) 28px 58px !important;
+}
+.start-card-v87 .volume-menu.sliders .key-range {
+  background:
+    linear-gradient(90deg,
+      rgba(37, 99, 235, .95) 0%,
+      rgba(96, 165, 250, .95) var(--pct, 50%),
+      rgba(255,255,255,.13) var(--pct, 50%),
+      rgba(255,255,255,.13) 100%) !important;
+}
+.start-card-v87 .volume-menu.sliders .key-range::before {
+  content: '';
+}
+.start-card-v87 .volume-menu.sliders #menuKeyValue {
+  font-variant-numeric: tabular-nums !important;
+}
