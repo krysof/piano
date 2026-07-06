@@ -31,7 +31,7 @@ let wakeLock = null;
 let melodyEnabled = true;
 let melodyUserTouched = false;
 let melodyGain = 1.0;
-let harmonyGain = 1.25;
+let harmonyGain = 1.55;
 let micEnabled = false;
 // 麦克风固定 95% 防爆麦：这是内部隐藏值，不在界面暴露，也不允许用户调节。
 const FIXED_MIC_GAIN = 0.95;
@@ -97,7 +97,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-07', { cache: 'no-store' })
+  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-09', { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +112,9 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-07'), {})
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-09'), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-07', { cache: 'no-store' });
+      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-09', { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -1347,12 +1347,10 @@ function patternWindowNotes(pattern, fromTime, endTime) {
   return out.sort((a, b) => a.time - b.time);
 }
 
-function patternPhraseFromPhase(pattern, atTime) {
+function patternPhraseForCue(pattern, cueTime, now) {
   if (!pattern?.notes?.length) return [];
   const beat = beatMs() / 1000;
-  const barBeats = patternBeats(pattern);
-  const barSec = Math.max(0.001, barBeats * beat);
-  const phase = ((atTime % barSec) + barSec) % barSec;
+  const elapsed = Math.max(0, now - cueTime);
   const events = pattern.notes
     .map(n => ({
       note: n,
@@ -1361,18 +1359,32 @@ function patternPhraseFromPhase(pattern, atTime) {
     .sort((a, b) => a.phase - b.phase);
   if (!events.length) return [];
 
-  // 保持 LiberLive pattern 的 beat 网格，不把第一个未到的音强行挪到按下瞬间。
-  // 例：4/4 里 4 个音在 0/1/2/3 拍，按晚到 0.3 拍时，0 拍音已过期，
-  // 下一颗仍在 1 拍位置响；这样伴奏速度才和主旋律/歌曲 tempo 一致。
-  const startIndex = events.findIndex(e => e.phase >= phase - 0.008);
-  const ordered = startIndex >= 0
-    ? [...events.slice(startIndex), ...events.slice(0, startIndex).map(e => ({ ...e, phase: e.phase + barSec }))]
-    : events.map(e => ({ ...e, phase: e.phase + barSec }));
-
-  return ordered.map(e => ({
+  // 分解和弦以当前 chord cue 为起点：自动到点时 beat0 立刻响。
+  // 如果玩家按慢了，已经过去的 pattern 音不慢慢补，
+  // 从下一颗/当前颗剩余音开始并把第一颗对齐到按下瞬间，后面仍保留 pattern 的 beat 间距。
+  let remaining = events.filter(e => {
+    const dur = Math.max(0.05, Number(e.note.duration || 0.35) * beat);
+    return e.phase + dur >= elapsed - 0.018;
+  });
+  if (!remaining.length) remaining = events;
+  const basePhase = Math.max(elapsed, remaining[0].phase);
+  return remaining.map(e => ({
     note: e.note,
-    offset: Math.max(0, e.phase - phase),
+    offset: Math.max(0, e.phase - basePhase),
   }));
+}
+
+function fitPhraseToNextCue(events, beatSec, cueTime, now, baseScale = 1) {
+  if (!events?.length) return baseScale;
+  const nextTime = nextChordCueTimeAfter(cueTime);
+  if (!Number.isFinite(nextTime) || nextTime <= now + 0.08) return baseScale;
+  const naturalEnd = events.reduce((max, { note: n, offset }) => {
+    const dur = Math.max(0.05, Number(n.duration || 0.35) * beatSec);
+    return Math.max(max, Number(offset || 0) + dur);
+  }, 0.001);
+  const available = Math.max(0.12, nextTime - now - 0.018);
+  // 只在按慢/剩余时间不足时加速追赶；不拉长，避免声音变慢变散。
+  return naturalEnd > available ? Math.max(0.35, Math.min(baseScale, available / naturalEnd)) : baseScale;
 }
 
 function currentStyleCode() {
@@ -2422,6 +2434,13 @@ function autoPressCue(active) {
   cueState.delete(root);
 }
 
+function normalizedHarmonyVelocity(rawVelocity) {
+  const raw = Number(rawVelocity || 56) / 127;
+  // 网页采样比原机声卡弱，不能直接把 pattern velocity 当最终音量。
+  // 保留强弱，但给伴奏单音足够的输出下限，避免听起来整体小一截。
+  return Math.max(0.42, Math.min(0.92, raw * 1.32));
+}
+
 function playStyledHarmony(root, forcedCue = null) {
   clearHarmonyTimers();
   const now = currentPlayTime();
@@ -2432,15 +2451,15 @@ function playStyledHarmony(root, forcedCue = null) {
   if (pattern?.notes?.length) {
     const beat = beatMs();
     const beatSec = beat / 1000;
-    const speed = isManualMode() ? manualSpeedScale : 1;
-    // 按当前歌曲时间的 pattern 相位取音：错过的音不补，未到的音仍按 beat 网格等待。
-    // 不再把整段强行压缩到下一个 cue，否则 4/4 一拍一个音会被破坏。
-    const events = patternPhraseFromPhase(pattern, now);
+    const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
+    const baseSpeed = isManualMode() ? manualSpeedScale : 1;
+    const events = patternPhraseForCue(pattern, cueTime, now);
+    const speed = fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed);
     for (const { note: n, offset } of events) {
       const delay = Math.max(0, offset * 1000 * speed);
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const duration = Math.max(0.045, Number(n.duration || 0.35) * beatSec * speed);
-      const velocity = Math.max(0.05, Math.min(0.8, Number(n.velocity || 48) / 127));
+      const velocity = normalizedHarmonyVelocity(n.velocity);
       playHarmonyVisualNote(midi, delay, duration, velocity, slot + 1);
     }
     return;
@@ -2459,7 +2478,7 @@ function playStyledHarmony(root, forcedCue = null) {
     const speed = Math.max(0.25, Math.min(1.12, Math.min(baseSpeed, targetEnd / naturalEnd)));
     for (const n of fallbackNotes) {
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
-      playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), n.velocity || 0.48, harmonyToneMode);
+      playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), harmonyToneMode);
     }
     console.warn('No LiberLive chord pattern loaded; using Track 2 fallback chord notes for', code || currentHarmonyPreset()?.code);
     return;
