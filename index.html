@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Freeza Live</title>
+  <link rel="stylesheet" href="styles.css?v=reset-20260706-05" />
+</head>
+<body>
+
+  <section id="startScreen" class="start-screen" aria-label="start options">
+    <div class="start-card start-card-v87">
+      <div class="start-hero">
+        <div>
+          <div class="start-title">Freeza Live <span id="startVersion" class="start-version">v20260706.05</span></div>
+          <div class="settings-title">演奏设置</div>
+        </div>
+        <div class="freeza-icon start-freeza-icon" aria-label="freeza live icon"><span class="horn left"></span><span class="horn right"></span><span class="crest"></span><span class="temple left"></span><span class="temple right"></span><span class="brow left"></span><span class="brow right"></span><span class="eye left"></span><span class="eye right"></span><span class="nose"></span><span class="mouth"></span><span class="chin"></span></div>
+      </div>
+
+      <div class="start-section">
+        <div class="section-title"><span class="section-icon">♫</span><span>演奏方式</span></div>
+        <div class="option-group segmented" data-group="mode">
+          <button class="option" data-mode="auto">全自动和弦</button>
+          <button class="option selected" data-mode="semi">半自动和弦</button>
+          <button class="option" data-mode="manual">手动和弦</button>
+        </div>
+      </div>
+
+      <div class="start-section">
+        <div class="section-title"><span class="section-icon">◒</span><span>拨片</span></div>
+        <div class="option-group segmented two" data-group="pick">
+          <button class="option selected" data-pick="A">拨片 A</button>
+          <button class="option" data-pick="B">拨片 B</button>
+        </div>
+      </div>
+
+      <div class="start-section compact source-section">
+        <div class="section-title"><span class="section-icon">≋</span><span>音源</span></div>
+        <div class="source-grid">
+          <div class="option-group source-card" data-group="drum">
+            <button class="option selected" data-drum="auto"><span class="card-icon">🥁</span><span>鼓机</span><i></i></button>
+            <button class="option" data-drum="on" aria-hidden="true">开</button>
+            <button class="option" data-drum="off" aria-hidden="true">关</button>
+          </div>
+          <div class="option-group source-card" data-group="melody">
+            <button class="option selected" data-melody="on"><span class="card-icon">♫</span><span>主旋律</span><i></i></button>
+            <button class="option" data-melody="off" aria-hidden="true">关</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="start-section volume-section">
+        <div class="section-title"><span class="section-icon">🔊</span><span>音量</span></div>
+        <div class="volume-menu sliders">
+          <div class="volume-label">主旋律</div>
+          <button id="menuMelodyVolDown" class="option volume-step">-</button>
+          <input id="menuMelodyVolRange" class="volume-range" type="range" min="25" max="200" step="5" value="100" aria-label="主旋律音量" />
+          <button id="menuMelodyVolUp" class="option volume-step">+</button>
+          <button id="menuMelodyVolValue" class="option key-value volume-readout">100%</button>
+
+          <div class="volume-label">伴奏</div>
+          <button id="menuHarmonyVolDown" class="option volume-step">-</button>
+          <input id="menuHarmonyVolRange" class="volume-range" type="range" min="25" max="200" step="5" value="125" aria-label="伴奏音量" />
+          <button id="menuHarmonyVolUp" class="option volume-step">+</button>
+          <button id="menuHarmonyVolValue" class="option key-value volume-readout">125%</button>
+        </div>
+      </div>
+
+      <div class="start-section bottom-settings">
+        <div class="start-row simple-row">
+          <div class="row-label with-icon"><span class="section-icon">🎙</span>麦克风</div>
+          <div class="option-group segmented switch" data-group="mic">
+            <button class="option" data-mic="on">开</button>
+            <button class="option selected" data-mic="off">关</button>
+          </div>
+        </div>
+        <div class="start-row simple-row">
+          <div class="row-label with-icon"><span class="section-icon">☼</span>Key</div>
+          <div class="option-group segmented key-menu" data-group="key">
+            <button id="menuKeyDown" class="option">-</button>
+            <button id="menuKeyValue" class="option key-value">0</button>
+            <button id="menuKeyUp" class="option">+</button>
+          </div>
+        </div>
+        <div class="start-row simple-row">
+          <div class="row-label with-icon"><span class="section-icon">⚑</span>引导模式</div>
+          <button id="guideToggleStart" class="guide-option switch-button" aria-pressed="false"><span class="switch-knob"></span><span class="switch-text">关</span></button>
+        </div>
+      </div>
+
+      <button id="startGameBtn" class="start-btn">开始</button>
+      <div id="loadingFrame" class="loading-frame" aria-live="polite">
+        <div class="loading-spinner"></div>
+        <div id="loadingText" class="loading-text">准备载入…</div>
+      </div>
+    </div>
+  </section>
+  <div id="countdownOverlay" class="countdown-overlay" aria-hidden="true"></div>
+
+  <div id="savePrompt" class="save-prompt" aria-hidden="true">
+    <div class="save-card" role="dialog" aria-label="保存录音">
+      <div class="save-orb">🎙</div>
+      <div class="save-title">保存本次录音？</div>
+      <div class="save-subtitle">已录下麦克风和伴奏</div>
+      <div id="savePromptSize" class="save-size">准备文件…</div>
+      <div class="save-actions">
+        <button id="savePromptCancel" class="save-btn ghost">不要</button>
+        <button id="savePromptDownload" class="save-btn primary">保存</button>
+      </div>
+    </div>
+  </div>
+  <main class="game">
+    <div class="freeza-icon" aria-label="freeza live icon"><span class="horn left"></span><span class="horn right"></span><span class="crest"></span><span class="temple left"></span><span class="temple right"></span><span class="brow left"></span><span class="brow right"></span><span class="eye left"></span><span class="eye right"></span><span class="nose"></span><span class="mouth"></span><span class="chin"></span></div>
+    <header class="hud">
+      <button id="playBtn" class="btn green" aria-label="play">▶</button>
+      <button id="restartBtn" class="btn blue wide" aria-label="restart">↻ 重唱</button>
+      <button id="keyDownBtn" class="btn amber" aria-label="key down">降</button>
+      <button id="keyUpBtn" class="btn red" aria-label="key up">升</button>
+      <button id="toneBtn" class="btn violet" aria-label="tone">A</button>
+      <button id="melodyToggle" class="btn cyan active-toggle" aria-label="melody">主</button>
+      <button id="drumToggle" class="btn slate" aria-label="drum">鼓</button>
+      <button id="saveRecBtn" class="btn orange wide" aria-label="save recording">▣ 保存</button>
+    </header>
+
+    <section class="karaoke" aria-label="karaoke lyrics">
+            <div class="karaoke-panel-title"><span></span><b>即将演唱</b><span></span></div>
+<div id="micWave" class="mic-wave" aria-hidden="true">
+        <div class="wave-line wave-left"></div>
+        <div class="wave-line wave-right"></div>
+        <div class="eq eq-left"></div>
+        <div class="eq eq-right"></div>
+      </div>
+      <div id="lyricLine1" class="karaoke-line active"></div>
+      <div id="lyricLine2" class="karaoke-line next"></div>
+      <div id="lyricLine3" class="karaoke-line next"></div>
+      <div id="lyricLine4" class="karaoke-line next"></div>
+      <div id="lyricLine5" class="karaoke-line next"></div>
+      <div id="lyricLine6" class="karaoke-line next"></div>
+      <div id="lyricLine7" class="karaoke-line next"></div>
+      <div id="lyricLine8" class="karaoke-line next"></div>
+      <div id="lyricLine9" class="karaoke-line next"></div>
+      <div id="lyricLine10" class="karaoke-line next"></div>
+      <div id="lyricLine11" class="karaoke-line next"></div>
+      <div id="lyricLine12" class="karaoke-line next"></div>
+      <div id="lyricLine13" class="karaoke-line next"></div>
+      <div id="lyricLine14" class="karaoke-line next"></div>
+      <div id="lyricLine15" class="karaoke-line next"></div>
+      <div id="lyricLine16" class="karaoke-line next"></div>
+      <div id="lyricLine17" class="karaoke-line next"></div>
+      <div id="lyricLine18" class="karaoke-line next"></div>
+      <div id="lyricLine19" class="karaoke-line next"></div>
+      <div id="lyricLine20" class="karaoke-line next"></div>
+      <div class="karaoke-status">
+        <div id="timeStatus" class="meter">00:00 - 00:00</div>
+        <div id="micMeter" class="mic-meter" aria-label="microphone level"><span></span></div>
+      </div>
+    </section>
+
+    <section class="piano-slot top-slot" aria-label="playback piano">
+      <div class="shine"></div>
+      <div id="playbackScroller" class="piano-scroll">
+        <div id="playbackKeyboard" class="keyboard playback-keyboard"></div>
+      </div>
+    </section>
+
+    <section class="piano-slot bottom-slot" aria-label="manual piano">
+      <div class="shine"></div>
+      <div id="manualScroller" class="piano-scroll">
+        <div id="manualKeyboard" class="manual-keyboard"></div>
+      </div>
+    </section>
+
+    <div class="hidden-status" aria-hidden="true">
+      <span id="midiStatus"></span>
+      <span id="sampleStatus"></span>
+      <span id="trackStatus"></span>
+      <span id="nowPlaying"></span>
+    </div>
+  </main>
+
+  <script src="vendor/Tone.js"></script>
+  <script src="vendor/soundfont-player.min.js"></script>
+  <script src="app.js?v=reset-20260706-05"></script>
+</body>
+</html>
