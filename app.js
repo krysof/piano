@@ -1549,9 +1549,16 @@ function parseMidi(arrayBuffer) {
   }));
   const trackName = (t) => (t.texts || []).find(e => e.type === 0x03)?.text || '';
   const byName = (name) => noteTracks.find(t => trackName(t).toLowerCase() === name.toLowerCase());
-  const melodyTrack = byName('Lead') || noteTracks[1] || { number: 1, notes: [] };
-  const accompanimentTrack = byName('Accompaniment') || noteTracks[2] || { number: 2, notes: [] };
-  const chordTrack = byName('Chord Names') || noteTracks.find(t => (t.texts || []).some(e => /^[A-G][#b]?(m|maj|dim|aug|sus|add|\/|\d|$)/i.test(String(e.text || '').trim()))) || { number: 4, notes: [], texts: [] };
+  // 不依赖固定 Track 编号：先按轨道名找，名字缺失时按事件内容推断（docs/SOFTWARE_DESIGN.md §4.1）。
+  const melodyTrack = byName('Lead')
+    || noteTracks.find(t => t.notes.length)
+    || { number: 0, notes: [] };
+  const accompanimentTrack = byName('Accompaniment')
+    || noteTracks.find(t => t !== melodyTrack && t.notes.length)
+    || { number: 0, notes: [] };
+  const chordTrack = byName('Chord Names')
+    || noteTracks.find(t => (t.texts || []).some(e => /^[A-G][#b]?(m|maj|dim|aug|sus|add|\/|\d|$)/i.test(String(e.text || '').trim())))
+    || { number: 0, notes: [], texts: [] };
   const chordCues = chordTrack.texts
     .filter(e => e.type === 0x01)
     .map(e => ({ time: e.time, chord: e.text, root: rootFromChord(e.text) }))
