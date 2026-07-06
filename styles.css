@@ -5228,6 +5228,52 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
 }
 
 
+/* 最终：演奏页布局。歌词框缩掉底部空位，中间琴键上移且不改高度，下方琴键加长。 */
+@media (max-width: 520px) {
+  .game {
+    grid-template-rows: 52px minmax(0, 1fr) 62px 236px !important;
+    gap: 7px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .karaoke {
+    padding-top: 54px !important;
+    padding-bottom: 16px !important;
+    row-gap: 4px !important;
+    align-content: start !important;
+  }
+  .top-slot {
+    height: 62px !important;
+    min-height: 62px !important;
+    padding: 5px 10px !important;
+  }
+  .bottom-slot {
+    height: 236px !important;
+    min-height: 236px !important;
+    padding: 10px 8px 10px !important;
+  }
+  #manualKeyboard.manual-keyboard {
+    height: 100% !important;
+    min-height: 0 !important;
+    gap: 6px !important;
+    padding: 6px 0 0 !important;
+  }
+  #manualKeyboard.manual-keyboard .key.white {
+    min-height: 0 !important;
+    height: 100% !important;
+    padding-bottom: 24px !important;
+  }
+}
+@media (max-height: 760px) and (max-width: 520px) {
+  .game {
+    grid-template-rows: 50px minmax(0, 1fr) 58px 210px !important;
+    gap: 6px !important;
+  }
+  .karaoke { padding-top: 44px !important; padding-bottom: 12px !important; row-gap: 3px !important; }
+  .top-slot { height: 58px !important; min-height: 58px !important; }
+  .bottom-slot { height: 210px !important; min-height: 210px !important; }
+}
+
 /* 最终：音名色表 + 判定区。CDEFGAB = 红橙黄绿青蓝紫。 */
 :root {
   --note-c: #ef4444;
