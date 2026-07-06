@@ -5091,3 +5091,50 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   .start-card-v87 .switch-panel .option-group.switch { height: 30px !important; min-height: 30px !important; }
   .start-card-v87 .switch-panel .option-group.switch .option { height: 22px !important; min-height: 22px !important; font-size: 13px !important; }
 }
+
+
+/* v22: 音量框必须是真正三行：主旋律 / 伴奏 / Key，每行 label + slider + number。 */
+.start-card-v87 .volume-menu.sliders {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+}
+.start-card-v87 .volume-menu.sliders .volume-row {
+  display: grid !important;
+  grid-template-columns: 70px minmax(0, 1fr) 58px !important;
+  align-items: center !important;
+  column-gap: 10px !important;
+  min-height: 32px !important;
+  height: 32px !important;
+}
+.start-card-v87 .volume-menu.sliders .volume-label {
+  grid-column: auto !important;
+  font-size: 15px !important;
+  font-weight: 950 !important;
+  color: rgba(246, 250, 255, .95) !important;
+  white-space: nowrap !important;
+}
+.start-card-v87 .volume-menu.sliders .volume-range {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 20px !important;
+}
+.start-card-v87 .volume-menu.sliders .volume-readout {
+  width: 58px !important;
+  min-width: 58px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  font-size: 14px !important;
+  border-radius: 14px !important;
+  text-align: center !important;
+}
+.start-card-v87 .volume-menu.sliders .volume-step {
+  display: none !important;
+}
+@media (max-height: 760px) {
+  .start-card-v87 .volume-menu.sliders { gap: 5px !important; padding: 7px 10px !important; }
+  .start-card-v87 .volume-menu.sliders .volume-row { min-height: 27px !important; height: 27px !important; grid-template-columns: 64px minmax(0, 1fr) 52px !important; column-gap: 7px !important; }
+  .start-card-v87 .volume-menu.sliders .volume-readout { width: 52px !important; min-width: 52px !important; height: 25px !important; min-height: 25px !important; font-size: 12px !important; }
+}
