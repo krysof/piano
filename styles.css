@@ -4492,3 +4492,24 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   .start-card-v87 [data-group="mic"].option-group.switch,
 .start-card-v87 [data-group="guide"].option-group.switch .option { font-size: 14px !important; padding: 0 7px !important; }
 }
+
+
+/* v12: 鼓机是 自动 / 开 / 关 三态。 */
+.start-card-v87 .drum-mode-card {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 6px !important;
+}
+.start-card-v87 .drum-mode-card .option {
+  min-width: 0 !important;
+  padding: 0 6px !important;
+  border-radius: 14px !important;
+}
+.start-card-v87 .drum-mode-card .option:not(.selected) {
+  opacity: .74 !important;
+  filter: saturate(.78) brightness(.85) !important;
+}
+.start-card-v87 .drum-mode-card .card-icon {
+  font-size: 18px !important;
+  margin-right: 2px !important;
+}

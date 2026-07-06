@@ -97,7 +97,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-11', { cache: 'no-store' })
+  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-12', { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +112,9 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-11'), {})
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-12'), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-11', { cache: 'no-store' });
+      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-12', { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -2716,25 +2716,16 @@ function setupStartScreen() {
       screen.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('selected', b === btn));
     });
   });
-  const drumCard = screen.querySelector('[data-group="drum"].source-card');
-  if (drumCard) {
-    drumCard.addEventListener('click', () => {
-      drumMode = drumMode === 'off' ? 'auto' : 'off';
+  screen.querySelectorAll('[data-drum]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      drumMode = btn.dataset.drum || 'auto';
       drumsEnabled = drumMode !== 'off';
-      drumCard.querySelector('[data-drum="auto"]')?.classList.toggle('selected', drumMode !== 'off');
-      drumCard.classList.toggle('is-off', drumMode === 'off');
+      screen.querySelectorAll('[data-drum]').forEach(b => b.classList.toggle('selected', b === btn));
+      screen.querySelector('[data-group="drum"]')?.classList.toggle('is-off', drumMode === 'off');
       updatePlaybackToggles();
     });
-  } else {
-    screen.querySelectorAll('[data-drum]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        drumMode = btn.dataset.drum || 'auto';
-        drumsEnabled = drumMode !== 'off';
-        screen.querySelectorAll('[data-drum]').forEach(b => b.classList.toggle('selected', b === btn));
-        updatePlaybackToggles();
-      });
-    });
-  }
+  });
   const melodyCard = screen.querySelector('[data-group="melody"].source-card');
   if (melodyCard) {
     melodyCard.addEventListener('click', () => {
