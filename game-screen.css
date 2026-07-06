@@ -153,6 +153,19 @@ body.game-started .bottom-slot::before { color: #e8c46e !important; }
 /* ---------- 手动和弦键：华丽琴牌（七键颜色沿用 styles.css 原配色） ---------- */
 body.game-started .manual-keyboard .key.white {
   background:
+    /* 中央竖向柔光 */
+    linear-gradient(90deg, transparent 26%, rgba(255,250,235,.12) 50%, transparent 74%),
+    /* 牌面小星星 */
+    radial-gradient(1.6px 1.6px at 30% 16%, rgba(255,248,222,.85), transparent 100%),
+    radial-gradient(1.2px 1.2px at 70% 26%, rgba(255,255,255,.7), transparent 100%),
+    radial-gradient(1.5px 1.5px at 42% 52%, rgba(255,248,222,.6), transparent 100%),
+    radial-gradient(1.2px 1.2px at 66% 72%, rgba(255,255,255,.55), transparent 100%),
+    radial-gradient(1.4px 1.4px at 26% 84%, rgba(255,248,222,.6), transparent 100%),
+    /* 四角金色花饰光点 */
+    radial-gradient(circle at 9% 4%, rgba(243,205,106,.50), transparent 9%),
+    radial-gradient(circle at 91% 4%, rgba(243,205,106,.50), transparent 9%),
+    radial-gradient(circle at 9% 96%, rgba(243,205,106,.45), transparent 9%),
+    radial-gradient(circle at 91% 96%, rgba(243,205,106,.45), transparent 9%),
     radial-gradient(circle at 50% 0%, rgba(255,250,235,.20), transparent 42%),
     linear-gradient(180deg,
       color-mix(in srgb, currentColor 30%, #f6ecd8) 0%,
@@ -181,4 +194,49 @@ body.game-started .manual-keyboard .cue-lyric {
   border: 1px solid rgba(255,240,196,.70) !important;
   box-shadow: 0 0 16px rgba(243,205,106,.55), inset 0 1px 0 rgba(255,255,255,.45) !important;
   text-shadow: 0 2px 4px rgba(80,48,6,.65) !important;
+}
+
+/* ---------- 判定提示：去掉旧的透明胶囊格/准线，改成设计图式中央柔光带 ---------- */
+body.game-started .manual-keyboard .key.cue::after,
+body.game-started .manual-keyboard .key.due::after,
+body.game-started .manual-keyboard .key.cue::before,
+body.game-started .manual-keyboard .key.due::before {
+  content: none !important;
+  display: none !important;
+  animation: none !important;
+}
+/* 旧中间准线（hit-line::after）不要 */
+body.game-started #manualKeyboard.manual-keyboard .hit-line::after {
+  content: none !important;
+  display: none !important;
+}
+/* hit-line 从"透明格子"改为横贯牌面的柔光带 */
+body.game-started #manualKeyboard.manual-keyboard .hit-line {
+  left: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  bottom: 58% !important;
+  height: 24% !important;
+  min-height: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: radial-gradient(ellipse at 50% 50%,
+    rgba(255,252,240,.60) 0%,
+    color-mix(in srgb, var(--note-color, #f3cd6a) 42%, rgba(255,250,230,.28)) 44%,
+    transparent 74%) !important;
+  box-shadow: none !important;
+  filter: blur(2px) !important;
+  transform: none !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .key.cue:not(.active):not(.miss):not(.release) .hit-line {
+  opacity: .55 !important;
+  animation: none !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active):not(.miss):not(.release) .hit-line {
+  opacity: 1 !important;
+  animation: goldGlowPulse .58s ease-in-out infinite alternate !important;
+}
+@keyframes goldGlowPulse {
+  from { filter: blur(2px) brightness(1); transform: scaleY(.92); }
+  to   { filter: blur(1px) brightness(1.4); transform: scaleY(1.08); }
 }

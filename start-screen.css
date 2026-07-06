@@ -64,6 +64,11 @@
   filter: drop-shadow(0 0 8px rgba(243,205,106,.55));
 }
 #startScreen .start-title .start-version {
+  display: block !important;
+  margin: 7px 0 0 3px !important;
+  font-size: 12px !important;
+  letter-spacing: .08em !important;
+  vertical-align: baseline !important;
   color: rgba(238,216,158,.72) !important;
   text-shadow: 0 0 10px rgba(243,205,106,.25) !important;
 }
