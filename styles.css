@@ -5178,3 +5178,51 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   border: 0 !important;
   background: linear-gradient(180deg, #fff, #dbeafe) !important;
 }
+
+
+/* v25: 左上播放/暂停按钮不用字体字符，纯 CSS 画图标，避免 iPhone 渲染怪字。 */
+#playBtn {
+  position: relative !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  overflow: hidden !important;
+}
+#playBtn::before,
+#playBtn::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+#playBtn:not(.playing)::before {
+  width: 0 !important;
+  height: 0 !important;
+  transform: translate(-38%, -50%) !important;
+  border-top: 12px solid transparent !important;
+  border-bottom: 12px solid transparent !important;
+  border-left: 19px solid #fff7be !important;
+  filter: drop-shadow(0 0 8px rgba(255, 231, 142, .9)) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#playBtn:not(.playing)::after {
+  display: none !important;
+}
+#playBtn.playing::before,
+#playBtn.playing::after {
+  width: 7px !important;
+  height: 24px !important;
+  border: 0 !important;
+  border-radius: 4px !important;
+  background: #fff7be !important;
+  box-shadow: 0 0 9px rgba(255, 231, 142, .9) !important;
+  filter: none !important;
+}
+#playBtn.playing::before {
+  transform: translate(calc(-50% - 6px), -50%) !important;
+}
+#playBtn.playing::after {
+  transform: translate(calc(-50% + 6px), -50%) !important;
+}
