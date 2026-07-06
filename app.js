@@ -97,7 +97,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-12', { cache: 'no-store' })
+  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-13', { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +112,9 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-12'), {})
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-13'), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-12', { cache: 'no-store' });
+      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-13', { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -554,6 +554,15 @@ function updateKeyButtons() {
   }
 }
 
+function previewKeyShift(delta) {
+  ensureAudio();
+  // 试听变调后的实际音高：先响根音，再轻轻带出当前 Key 的 C 和弦色彩。
+  const root = shiftedMidi(60);
+  playNote(root, 0.38, 0.72);
+  setTimeout(() => playHarmonyToneNote(root + 4, 0.32, 0.42, harmonyToneMode), 70);
+  setTimeout(() => playHarmonyToneNote(root + 7, 0.32, 0.40, harmonyToneMode), 115);
+}
+
 function applyKeyShift(delta) {
   userKeyShift = Math.max(-12, Math.min(12, userKeyShift + delta));
   updateKeyButtons();
@@ -566,6 +575,7 @@ function applyKeyShift(delta) {
     else startCue(midi, activeCue.cue);
   }
   warmHarmonyTones(true);
+  previewKeyShift(delta);
   if (playing) scheduleFrom(currentPlayTime());
 }
 

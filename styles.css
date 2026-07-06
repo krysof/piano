@@ -4513,3 +4513,83 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   font-size: 18px !important;
   margin-right: 2px !important;
 }
+
+
+/* v13: 保证麦克风/Key/引导三行都在首页可见，避免被上方三态鼓机挤掉。 */
+.start-card-v87 .bottom-settings {
+  gap: 5px !important;
+  padding: 7px !important;
+}
+.start-card-v87 .bottom-settings .simple-row {
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 4px !important;
+}
+.start-card-v87 .bottom-settings .row-label {
+  font-size: 13px !important;
+  min-width: 78px !important;
+}
+.start-card-v87 .bottom-settings .option-group.switch,
+.start-card-v87 .bottom-settings .option-group.key-menu {
+  height: 30px !important;
+  min-height: 30px !important;
+}
+.start-card-v87 .bottom-settings .option {
+  min-height: 28px !important;
+  height: 28px !important;
+}
+@media (max-height: 760px) {
+  .start-card-v87 .bottom-settings { gap: 3px !important; padding: 5px !important; }
+  .start-card-v87 .bottom-settings .simple-row { min-height: 28px !important; height: 28px !important; }
+  .start-card-v87 .bottom-settings .option-group.switch,
+  .start-card-v87 .bottom-settings .option-group.key-menu { height: 26px !important; min-height: 26px !important; }
+  .start-card-v87 .bottom-settings .option { min-height: 24px !important; height: 24px !important; font-size: 12px !important; }
+}
+
+
+/* v13b: 修复旧规则把麦克风 group 当成按钮隐藏的问题；mic/guide 同款开关。 */
+.start-card-v87 .bottom-settings [data-group="mic"].option-group.switch,
+.start-card-v87 .bottom-settings [data-group="guide"].option-group.switch {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  grid-template-columns: 1fr 1fr !important;
+  width: 142px !important;
+  min-width: 142px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 3px !important;
+  border-radius: 999px !important;
+  pointer-events: auto !important;
+}
+.start-card-v87 .bottom-settings [data-group="mic"] .option,
+.start-card-v87 .bottom-settings [data-group="guide"] .option {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 8px !important;
+  border-radius: 999px !important;
+  pointer-events: auto !important;
+  font-size: 13px !important;
+}
+.start-card-v87 .bottom-settings [data-group="mic"] .option::before,
+.start-card-v87 .bottom-settings [data-group="mic"] .option::after,
+.start-card-v87 .bottom-settings [data-group="guide"] .option::before,
+.start-card-v87 .bottom-settings [data-group="guide"] .option::after {
+  content: none !important;
+  display: none !important;
+}
+.start-card-v87 .bottom-settings [data-group="mic"] .option.selected,
+.start-card-v87 .bottom-settings [data-group="guide"] .option.selected {
+  color: #061326 !important;
+  background: linear-gradient(180deg, #eaf4ff, #9fb8d7) !important;
+  box-shadow: 0 0 14px rgba(170,215,255,.36), inset 0 1px 0 rgba(255,255,255,.55) !important;
+}
+.start-card-v87 .bottom-settings [data-group="mic"] [data-mic="on"].selected,
+.start-card-v87 .bottom-settings [data-group="guide"] [data-guide="on"].selected {
+  background: linear-gradient(180deg, #66f4ff, #0aa0ff) !important;
+}
