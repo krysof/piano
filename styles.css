@@ -5142,7 +5142,7 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
 
 
 
-/* v23: Key 滑条使用与主旋律/伴奏完全相同的 .volume-range 轨道和圆点。 */
+/* 最终：Key 滑条与音量滑条同款。 */
 .start-card-v87 .volume-menu.sliders .key-range {
   background: transparent !important;
   box-shadow: none !important;
@@ -5180,7 +5180,7 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
 }
 
 
-/* v25: 左上播放/暂停按钮不用字体字符，纯 CSS 画图标，避免 iPhone 渲染怪字。 */
+/* 最终：左上播放/暂停按钮用 CSS 图标。 */
 #playBtn {
   position: relative !important;
   font-size: 0 !important;
@@ -5225,4 +5225,122 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
 }
 #playBtn.playing::after {
   transform: translate(calc(-50% + 6px), -50%) !important;
+}
+
+
+/* 最终：音名色表 + 判定区。CDEFGAB = 红橙黄绿青蓝紫。 */
+:root {
+  --note-c: #ef4444;
+  --note-d: #f97316;
+  --note-e: #facc15;
+  --note-f: #22c55e;
+  --note-g: #06b6d4;
+  --note-a: #2563eb;
+  --note-b: #8b5cf6;
+}
+.note-c, .key.note-c, .lyric-char.note-c, .lyric-block.note-c { --note-color: var(--note-c); --key-color: var(--note-c); }
+.note-d, .key.note-d, .lyric-char.note-d, .lyric-block.note-d { --note-color: var(--note-d); --key-color: var(--note-d); }
+.note-e, .key.note-e, .lyric-char.note-e, .lyric-block.note-e { --note-color: var(--note-e); --key-color: var(--note-e); }
+.note-f, .key.note-f, .lyric-char.note-f, .lyric-block.note-f { --note-color: var(--note-f); --key-color: var(--note-f); }
+.note-g, .key.note-g, .lyric-char.note-g, .lyric-block.note-g { --note-color: var(--note-g); --key-color: var(--note-g); }
+.note-a, .key.note-a, .lyric-char.note-a, .lyric-block.note-a { --note-color: var(--note-a); --key-color: var(--note-a); }
+.note-b, .key.note-b, .lyric-char.note-b, .lyric-block.note-b { --note-color: var(--note-b); --key-color: var(--note-b); }
+.manual-keyboard .key.note-c,
+.playback-keyboard .key.note-c { color: var(--note-c) !important; --cue2: var(--note-c); --cue3: color-mix(in srgb, var(--note-c) 72%, #000); }
+.manual-keyboard .key.note-d,
+.playback-keyboard .key.note-d { color: var(--note-d) !important; --cue2: var(--note-d); --cue3: color-mix(in srgb, var(--note-d) 72%, #000); }
+.manual-keyboard .key.note-e,
+.playback-keyboard .key.note-e { color: var(--note-e) !important; --cue2: var(--note-e); --cue3: #b88600; }
+.manual-keyboard .key.note-f,
+.playback-keyboard .key.note-f { color: var(--note-f) !important; --cue2: var(--note-f); --cue3: #15803d; }
+.manual-keyboard .key.note-g,
+.playback-keyboard .key.note-g { color: var(--note-g) !important; --cue2: var(--note-g); --cue3: #0e7490; }
+.manual-keyboard .key.note-a,
+.playback-keyboard .key.note-a { color: var(--note-a) !important; --cue2: var(--note-a); --cue3: #1d4ed8; }
+.manual-keyboard .key.note-b,
+.playback-keyboard .key.note-b { color: var(--note-b) !important; --cue2: var(--note-b); --cue3: #6d28d9; }
+.manual-keyboard .key.active,
+.manual-keyboard .key.due {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--note-color) 18%, #ffffff) 0%,
+    color-mix(in srgb, var(--note-color) 82%, #ffffff) 64%,
+    color-mix(in srgb, var(--note-color) 82%, #000000) 100%) !important;
+  box-shadow:
+    0 0 20px color-mix(in srgb, var(--note-color) 78%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--note-color) 36%, #ffffff) !important;
+}
+.particle.note-c { color: var(--note-c) !important; background: var(--note-c) !important; }
+.particle.note-d { color: var(--note-d) !important; background: var(--note-d) !important; }
+.particle.note-e { color: var(--note-e) !important; background: var(--note-e) !important; }
+.particle.note-f { color: var(--note-f) !important; background: var(--note-f) !important; }
+.particle.note-g { color: var(--note-g) !important; background: var(--note-g) !important; }
+.particle.note-a { color: var(--note-a) !important; background: var(--note-a) !important; }
+.particle.note-b { color: var(--note-b) !important; background: var(--note-b) !important; }
+.karaoke-line .lyric-char.note-c, .karaoke-line .lyric-block.note-c { --key-color: var(--note-c) !important; color: var(--note-c) !important; }
+.karaoke-line .lyric-char.note-d, .karaoke-line .lyric-block.note-d { --key-color: var(--note-d) !important; color: var(--note-d) !important; }
+.karaoke-line .lyric-char.note-e, .karaoke-line .lyric-block.note-e { --key-color: var(--note-e) !important; color: var(--note-e) !important; }
+.karaoke-line .lyric-char.note-f, .karaoke-line .lyric-block.note-f { --key-color: var(--note-f) !important; color: var(--note-f) !important; }
+.karaoke-line .lyric-char.note-g, .karaoke-line .lyric-block.note-g { --key-color: var(--note-g) !important; color: var(--note-g) !important; }
+.karaoke-line .lyric-char.note-a, .karaoke-line .lyric-block.note-a { --key-color: var(--note-a) !important; color: var(--note-a) !important; }
+.karaoke-line .lyric-char.note-b, .karaoke-line .lyric-block.note-b { --key-color: var(--note-b) !important; color: var(--note-b) !important; }
+.playback-keyboard .key.harmony {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--note-color) 20%, rgba(235,240,248,.94)),
+    color-mix(in srgb, var(--note-color) 28%, rgba(105,113,128,.72))) !important;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--note-color) 32%, rgba(180,188,202,.45)) !important;
+}
+/* 65%~75% 判定区 + 70% 精准线：提示存在时显示，按下/释放时隐藏。 */
+.manual-keyboard .hit-line {
+  display: block !important;
+  position: absolute !important;
+  left: 9% !important;
+  right: 9% !important;
+  bottom: 65% !important;
+  height: 10% !important;
+  min-height: 14px !important;
+  opacity: 0 !important;
+  border-radius: 999px !important;
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.10),
+      color-mix(in srgb, var(--note-color, #38d9ff) 38%, rgba(255,255,255,.15)),
+      rgba(255,255,255,.10)) !important;
+  border: 1px solid color-mix(in srgb, var(--note-color, #38d9ff) 55%, rgba(255,255,255,.42)) !important;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--note-color, #38d9ff) 42%, transparent) !important;
+  pointer-events: none !important;
+  z-index: 4 !important;
+}
+.manual-keyboard .hit-line::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 4% !important;
+  right: 4% !important;
+  top: 50% !important;
+  height: 3px !important;
+  transform: translateY(-50%) !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow:
+    0 0 8px #fff,
+    0 0 14px color-mix(in srgb, var(--note-color, #38d9ff) 70%, transparent) !important;
+}
+#manualKeyboard.manual-keyboard .key.cue:not(.active):not(.miss):not(.release) .hit-line {
+  display: block !important;
+  opacity: .55 !important;
+  animation: none !important;
+}
+#manualKeyboard.manual-keyboard .key.due:not(.active):not(.miss):not(.release) .hit-line {
+  display: block !important;
+  opacity: 1 !important;
+  animation: hitZonePulse .55s ease-in-out infinite alternate !important;
+}
+#manualKeyboard.manual-keyboard .key.active .hit-line,
+#manualKeyboard.manual-keyboard .key.miss .hit-line,
+#manualKeyboard.manual-keyboard .key.release .hit-line {
+  opacity: 0 !important;
+  display: none !important;
+}
+@keyframes hitZonePulse {
+  from { filter: brightness(1); transform: scale(1); }
+  to { filter: brightness(1.45); transform: scale(1.035); }
 }
