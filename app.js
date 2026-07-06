@@ -97,7 +97,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-05', { cache: 'no-store' })
+  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-06', { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +112,9 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-05'), {})
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-06'), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-05', { cache: 'no-store' });
+      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-06', { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -1371,6 +1371,20 @@ function patternPhraseFromPhase(pattern, atTime) {
   }));
 }
 
+function harmonyFitScale(events, beatSec, cueTime, now, baseScale = 1) {
+  if (!events?.length) return baseScale;
+  let nextTime = nextChordCueTimeAfter(cueTime);
+  if (nextTime <= now + 0.08) nextTime = nextChordCueTimeAfter(now);
+  const targetEnd = Math.max(0.12, nextTime - now - 0.018);
+  const naturalEnd = events.reduce((max, { note: n, offset }) => {
+    const dur = Math.max(0.05, Number(n.duration || 0.35) * beatSec);
+    return Math.max(max, Number(offset || 0) + dur);
+  }, 0.001);
+  const fitted = targetEnd / naturalEnd;
+  // 和弦要追随下一个提示点：按慢了就压缩到刚好赶上；最多只允许轻微拉长，避免拖慢。
+  return Math.max(0.25, Math.min(1.12, Math.min(baseScale, fitted)));
+}
+
 function currentStyleCode() {
   return song?.styleInfo?.configPack?.chords?.find(c => c.pickType === 1)?.code
     || song?.styleInfo?.topLevel?.rhythmicPatternB
@@ -2427,14 +2441,17 @@ function playStyledHarmony(root, forcedCue = null) {
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
     const beat = beatMs();
-    const speed = isManualMode() ? manualSpeedScale : 1;
-    // 按下时立即触发一个完整 pattern 小节片段，但起点按当前歌曲相位选择；
-    // 这样同一和弦不同时间会不同，又不会因为下个和弦点太近只剩一个音。
-    const events = patternPhraseFromPhase(pattern, now);
+    const beatSec = beat / 1000;
+    const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
+    const baseSpeed = isManualMode() ? manualSpeedScale : 1;
+    // 起点仍按歌曲相位取 pattern，保证同一和弦第二次会因相位不同而不同；
+    // 但播放总时长必须贴住下一个和弦提示点，按慢了会自动加速赶上。
+    const events = patternPhraseFromPhase(pattern, cueTime);
+    const speed = harmonyFitScale(events, beatSec, cueTime, now, baseSpeed);
     for (const { note: n, offset } of events) {
       const delay = Math.max(0, offset * 1000 * speed);
       const midi = patternPitchToChordMidi(n.pitch, chordName);
-      const duration = Math.max(0.05, Number(n.duration || 0.35) * beat / 1000 * speed);
+      const duration = Math.max(0.045, Number(n.duration || 0.35) * beatSec * speed);
       const velocity = Math.max(0.05, Math.min(0.8, Number(n.velocity || 48) / 127));
       playHarmonyVisualNote(midi, delay, duration, velocity, slot + 1);
     }
@@ -2446,7 +2463,12 @@ function playStyledHarmony(root, forcedCue = null) {
   const fallbackNotes = track2SliceForCue(cue);
   if (fallbackNotes.length) {
     const start = fallbackNotes[0].time;
-    const speed = isManualMode() ? manualSpeedScale : 1;
+    const naturalEnd = fallbackNotes.reduce((max, n) => Math.max(max, (n.time - start) + Number(n.duration || 0.45)), 0.001);
+    let nextTime = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
+    if (nextTime <= now + 0.08) nextTime = nextChordCueTimeAfter(now);
+    const targetEnd = Math.max(0.12, nextTime - now - 0.018);
+    const baseSpeed = isManualMode() ? manualSpeedScale : 1;
+    const speed = Math.max(0.25, Math.min(1.12, Math.min(baseSpeed, targetEnd / naturalEnd)));
     for (const n of fallbackNotes) {
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
       playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), n.velocity || 0.48, harmonyToneMode);
