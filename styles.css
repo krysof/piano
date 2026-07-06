@@ -5335,49 +5335,48 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
     color-mix(in srgb, var(--note-color) 28%, rgba(105,113,128,.72))) !important;
   box-shadow: 0 0 14px color-mix(in srgb, var(--note-color) 32%, rgba(180,188,202,.45)) !important;
 }
-/* 65%~75% 判定区 + 70% 精准线：提示存在时显示，按下/释放时隐藏。 */
-.manual-keyboard .hit-line {
+/* 判定区：70% 高度为音符 100%；90%~110% 为半透明空心框，100% 为半透明准线。 */
+#manualKeyboard.manual-keyboard .hit-line {
   display: block !important;
   position: absolute !important;
-  left: 9% !important;
-  right: 9% !important;
-  bottom: 65% !important;
-  height: 10% !important;
-  min-height: 14px !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: auto !important;
+  bottom: 63% !important;
+  height: 14% !important;
+  min-height: 18px !important;
   opacity: 0 !important;
-  border-radius: 999px !important;
-  background:
-    linear-gradient(180deg,
-      rgba(255,255,255,.10),
-      color-mix(in srgb, var(--note-color, #38d9ff) 38%, rgba(255,255,255,.15)),
-      rgba(255,255,255,.10)) !important;
-  border: 1px solid color-mix(in srgb, var(--note-color, #38d9ff) 55%, rgba(255,255,255,.42)) !important;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--note-color, #38d9ff) 42%, transparent) !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,.035) !important;
+  border: 2px solid color-mix(in srgb, var(--note-color, #38d9ff) 72%, rgba(255,255,255,.58)) !important;
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--note-color, #38d9ff) 46%, transparent),
+    inset 0 0 10px color-mix(in srgb, var(--note-color, #38d9ff) 16%, transparent) !important;
   pointer-events: none !important;
   z-index: 4 !important;
 }
-.manual-keyboard .hit-line::after {
+#manualKeyboard.manual-keyboard .hit-line::after {
   content: '' !important;
   position: absolute !important;
-  left: 4% !important;
-  right: 4% !important;
+  left: 0 !important;
+  right: 0 !important;
   top: 50% !important;
   height: 3px !important;
   transform: translateY(-50%) !important;
   border-radius: 999px !important;
-  background: rgba(255,255,255,.96) !important;
+  background: color-mix(in srgb, var(--note-color, #38d9ff) 42%, rgba(255,255,255,.72)) !important;
   box-shadow:
-    0 0 8px #fff,
-    0 0 14px color-mix(in srgb, var(--note-color, #38d9ff) 70%, transparent) !important;
+    0 0 8px rgba(255,255,255,.55),
+    0 0 14px color-mix(in srgb, var(--note-color, #38d9ff) 58%, transparent) !important;
 }
 #manualKeyboard.manual-keyboard .key.cue:not(.active):not(.miss):not(.release) .hit-line {
   display: block !important;
-  opacity: .55 !important;
+  opacity: .54 !important;
   animation: none !important;
 }
 #manualKeyboard.manual-keyboard .key.due:not(.active):not(.miss):not(.release) .hit-line {
   display: block !important;
-  opacity: 1 !important;
+  opacity: .92 !important;
   animation: hitZonePulse .55s ease-in-out infinite alternate !important;
 }
 #manualKeyboard.manual-keyboard .key.active .hit-line,
