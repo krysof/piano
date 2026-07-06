@@ -5138,3 +5138,43 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   .start-card-v87 .volume-menu.sliders .volume-row { min-height: 27px !important; height: 27px !important; grid-template-columns: 64px minmax(0, 1fr) 52px !important; column-gap: 7px !important; }
   .start-card-v87 .volume-menu.sliders .volume-readout { width: 52px !important; min-width: 52px !important; height: 25px !important; min-height: 25px !important; font-size: 12px !important; }
 }
+
+
+
+
+/* v23: Key 滑条使用与主旋律/伴奏完全相同的 .volume-range 轨道和圆点。 */
+.start-card-v87 .volume-menu.sliders .key-range {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+.start-card-v87 .volume-menu.sliders .key-range::-webkit-slider-runnable-track {
+  height: 5px !important;
+  background: linear-gradient(90deg, #35d9ff 0%, #7f5cff var(--pct, 50%), rgba(255,255,255,.14) var(--pct, 50%)) !important;
+  box-shadow: 0 0 12px rgba(71,177,255,.45) !important;
+  border-radius: 999px !important;
+}
+.start-card-v87 .volume-menu.sliders .key-range::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  width: 22px !important;
+  height: 22px !important;
+  margin-top: -8px !important;
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #fff, #dbeafe) !important;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.12), 0 0 18px rgba(150,104,255,.85), 0 4px 12px rgba(0,0,0,.45) !important;
+}
+.start-card-v87 .volume-menu.sliders .key-range::-moz-range-track {
+  height: 5px !important;
+  background: linear-gradient(90deg, #35d9ff 0%, #7f5cff var(--pct, 50%), rgba(255,255,255,.14) var(--pct, 50%)) !important;
+  border-radius: 999px !important;
+}
+.start-card-v87 .volume-menu.sliders .key-range::-moz-range-thumb {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: linear-gradient(180deg, #fff, #dbeafe) !important;
+}
