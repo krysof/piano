@@ -2671,28 +2671,23 @@ function renderManualKeyboard() {
       requestWakeLock();
       warmHarmonyTones(false);
       if (isManualMode()) playNextManualMelodyNote();
-      const good = isGoodTiming(key);
-      if (good) {
-        if (activeCue && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id)) {
-          activeCue.hit = true;
-          hitCue(activeCue.midi, activeCue.cue);
-          window.setTimeout(() => finishActiveCue(), 740);
-        }
-        key.classList.add('active');
-        playStyledHarmony(label);
-        burstParticles(key, 'manual');
-        setTimeout(() => {
-          key.classList.remove('active');
-          key.classList.add('release');
-          setTimeout(() => key.classList.remove('release'), 360);
-        }, 620);
+      // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
+      if (isGoodTiming(key) && activeCue && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id)) {
+        activeCue.hit = true;
+        hitCue(activeCue.midi, activeCue.cue);
+        window.setTimeout(() => finishActiveCue(), 740);
       } else {
         finishActiveCue();
-        playStyledHarmony(label);
-        key.classList.add('miss');
-        burstMissParticles(key);
-        setTimeout(() => key.classList.remove('miss'), 420);
       }
+      key.classList.remove('cue', 'due', 'miss', 'release');
+      key.classList.add('active');
+      playStyledHarmony(label);
+      burstParticles(key, 'manual');
+      setTimeout(() => {
+        key.classList.remove('active');
+        key.classList.add('release');
+        setTimeout(() => key.classList.remove('release'), 360);
+      }, 520);
       cueState.delete(label);
     });
     kb.appendChild(key);
