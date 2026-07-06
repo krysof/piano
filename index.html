@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260706-14" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260706-15" />
 </head>
 <body>
 
@@ -15,18 +15,28 @@
     <div class="start-card start-card-v87">
       <div class="start-hero">
         <div>
-          <div class="start-title">Freeza Live <span id="startVersion" class="start-version">v20260706.14</span></div>
+          <div class="start-title">Freeza Live <span id="startVersion" class="start-version">v20260706.15</span></div>
           <div class="settings-title">演奏设置</div>
         </div>
         <div class="freeza-icon start-freeza-icon" aria-label="freeza live icon"><span class="horn left"></span><span class="horn right"></span><span class="crest"></span><span class="temple left"></span><span class="temple right"></span><span class="brow left"></span><span class="brow right"></span><span class="eye left"></span><span class="eye right"></span><span class="nose"></span><span class="mouth"></span><span class="chin"></span></div>
       </div>
 
-      <div class="start-section stack-section">
-        <div class="section-title"><span class="section-icon">♫</span><span>演奏方式</span></div>
-        <div class="option-group vertical-options" data-group="mode">
-          <button class="option" data-mode="auto">全自动和弦</button>
-          <button class="option selected" data-mode="semi">半自动和弦</button>
-          <button class="option" data-mode="manual">手动和弦</button>
+      <div class="start-section stack-section play-source-section">
+        <div class="dual-stack-block">
+          <div class="section-title"><span class="section-icon">♫</span><span>演奏方式</span></div>
+          <div class="option-group vertical-options" data-group="mode">
+            <button class="option" data-mode="auto">全自动和弦</button>
+            <button class="option selected" data-mode="semi">半自动和弦</button>
+            <button class="option" data-mode="manual">手动和弦</button>
+          </div>
+        </div>
+        <div class="dual-stack-block">
+          <div class="section-title"><span class="section-icon">≋</span><span>音源</span></div>
+          <div class="option-group vertical-options drum-mode-card" data-group="drum">
+            <button class="option selected" data-drum="auto"><span class="card-icon">🥁</span><span>自动</span></button>
+            <button class="option" data-drum="on"><span class="card-icon">🥁</span><span>开</span></button>
+            <button class="option" data-drum="off"><span class="card-icon">🥁</span><span>关</span></button>
+          </div>
         </div>
       </div>
 
@@ -35,15 +45,6 @@
         <div class="option-group segmented two" data-group="pick">
           <button class="option selected" data-pick="A">拨片 A</button>
           <button class="option" data-pick="B">拨片 B</button>
-        </div>
-      </div>
-
-      <div class="start-section stack-section source-section">
-        <div class="section-title"><span class="section-icon">≋</span><span>音源</span></div>
-        <div class="option-group vertical-options drum-mode-card" data-group="drum">
-          <button class="option selected" data-drum="auto"><span class="card-icon">🥁</span><span>自动</span></button>
-          <button class="option" data-drum="on"><span class="card-icon">🥁</span><span>开</span></button>
-          <button class="option" data-drum="off"><span class="card-icon">🥁</span><span>关</span></button>
         </div>
       </div>
 
@@ -192,6 +193,6 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="app.js?v=reset-20260706-14"></script>
+  <script src="app.js?v=reset-20260706-15"></script>
 </body>
 </html>

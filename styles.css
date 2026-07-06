@@ -4817,3 +4817,40 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   .start-card-v87 .volume-section { display: none !important; }
   .start-card-v87 .start-btn { min-height: 42px !important; height: 42px !important; }
 }
+
+
+/* v15: 演奏方式 + 音源合并到同一个大框，内部两组竖排三选项。 */
+.start-card-v87 .play-source-section {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+}
+.start-card-v87 .play-source-section .dual-stack-block {
+  min-width: 0 !important;
+}
+.start-card-v87 .play-source-section .section-title {
+  font-size: 17px !important;
+  margin-bottom: 5px !important;
+  white-space: nowrap !important;
+}
+.start-card-v87 .play-source-section .vertical-options {
+  height: auto !important;
+  gap: 4px !important;
+  padding: 5px !important;
+}
+.start-card-v87 .play-source-section .vertical-options .option {
+  min-height: 26px !important;
+  height: 26px !important;
+  font-size: 12px !important;
+  padding: 0 4px !important;
+}
+.start-card-v87 .play-source-section .drum-mode-card .card-icon {
+  font-size: 14px !important;
+  margin-right: 3px !important;
+}
+@media (max-width: 370px) {
+  .start-card-v87 .play-source-section { gap: 6px !important; padding-left: 8px !important; padding-right: 8px !important; }
+  .start-card-v87 .play-source-section .section-title { font-size: 15px !important; }
+  .start-card-v87 .play-source-section .vertical-options .option { font-size: 11px !important; }
+}
