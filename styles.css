@@ -4854,3 +4854,61 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   .start-card-v87 .play-source-section .section-title { font-size: 15px !important; }
   .start-card-v87 .play-source-section .vertical-options .option { font-size: 11px !important; }
 }
+
+
+/* v17: 主旋律 / 引导模式 / 麦克风 必须视觉上在同一个明确大框里。 */
+.start-card-v87 .switch-panel {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 6px !important;
+  padding: 9px 10px 10px !important;
+  border-radius: 18px !important;
+  border: 1px solid rgba(126, 157, 255, .62) !important;
+  background:
+    radial-gradient(circle at 15% 8%, rgba(73, 209, 255, .14), transparent 35%),
+    linear-gradient(135deg, rgba(9, 24, 70, .66), rgba(21, 14, 57, .58)) !important;
+  box-shadow:
+    0 0 18px rgba(76, 139, 255, .22),
+    inset 0 0 22px rgba(0, 0, 0, .28) !important;
+}
+.start-card-v87 .switch-panel .section-title {
+  display: flex !important;
+  font-size: 18px !important;
+  margin: 0 0 2px !important;
+  line-height: 1 !important;
+}
+.start-card-v87 .switch-panel .simple-row {
+  display: grid !important;
+  grid-template-columns: minmax(96px, 1fr) auto !important;
+  align-items: center !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 2px !important;
+  border-radius: 12px !important;
+  background: rgba(3, 12, 38, .22) !important;
+}
+.start-card-v87 .switch-panel .row-label {
+  min-width: 0 !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  color: rgba(245, 250, 255, .94) !important;
+}
+.start-card-v87 .switch-panel [data-group="melody"].option-group.switch,
+.start-card-v87 .switch-panel [data-group="guide"].option-group.switch,
+.start-card-v87 .switch-panel [data-group="mic"].option-group.switch {
+  width: 136px !important;
+  min-width: 136px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+}
+.start-card-v87 .switch-panel [data-group="melody"] .option,
+.start-card-v87 .switch-panel [data-group="guide"] .option,
+.start-card-v87 .switch-panel [data-group="mic"] .option {
+  height: 22px !important;
+  min-height: 22px !important;
+}
+@media (max-height: 760px) {
+  .start-card-v87 .switch-panel { gap: 4px !important; padding: 6px 9px !important; }
+  .start-card-v87 .switch-panel .section-title { font-size: 15px !important; }
+  .start-card-v87 .switch-panel .simple-row { height: 25px !important; min-height: 25px !important; }
+}
