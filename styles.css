@@ -4912,3 +4912,22 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   .start-card-v87 .switch-panel .section-title { font-size: 15px !important; }
   .start-card-v87 .switch-panel .simple-row { height: 25px !important; min-height: 25px !important; }
 }
+
+
+/* v18: 三个开关完全同款；麦克风默认关由 JS/HTML 双重保证。 */
+.start-card-v87 .switch-panel .option.selected,
+.start-card-v87 .switch-panel [data-melody="on"].selected,
+.start-card-v87 .switch-panel [data-guide="on"].selected,
+.start-card-v87 .switch-panel [data-mic="on"].selected,
+.start-card-v87 .switch-panel [data-melody="off"].selected,
+.start-card-v87 .switch-panel [data-guide="off"].selected,
+.start-card-v87 .switch-panel [data-mic="off"].selected {
+  color: #061326 !important;
+  background: linear-gradient(180deg, #eaf4ff, #9fb8d7) !important;
+  box-shadow: 0 0 14px rgba(170,215,255,.36), inset 0 1px 0 rgba(255,255,255,.55) !important;
+}
+.start-card-v87 .switch-panel .option:not(.selected) {
+  color: rgba(220, 232, 255, .70) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
