@@ -150,14 +150,7 @@ body.game-started .bottom-slot {
 }
 body.game-started .bottom-slot::before { color: #e8c46e !important; }
 
-/* ---------- 手动和弦键：粉彩华丽琴牌 ---------- */
-body.game-started .manual-keyboard .key.note-c { color: #e0b280 !important; }
-body.game-started .manual-keyboard .key.note-d { color: #f0a3c0 !important; }
-body.game-started .manual-keyboard .key.note-e { color: #9db8e8 !important; }
-body.game-started .manual-keyboard .key.note-f { color: #eec25e !important; }
-body.game-started .manual-keyboard .key.note-g { color: #86a8dd !important; }
-body.game-started .manual-keyboard .key.note-a { color: #b6a2e8 !important; }
-body.game-started .manual-keyboard .key.note-b { color: #eba0b0 !important; }
+/* ---------- 手动和弦键：华丽琴牌（七键颜色沿用 styles.css 原配色） ---------- */
 body.game-started .manual-keyboard .key.white {
   background:
     radial-gradient(circle at 50% 0%, rgba(255,250,235,.20), transparent 42%),
