@@ -97,7 +97,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-09', { cache: 'no-store' })
+  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-11', { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +112,9 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-09'), {})
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-11'), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-09', { cache: 'no-store' });
+      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-11', { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -2716,22 +2716,44 @@ function setupStartScreen() {
       screen.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('selected', b === btn));
     });
   });
-  screen.querySelectorAll('[data-drum]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      drumMode = btn.dataset.drum || 'auto';
+  const drumCard = screen.querySelector('[data-group="drum"].source-card');
+  if (drumCard) {
+    drumCard.addEventListener('click', () => {
+      drumMode = drumMode === 'off' ? 'auto' : 'off';
       drumsEnabled = drumMode !== 'off';
-      screen.querySelectorAll('[data-drum]').forEach(b => b.classList.toggle('selected', b === btn));
+      drumCard.querySelector('[data-drum="auto"]')?.classList.toggle('selected', drumMode !== 'off');
+      drumCard.classList.toggle('is-off', drumMode === 'off');
       updatePlaybackToggles();
     });
-  });
-  screen.querySelectorAll('[data-melody]').forEach(btn => {
-    btn.addEventListener('click', () => {
+  } else {
+    screen.querySelectorAll('[data-drum]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        drumMode = btn.dataset.drum || 'auto';
+        drumsEnabled = drumMode !== 'off';
+        screen.querySelectorAll('[data-drum]').forEach(b => b.classList.toggle('selected', b === btn));
+        updatePlaybackToggles();
+      });
+    });
+  }
+  const melodyCard = screen.querySelector('[data-group="melody"].source-card');
+  if (melodyCard) {
+    melodyCard.addEventListener('click', () => {
       melodyUserTouched = true;
-      melodyEnabled = btn.dataset.melody !== 'off';
-      screen.querySelectorAll('[data-melody]').forEach(b => b.classList.toggle('selected', b === btn));
+      melodyEnabled = !melodyEnabled;
+      melodyCard.querySelector('[data-melody="on"]')?.classList.toggle('selected', melodyEnabled);
+      melodyCard.classList.toggle('is-off', !melodyEnabled);
       updatePlaybackToggles();
     });
-  });
+  } else {
+    screen.querySelectorAll('[data-melody]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        melodyUserTouched = true;
+        melodyEnabled = btn.dataset.melody !== 'off';
+        screen.querySelectorAll('[data-melody]').forEach(b => b.classList.toggle('selected', b === btn));
+        updatePlaybackToggles();
+      });
+    });
+  }
   screen.querySelectorAll('[data-mic]').forEach(btn => {
     btn.addEventListener('click', async () => {
       micEnabled = btn.dataset.mic === 'on';
@@ -2763,14 +2785,11 @@ function setupStartScreen() {
   $('menuMicGainRange')?.addEventListener('input', () => adjustMicGain(0));
   updateVolumeButtons();
   updateMicMenu();
-  $('guideToggleStart')?.addEventListener('click', () => {
-    guideMode = !guideMode;
-    const btn = $('guideToggleStart');
-    btn.classList.toggle('on', guideMode);
-    const text = btn.querySelector('.switch-text');
-    if (text) text.textContent = guideMode ? '开' : '关';
-    else btn.textContent = `引导模式：${guideMode ? '开' : '关'}`;
-    btn.setAttribute('aria-pressed', guideMode ? 'true' : 'false');
+  screen.querySelectorAll('[data-guide]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      guideMode = btn.dataset.guide === 'on';
+      screen.querySelectorAll('[data-guide]').forEach(b => b.classList.toggle('selected', b === btn));
+    });
   });
   $('startGameBtn')?.addEventListener('click', startGameFromMenu);
 }

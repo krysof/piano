@@ -4432,7 +4432,8 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
 
 
 /* v05: 开始页麦克风必须是明确的开/关双按钮，默认关，不能显示成“已开启”滑块。 */
-.start-card-v87 [data-group="mic"].option-group.switch {
+.start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
   width: 168px !important;
@@ -4446,7 +4447,8 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   border: 1px solid rgba(127,155,226,.36) !important;
   box-shadow: inset 0 0 12px rgba(0,0,0,.24) !important;
 }
-.start-card-v87 [data-group="mic"].option-group.switch .option {
+.start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch .option {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -4462,25 +4464,31 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   box-shadow: none !important;
   pointer-events: auto !important;
 }
-.start-card-v87 [data-group="mic"].option-group.switch .option::before,
-.start-card-v87 [data-group="mic"].option-group.switch .option.selected::before {
+.start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch .option::before,
+.start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch .option.selected::before {
   content: none !important;
   display: none !important;
 }
-.start-card-v87 [data-group="mic"].option-group.switch .option.selected {
+.start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch .option.selected {
   color: #061326 !important;
   background: linear-gradient(180deg, #eaf4ff, #9fb8d7) !important;
   box-shadow: 0 0 14px rgba(170,215,255,.35), inset 0 1px 0 rgba(255,255,255,.55) !important;
 }
-.start-card-v87 [data-group="mic"].option-group.switch [data-mic="on"].selected {
+.start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch [data-mic="on"].selected {
   color: #031225 !important;
   background: linear-gradient(180deg, #66f4ff, #0aa0ff) !important;
   box-shadow: 0 0 18px rgba(0,190,255,.58), inset 0 1px 0 rgba(255,255,255,.50) !important;
 }
 @media (max-width: 430px) {
-  .start-card-v87 [data-group="mic"].option-group.switch {
+  .start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch {
     width: 142px !important;
     min-width: 142px !important;
   }
-  .start-card-v87 [data-group="mic"].option-group.switch .option { font-size: 14px !important; padding: 0 7px !important; }
+  .start-card-v87 [data-group="mic"].option-group.switch,
+.start-card-v87 [data-group="guide"].option-group.switch .option { font-size: 14px !important; padding: 0 7px !important; }
 }
