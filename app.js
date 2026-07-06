@@ -97,7 +97,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-06', { cache: 'no-store' })
+  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-07', { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +112,9 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-06'), {})
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-07'), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-06', { cache: 'no-store' });
+      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-07', { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -1360,29 +1360,19 @@ function patternPhraseFromPhase(pattern, atTime) {
     }))
     .sort((a, b) => a.phase - b.phase);
   if (!events.length) return [];
-  const startIndex = events.findIndex(e => e.phase >= phase - 0.012);
+
+  // 保持 LiberLive pattern 的 beat 网格，不把第一个未到的音强行挪到按下瞬间。
+  // 例：4/4 里 4 个音在 0/1/2/3 拍，按晚到 0.3 拍时，0 拍音已过期，
+  // 下一颗仍在 1 拍位置响；这样伴奏速度才和主旋律/歌曲 tempo 一致。
+  const startIndex = events.findIndex(e => e.phase >= phase - 0.008);
   const ordered = startIndex >= 0
     ? [...events.slice(startIndex), ...events.slice(0, startIndex).map(e => ({ ...e, phase: e.phase + barSec }))]
     : events.map(e => ({ ...e, phase: e.phase + barSec }));
-  const firstPhase = ordered[0].phase;
+
   return ordered.map(e => ({
     note: e.note,
-    offset: Math.max(0, e.phase - firstPhase),
+    offset: Math.max(0, e.phase - phase),
   }));
-}
-
-function harmonyFitScale(events, beatSec, cueTime, now, baseScale = 1) {
-  if (!events?.length) return baseScale;
-  let nextTime = nextChordCueTimeAfter(cueTime);
-  if (nextTime <= now + 0.08) nextTime = nextChordCueTimeAfter(now);
-  const targetEnd = Math.max(0.12, nextTime - now - 0.018);
-  const naturalEnd = events.reduce((max, { note: n, offset }) => {
-    const dur = Math.max(0.05, Number(n.duration || 0.35) * beatSec);
-    return Math.max(max, Number(offset || 0) + dur);
-  }, 0.001);
-  const fitted = targetEnd / naturalEnd;
-  // 和弦要追随下一个提示点：按慢了就压缩到刚好赶上；最多只允许轻微拉长，避免拖慢。
-  return Math.max(0.25, Math.min(1.12, Math.min(baseScale, fitted)));
 }
 
 function currentStyleCode() {
@@ -2442,12 +2432,10 @@ function playStyledHarmony(root, forcedCue = null) {
   if (pattern?.notes?.length) {
     const beat = beatMs();
     const beatSec = beat / 1000;
-    const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
-    const baseSpeed = isManualMode() ? manualSpeedScale : 1;
-    // 起点仍按歌曲相位取 pattern，保证同一和弦第二次会因相位不同而不同；
-    // 但播放总时长必须贴住下一个和弦提示点，按慢了会自动加速赶上。
-    const events = patternPhraseFromPhase(pattern, cueTime);
-    const speed = harmonyFitScale(events, beatSec, cueTime, now, baseSpeed);
+    const speed = isManualMode() ? manualSpeedScale : 1;
+    // 按当前歌曲时间的 pattern 相位取音：错过的音不补，未到的音仍按 beat 网格等待。
+    // 不再把整段强行压缩到下一个 cue，否则 4/4 一拍一个音会被破坏。
+    const events = patternPhraseFromPhase(pattern, now);
     for (const { note: n, offset } of events) {
       const delay = Math.max(0, offset * 1000 * speed);
       const midi = patternPitchToChordMidi(n.pitch, chordName);

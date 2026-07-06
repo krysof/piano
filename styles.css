@@ -4477,12 +4477,6 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   background: linear-gradient(180deg, #66f4ff, #0aa0ff) !important;
   box-shadow: 0 0 18px rgba(0,190,255,.58), inset 0 1px 0 rgba(255,255,255,.50) !important;
 }
-.start-card-v87 [data-group="mic"].option-group.switch [data-mic="off"].selected::after {
-  content: '默认' !important;
-  margin-left: 4px;
-  font-size: 10px;
-  opacity: .62;
-}
 @media (max-width: 430px) {
   .start-card-v87 [data-group="mic"].option-group.switch {
     width: 142px !important;
