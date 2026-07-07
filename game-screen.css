@@ -153,6 +153,13 @@ body.game-started .bottom-slot::before { color: #e8c46e !important; }
 /* ---------- 手动和弦键：华丽琴牌（七键颜色沿用 styles.css 原配色） ---------- */
 body.game-started .manual-keyboard .key.white {
   background:
+    /* 判定参考线：填色到 70%（顶部 30%）位置的常驻金色细线 */
+    linear-gradient(180deg,
+      transparent calc(30% - 1.5px),
+      rgba(255,244,208,.85) calc(30% - .5px),
+      rgba(228,190,104,.90) calc(30% + .5px),
+      transparent calc(30% + 1.5px)),
+    radial-gradient(ellipse 60% 6% at 50% 30%, rgba(243,205,106,.28), transparent 70%),
     /* 中央竖向柔光 */
     linear-gradient(90deg, transparent 26%, rgba(255,250,235,.12) 50%, transparent 74%),
     /* 牌面小星星 */
