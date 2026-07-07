@@ -2194,6 +2194,8 @@ function scheduleChordCues(offset = 0) {
 }
 
 function startCue(midi, cue) {
+  // 取消上一个 cue 安排的延迟清理，避免它把本次 cue 的提示字擦掉。
+  clearTimeout(cueCleanupTimer);
   clearManualCueVisuals();
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
     const perfNow = performance.now();
@@ -2283,6 +2285,8 @@ function clearManualCueVisuals() {
   cueState.clear();
 }
 
+let cueCleanupTimer = null;
+
 function finishActiveCue() {
   if (!activeCue) return;
   document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => {
@@ -2293,7 +2297,8 @@ function finishActiveCue() {
       el.classList.add('shatter');
     }
   });
-  setTimeout(clearManualCueVisuals, 820);
+  clearTimeout(cueCleanupTimer);
+  cueCleanupTimer = setTimeout(clearManualCueVisuals, 820);
   activeCue = null;
 }
 
@@ -2306,7 +2311,8 @@ function failActiveCue() {
       el.classList.add('fail');
     }
   });
-  setTimeout(clearManualCueVisuals, 820);
+  clearTimeout(cueCleanupTimer);
+  cueCleanupTimer = setTimeout(clearManualCueVisuals, 820);
   activeCue = null;
 }
 
@@ -2690,7 +2696,8 @@ function renderManualKeyboard() {
         activeCue.hit = true;
         activeCue.pressed = true;
         hitCue(activeCue.midi, activeCue.cue);
-        window.setTimeout(() => finishActiveCue(), 400);
+        const pressedCue = activeCue;
+        window.setTimeout(() => { if (activeCue === pressedCue) finishActiveCue(); }, 400);
       } else {
         // 按早/按错：字打叉淡出（docs/UI.md）。
         failActiveCue();
