@@ -219,13 +219,8 @@ body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) {
   filter: brightness(1.05) !important;
   outline: none !important;
 }
-/* due 时填色停在 70%（金线处）等待按下，不自动冲到 100% 盖住提示字；
-   只有 active（真实按下或全自动模拟按下）才走完并消散 */
-body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) .cue-fill {
-  animation: none !important;
-  height: 70% !important;
-  opacity: .95 !important;
-}
+/* due 冲顶动画保留原样式和速度；金线(::after z4)、字母(z3)、提示徽章(z5)
+   都压在填色(z2)之上，冲顶不会遮蔽它们 */
 /* 琴键提示字（歌词泡）改为金色徽章 */
 body.game-started .manual-keyboard .cue-lyric {
   color: #fff !important;
