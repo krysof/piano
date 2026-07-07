@@ -229,13 +229,13 @@ body.game-started #manualKeyboard.manual-keyboard .key.active .cue-fill {
 }
 @keyframes cueFillCrestGold {
   0%   { height: 70%;  opacity: .95; }
-  60%  { height: 100%; opacity: .90; }
+  60%  { height: 100%; opacity: .72; }
   100% { height: 100%; opacity: 0; }
 }
-/* 冲顶经过提示字时，字淡出消失（覆盖 hold 的 opacity:1 锁定） */
+/* 提示字等填色扫到顶部字区（约 0.34s）才开始淡，随扫过快速淡出 */
 body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) .cue-lyric {
   opacity: 0 !important;
-  transition: opacity .55s linear .12s !important;
+  transition: opacity .30s linear .34s !important;
 }
 /* 琴键提示字（歌词泡）改为金色徽章 */
 body.game-started .manual-keyboard .cue-lyric {
