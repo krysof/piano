@@ -221,6 +221,17 @@ body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) {
 }
 /* due 冲顶动画保留原样式和速度；金线(::after z4)、字母(z3)、提示徽章(z5)
    都压在填色(z2)之上，冲顶不会遮蔽它们 */
+/* 冲顶改为匀速（与上升段同速），封顶在提示字徽章下方（78%），到顶原地消散 */
+body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) .cue-fill,
+body.game-started #manualKeyboard.manual-keyboard .key.active .cue-fill {
+  animation: cueFillCrestGold .72s linear forwards !important;
+}
+@keyframes cueFillCrestGold {
+  0%   { height: 70%; opacity: .95; }
+  16%  { height: 78%; opacity: .95; }
+  55%  { height: 78%; opacity: .70; }
+  100% { height: 78%; opacity: 0; }
+}
 /* 琴键提示字（歌词泡）改为金色徽章 */
 body.game-started .manual-keyboard .cue-lyric {
   color: #fff !important;
