@@ -2208,7 +2208,7 @@ function startCue(midi, cue) {
       lyric.classList.toggle('blank', !!display.blank);
       lyric.dataset.cueId = cue?._id || '';
       delete lyric.dataset.floatShattered;
-      lyric.classList.remove('shatter', 'hold', 'appear');
+      lyric.classList.remove('shatter', 'hold', 'appear', 'fail');
       void lyric.offsetWidth;
       lyric.classList.add('appear');
     }
@@ -2278,7 +2278,7 @@ function clearManualCueVisuals() {
   });
   document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => {
     el.textContent = '';
-    el.classList.remove('blank', 'shatter', 'hold', 'appear');
+    el.classList.remove('blank', 'shatter', 'hold', 'appear', 'fail');
     delete el.dataset.floatShattered;
     delete el.dataset.cueId;
   });
