@@ -153,13 +153,6 @@ body.game-started .bottom-slot::before { color: #e8c46e !important; }
 /* ---------- 手动和弦键：华丽琴牌（七键颜色沿用 styles.css 原配色） ---------- */
 body.game-started .manual-keyboard .key.white {
   background:
-    /* 判定参考线：填色到 70%（顶部 30%）位置的常驻金色细线 */
-    linear-gradient(180deg,
-      transparent calc(30% - 1.5px),
-      rgba(255,244,208,.85) calc(30% - .5px),
-      rgba(228,190,104,.90) calc(30% + .5px),
-      transparent calc(30% + 1.5px)),
-    radial-gradient(ellipse 60% 6% at 50% 30%, rgba(243,205,106,.28), transparent 70%),
     /* 中央竖向柔光 */
     linear-gradient(90deg, transparent 26%, rgba(255,250,235,.12) 50%, transparent 74%),
     /* 牌面小星星 */
@@ -191,8 +184,40 @@ body.game-started .manual-keyboard .key-label {
   font-weight: 700 !important;
   color: #fdf8ec !important;
   text-shadow:
-    0 2px 6px rgba(55,30,10,.60),
+    0 2px 6px rgba(40,20,5,.75),
+    0 0 3px rgba(0,0,0,.55),
     0 0 16px color-mix(in srgb, currentColor 65%, transparent) !important;
+}
+/* 判定参考线画在 ::after 上，压在填色之上不被盖住 */
+body.game-started #manualKeyboard.manual-keyboard .key.white::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 30% !important;
+  bottom: auto !important;
+  height: 2px !important;
+  margin-top: -1px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(90deg,
+    rgba(228,190,104,.35),
+    rgba(255,244,208,.95) 50%,
+    rgba(228,190,104,.35)) !important;
+  box-shadow: 0 0 8px rgba(243,205,106,.55) !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  animation: none !important;
+  pointer-events: none !important;
+  z-index: 4 !important;
+}
+/* 半自动：due（该按了）只保留判定线脉动，不做按下同款的提亮/放大 */
+body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) {
+  transform: none !important;
+  filter: brightness(1.05) !important;
+  outline: none !important;
 }
 /* 琴键提示字（歌词泡）改为金色徽章 */
 body.game-started .manual-keyboard .cue-lyric {
@@ -212,8 +237,8 @@ body.game-started .manual-keyboard .cue-lyric.blank {
   box-shadow: 0 0 14px rgba(243,205,106,.50), inset 0 1px 0 rgba(255,255,255,.40) !important;
 }
 body.game-started .manual-keyboard .cue-lyric.blank::before {
-  background: var(--cue2, #fff) !important;
-  box-shadow: 0 0 10px var(--cue2, #fff), inset 0 0 5px rgba(255,255,255,.70) !important;
+  background: var(--note-color, #fff) !important;
+  box-shadow: 0 0 10px var(--note-color, #fff), inset 0 0 5px rgba(255,255,255,.70) !important;
 }
 
 /* ---------- 判定提示：去掉旧的透明胶囊格/准线，改成设计图式中央柔光带 ---------- */
