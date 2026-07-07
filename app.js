@@ -462,15 +462,13 @@ function cueProgressForKey(key) {
   if (!state) return null;
   const now = performance.now();
   if (now < state.start || now > state.end) return null;
-  if (now <= state.due) {
-    return ((now - state.start) / Math.max(1, state.due - state.start)) * 70;
-  }
-  return 70 + ((now - state.due) / Math.max(1, state.end - state.due)) * 30;
+  // 线性 140% 模型：出现(0) → 1 秒 → 应按点(100) → 生命周期结束(140)。
+  return ((now - state.start) / 1000) * 100;
 }
 
 function isGoodTiming(key) {
   const p = cueProgressForKey(key);
-  return p !== null && p >= 65 && p <= 75;
+  return p !== null && p >= 90 && p <= 110;
 }
 function playVisualNote(midi, velocity, source) {
   playNote(midi, 0.65, velocity);
@@ -2200,7 +2198,7 @@ function startCue(midi, cue) {
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
     const perfNow = performance.now();
     const due = playing ? playStartedAt + (cue.time - playOffset) * 1000 : perfNow + Math.max(0, (cue.time - currentPlayTime()) * 1000);
-    cueState.set(k.dataset.root, { start: due - 1000, due, end: due + 1100, cueId: cue?._id });
+    cueState.set(k.dataset.root, { start: due - 1000, due, end: due + 400, cueId: cue?._id });
     const lyric = k.querySelector('.cue-lyric');
     if (lyric) {
       const display = cueLyricDisplayForCue(cue);
@@ -2299,6 +2297,19 @@ function finishActiveCue() {
   activeCue = null;
 }
 
+// 没按/按早/按错：提示字打叉后淡出，不做破碎动画（docs/UI.md）。
+function failActiveCue() {
+  if (!activeCue) return;
+  document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => {
+    if (el.textContent && !el.classList.contains('shatter')) {
+      el.classList.remove('hold');
+      el.classList.add('fail');
+    }
+  });
+  setTimeout(clearManualCueVisuals, 820);
+  activeCue = null;
+}
+
 function updateCueRuntime() {
   if ((!playing && !isManualMode()) || !song?.chordCues?.length) return;
   const now = currentPlayTime();
@@ -2308,8 +2319,10 @@ function updateCueRuntime() {
       hitCue(activeCue.midi, activeCue.cue);
       if (isAutoChordMode()) autoPressCue(activeCue);
     }
-    if (now >= activeCue.cue.time + 0.74) {
-      finishActiveCue();
+    // 生命周期 140%：应按点后 0.4s（110% 之后仍未按 → miss 打叉）。
+    if (now >= activeCue.cue.time + 0.4) {
+      if (activeCue.pressed) finishActiveCue();
+      else failActiveCue();
     }
     return;
   }
@@ -2441,6 +2454,7 @@ function playTrack2At(root) {
 
 function autoPressCue(active) {
   if (!active?.cue) return;
+  active.pressed = true;
   const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
   const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
   keys.forEach(key => {
@@ -2674,10 +2688,12 @@ function renderManualKeyboard() {
       // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
       if (isGoodTiming(key) && activeCue && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id)) {
         activeCue.hit = true;
+        activeCue.pressed = true;
         hitCue(activeCue.midi, activeCue.cue);
-        window.setTimeout(() => finishActiveCue(), 740);
+        window.setTimeout(() => finishActiveCue(), 400);
       } else {
-        finishActiveCue();
+        // 按早/按错：字打叉淡出（docs/UI.md）。
+        failActiveCue();
       }
       key.classList.remove('cue', 'due', 'miss', 'release');
       key.classList.add('active');

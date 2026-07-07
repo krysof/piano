@@ -195,7 +195,7 @@ body.game-started #manualKeyboard.manual-keyboard .key.white::after {
   position: absolute !important;
   left: 0 !important;
   right: 0 !important;
-  top: 30% !important;
+  top: 28.6% !important;  /* 应按点 = 100/140 */
   bottom: auto !important;
   height: 2px !important;
   margin-top: -1px !important;
@@ -219,23 +219,43 @@ body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) {
   filter: brightness(1.05) !important;
   outline: none !important;
 }
-/* due 冲顶动画保留原样式和速度；金线(::after z4)、字母(z3)、提示徽章(z5)
-   都压在填色(z2)之上，冲顶不会遮蔽它们 */
-/* 冲顶：到金线后继续匀速涨到顶（与上升段同速），到顶渐隐消散；
-   提示字在冲顶期间同步淡出（见下方 .cue-lyric 规则） */
-body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) .cue-fill,
+/* ---------- 140% 进度模型 ----------
+   一条按键 = 140%：出现(0) → 1 秒 → 金线/应按点(100，键高 71.4%) → 0.4 秒 → 顶(140)。
+   提示字/符号放在最上面 40% 区（键高顶部 28.6%），z 轴在填色之上，不被覆盖。
+   全程匀速 71.4%键高/秒；成功→字破碎淡出，miss/按早→字打叉淡出。 */
+body.game-started #manualKeyboard.manual-keyboard .key.cue:not(.due) .cue-fill {
+  animation: cueFillRise140 1s linear forwards !important;
+}
+@keyframes cueFillRise140 {
+  0%   { height: 0%;    opacity: .55; }
+  100% { height: 71.4%; opacity: .95; }
+}
+body.game-started #manualKeyboard.manual-keyboard .key.due .cue-fill,
 body.game-started #manualKeyboard.manual-keyboard .key.active .cue-fill {
-  animation: cueFillCrestGold .72s linear forwards !important;
+  animation: cueFillCrest140 .6s linear forwards !important;
 }
-@keyframes cueFillCrestGold {
-  0%   { height: 70%;  opacity: .95; }
-  60%  { height: 100%; opacity: .72; }
-  100% { height: 100%; opacity: 0; }
+@keyframes cueFillCrest140 {
+  0%    { height: 71.4%; opacity: .95; }
+  66.7% { height: 100%;  opacity: .80; }  /* 0.4s 匀速走完剩下 40%（28.6% 键高） */
+  100%  { height: 100%;  opacity: 0; }    /* 到顶后 0.2s 渐隐 */
 }
-/* 提示字等填色扫到顶部字区（约 0.34s）才开始淡，随扫过快速淡出 */
-body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) .cue-lyric {
+/* miss / 按早：提示字打叉后淡出 */
+body.game-started #manualKeyboard.manual-keyboard .cue-lyric.fail {
   opacity: 0 !important;
-  transition: opacity .30s linear .34s !important;
+  transition: opacity .45s ease .30s !important;
+  filter: grayscale(.5) brightness(.85) !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .cue-lyric.fail::after {
+  content: '✕';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05em;
+  font-weight: 1000;
+  color: #ff5d6d;
+  text-shadow: 0 0 10px rgba(255,60,90,.85), 0 1px 3px rgba(0,0,0,.6);
 }
 /* 琴键提示字（歌词泡）改为金色徽章 */
 body.game-started .manual-keyboard .cue-lyric {
@@ -278,7 +298,7 @@ body.game-started #manualKeyboard.manual-keyboard .hit-line {
   left: 0 !important;
   right: 0 !important;
   top: auto !important;
-  bottom: 58% !important;
+  bottom: 59.4% !important;  /* 柔光中心对齐 100/140 判定线 */
   height: 24% !important;
   min-height: 0 !important;
   border: 0 !important;
