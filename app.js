@@ -2242,7 +2242,7 @@ function failActiveCue() {
       k.classList.remove('chord-miss');
       void k.offsetWidth;
       k.classList.add('chord-miss');
-      setTimeout(() => k.classList.remove('chord-miss'), 320);
+      setTimeout(() => k.classList.remove('chord-miss'), 820);
     }
   });
   document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {

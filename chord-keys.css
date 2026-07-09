@@ -170,7 +170,7 @@ body.game-started #manualKeyboard.manual-keyboard .key.chord-release {
   animation: none !important;
 }
 body.game-started #manualKeyboard.manual-keyboard .key.chord-miss {
-  animation: chordKeyMissShake .30s ease-out both !important;
+  animation: chordKeyMissShake .80s ease-out both !important;
 }
 @keyframes chordKeyMissShake {
   0%   { transform: translateX(0) translateZ(0); }
