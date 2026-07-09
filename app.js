@@ -458,14 +458,17 @@ function advanceHarmonyHalf(root) {
 }
 
 // 把一段 pattern 事件按顺序切成前半/后半：half=0 取前半，half=1 取后半。
-// 音符数减半，每个音符间隔拉成原来的 2 倍，铺满整个小节。
+// 音符数减半，每个音符间隔和持续时长都拉成原来的 2 倍，铺满整个小节。
 function sliceHarmonyHalf(events, half) {
   if (!events || events.length <= 1) return events || [];
   const mid = Math.ceil(events.length / 2);
   const part = half === 0 ? events.slice(0, mid) : events.slice(mid);
   if (!part.length) return events;
   const base = part[0].offset || 0;
-  return part.map(e => ({ note: e.note, offset: Math.max(0, (e.offset || 0) - base) * 2 }));
+  return part.map(e => ({
+    note: { ...e.note, duration: Number(e.note.duration || 0.35) * 2 },
+    offset: Math.max(0, (e.offset || 0) - base) * 2,
+  }));
 }
 
 function updateToneButton() {
