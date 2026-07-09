@@ -18,7 +18,7 @@ let lastLyricParticleAt = 0;
 let timers = [];
 let cueTimers = [];
 let harmonyTimers = [];
-let harmonyHalfState = { root: null, half: 0 };
+let harmonyHalfState = { cueIndex: -1, root: null };
 let cueRuntimeRaf = null;
 let activeCue = null;
 let nextCueIndex = 0;
@@ -444,17 +444,19 @@ function clearHarmonyTimers() {
   harmonyTimers = [];
 }
 
-// 同一根音的和弦分两次按下才弹完：第一次按弹前半段音，第二次按同一根音弹后半段；
-// 换到别的根音则从前半段重新开始。返回本次应弹的半段序号（0=前半，1=后半）。
-function advanceHarmonyHalf(root) {
-  if (harmonyHalfState.root !== root) {
-    // 换新根音：本次弹前半，记录下次弹后半。
-    harmonyHalfState = { root, half: 1 };
-    return 0;
-  }
-  const half = harmonyHalfState.half;
-  harmonyHalfState.half = half === 0 ? 1 : 0;
-  return half;
+// 整段分解和弦分两段，每段对应乐谱里的一次和弦提示（cue）。
+// 只有当这次的和弦提示与上一次在乐谱里【紧邻且同根音】时，才接后半段；
+// 否则（中间换过和弦、或不相邻）都从前半段开始。所以没有连续第二次同和弦时，
+// 后半段永远不会出现。返回本次应弹的半段序号（0=前半，1=后半）。
+function advanceHarmonyHalf(root, cue) {
+  const cues = song?.chordCues || [];
+  const idx = cue ? cues.indexOf(cue) : -1;
+  const adjacentSame =
+    idx >= 0 &&
+    harmonyHalfState.cueIndex === idx - 1 &&
+    harmonyHalfState.root === root;
+  harmonyHalfState = { cueIndex: idx, root };
+  return adjacentSame ? 1 : 0;
 }
 
 // 把一段 pattern 事件按顺序切成前半/后半：half=0 取前半，half=1 取后半。
@@ -468,19 +470,30 @@ function sliceHarmonyHalf(events, half) {
   return part.map(e => ({ note: e.note, offset: Math.max(0, (e.offset || 0) - base) }));
 }
 
-// 半段音符数减半，把它们拉伸铺满到下一个和弦提示的实际时间（允许拉长，不像
-// fitPhraseToNextCue 只压缩）。这样无论 cue 间隔多长，半段都均匀填满整个小节，
-// 音符持续时长随之拉长、首尾相接不留空档。
-function fillSpeedForHalf(events, beatSec, cueTime, now) {
-  if (!events?.length) return 1;
-  const nextTime = nextChordCueTimeAfter(cueTime);
-  const end = Number.isFinite(nextTime) ? nextTime : now + 2;
-  const available = Math.max(0.12, end - now - 0.018);
-  const naturalEnd = events.reduce((max, { note: n, offset }) => {
-    const dur = Math.max(0.05, Number(n.duration || 0.35) * beatSec);
-    return Math.max(max, Number(offset || 0) + dur);
-  }, 0.001);
-  return Math.max(0.35, Math.min(4, available / naturalEnd));
+// 小节是乐曲的固定时间网格：由主旋律 BPM + 拍号从曲子开头 0 起算，跟按什么和弦无关。
+// 返回 [barStart, barEnd)：包含 time 的那个小节的起止秒。
+function barBoundsAt(time, pattern) {
+  const barSec = Math.max(0.001, patternBeats(pattern) * beatMs() / 1000);
+  const idx = Math.floor(time / barSec);
+  return { barStart: idx * barSec, barEnd: (idx + 1) * barSec, barSec };
+}
+
+// 把半段的 N 个音【平均】铺满「从按下时刻 now 到当前小节结束线」这段时间。
+// 按早 → now 离小节结束远 → 每个音间隔自动变大（平均拉长）；
+// 按晚 → now 离小节结束近 → 间隔自动变小（平均加快）。音符首尾相接，不留空档。
+// 返回每个音的绝对起始延迟(秒)和持续时长(秒)。
+function layoutHalfInBar(events, now, pattern) {
+  const n = events.length;
+  if (!n) return [];
+  const { barEnd } = barBoundsAt(now, pattern);
+  // 小节剩余时间太短（按得非常晚/正好压线）时给一个下限，避免音全挤成一坨。
+  const available = Math.max(0.18, barEnd - now - 0.012);
+  const step = available / n;
+  return events.map((e, i) => ({
+    note: e.note,
+    delay: i * step,
+    duration: step,
+  }));
 }
 
 function updateToneButton() {
@@ -2490,26 +2503,18 @@ function playStyledHarmony(root, forcedCue = null) {
   warmHarmonyTones(false);
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
-    const beat = beatMs();
-    const beatSec = beat / 1000;
     const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
-    const baseSpeed = isManualMode() ? manualSpeedScale : 1;
     const fullPhrase = patternPhraseForCue(pattern, cueTime, now);
-    // 全自动每个和弦只触发一次，需一次弹完整段；手动/半自动由玩家分两次按下弹完。
-    const autoMode = isAutoChordMode();
-    const events = autoMode
-      ? fullPhrase
-      : sliceHarmonyHalf(fullPhrase, advanceHarmonyHalf(root));
-    // 全自动整段：只在按慢时压缩追赶；半段：拉伸铺满整个小节。
-    const speed = autoMode
-      ? fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed)
-      : fillSpeedForHalf(events, beatSec, cueTime, now);
-    for (const { note: n, offset } of events) {
-      const delay = Math.max(0, offset * 1000 * speed);
+    // 演奏模式（全自动/半自动/手动）只决定谁触发、按后是否推进，不影响伴奏内容。
+    // 每次按下弹半段：整段分解和弦分两段，各对应乐谱里一次和弦提示（详见 advanceHarmonyHalf）。
+    const half = advanceHarmonyHalf(root, cue);
+    const events = sliceHarmonyHalf(fullPhrase, half);
+    // 半段的音平均铺满「按下时刻 → 当前小节结束线」：按早自动拉长、按晚自动加快。
+    const laidOut = layoutHalfInBar(events, now, pattern);
+    for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
-      const duration = Math.max(0.045, Number(n.duration || 0.35) * beatSec * speed);
       const velocity = normalizedHarmonyVelocity(n.velocity);
-      playHarmonyVisualNote(midi, delay, duration, velocity, slot + 1);
+      playHarmonyVisualNote(midi, delay * 1000, Math.max(0.045, duration), velocity, slot + 1);
     }
     return;
   }
@@ -2551,7 +2556,7 @@ function stopPlayback() {
   updatePlayButton();
   playOffset = 0;
   nextManualMelodyIndex = 0;
-  harmonyHalfState = { root: null, half: 0 };
+  harmonyHalfState = { cueIndex: -1, root: null };
   clearTimers();
   stopRecording(false);
   releaseWakeLock();
@@ -2565,7 +2570,7 @@ function finishPlayback() {
   updatePlayButton();
   playOffset = song?.duration || 0;
   nextManualMelodyIndex = 0;
-  harmonyHalfState = { root: null, half: 0 };
+  harmonyHalfState = { cueIndex: -1, root: null };
   clearTimers();
   stopRecording(true);
   releaseWakeLock();
