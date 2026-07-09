@@ -136,9 +136,44 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol.fail::after {
   text-shadow: 0 0 10px rgba(255,60,90,.85), 0 1px 3px rgba(0,0,0,.6) !important;
 }
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit {
+  opacity: 1 !important;
+  color: transparent !important;
+  text-shadow: none !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::before,
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::after {
+  content: attr(data-text) !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  display: block !important;
+  color: #fff !important;
+  opacity: 1 !important;
+  text-shadow: 0 0 10px rgba(243,205,106,.75), 0 2px 4px rgba(80,48,6,.65) !important;
+  pointer-events: none !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::before {
+  animation: chordSymbolChipLeft .62s ease-out forwards !important;
+  clip-path: polygon(0 0, 56% 0, 48% 100%, 0 100%) !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::after {
+  animation: chordSymbolChipRight .62s ease-out forwards !important;
+  clip-path: polygon(48% 0, 100% 0, 100% 100%, 42% 100%) !important;
+}
+@keyframes chordSymbolChipLeft {
+  0% { opacity: 1; transform: translate(-50%, -50%) translateX(0) translateY(0) rotate(0deg); filter: blur(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateX(-16px) translateY(-12px) rotate(-16deg); filter: blur(2px); }
+}
+@keyframes chordSymbolChipRight {
+  0% { opacity: 1; transform: translate(-50%, -50%) translateX(0) translateY(0) rotate(0deg); filter: blur(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translateX(16px) translateY(-12px) rotate(16deg); filter: blur(2px); }
+}
+body.game-started #manualKeyboard.manual-keyboard .key.chord-hit .chord-fill {
   opacity: 0 !important;
-  transform: translateX(-50%) translateY(-12px) scale(.85) translateZ(0) !important;
-  transition: opacity .32s ease, transform .32s ease !important;
+  transition: opacity .45s ease !important;
 }
 
 body.game-started #manualKeyboard.manual-keyboard .key.chord-press {

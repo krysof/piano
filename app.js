@@ -2122,7 +2122,7 @@ function clearTimers() {
   manualMelodyTimers = [];
   clearInterval(clockTimer); clockTimer = null;
   document.querySelectorAll('#manualKeyboard .chord-cue, #manualKeyboard .chord-due').forEach(k => {
-    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release');
+    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit');
     k.style.removeProperty('--chord-scale');
   });
   document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => { el.textContent = ''; });
@@ -2160,6 +2160,7 @@ function startCue(midi, cue) {
     if (symbol) {
       const display = cueLyricDisplayForCue(cue);
       symbol.textContent = display.text;
+      symbol.dataset.text = display.text;
       symbol.classList.toggle('blank', !!display.blank);
       symbol.dataset.cueId = cue?._id || '';
       delete symbol.dataset.floatShattered;
@@ -2182,7 +2183,7 @@ function hitCue(midi, cue) {
 
 function clearManualCueVisuals() {
   document.querySelectorAll('#manualKeyboard .chord-cue, #manualKeyboard .chord-due').forEach(k => {
-    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release');
+    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit');
     k.style.removeProperty('--chord-scale');
     delete k.dataset.cueId;
   });
@@ -2202,6 +2203,7 @@ function finishActiveCue() {
   document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
     if (el.textContent && !el.classList.contains('hit')) {
       el.classList.add('hit');
+      el.closest('.key')?.classList.add('chord-hit');
     }
   });
   clearTimeout(cueCleanupTimer);
