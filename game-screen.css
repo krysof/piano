@@ -192,11 +192,11 @@ body.game-started .manual-keyboard .key-label {
 /* ---------- 歌词字放大（歌词框空位多，字号加大填满）；含 next 行 ---------- */
 body.game-started .karaoke-line,
 body.game-started .karaoke-line.next {
-  font-size: clamp(20px, 5.6vw, 38px) !important;
+  font-size: clamp(18px, 5vw, 34px) !important;
   line-height: 1.12 !important;
 }
 body.game-started .karaoke-line.active {
-  font-size: clamp(23px, 6.6vw, 44px) !important;
+  font-size: clamp(20px, 5.9vw, 39px) !important;
 }
 
 /* ---------- 时间放到歌词框底部正中 ---------- */
