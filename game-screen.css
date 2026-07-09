@@ -223,21 +223,13 @@ body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) {
    一条按键 = 140%：出现(0) → 1 秒 → 金线/应按点(100，键高 71.4%) → 0.4 秒 → 顶(140)。
    提示字/符号放在最上面 40% 区（键高顶部 28.6%），z 轴在填色之上，不被覆盖。
    全程匀速 71.4%键高/秒；成功→字破碎淡出，miss/按早→字打叉淡出。 */
-body.game-started #manualKeyboard.manual-keyboard .key.cue:not(.due) .cue-fill {
-  animation: cueFillRise140 1s linear forwards !important;
+body.game-started #manualKeyboard.manual-keyboard .key.cue .cue-fill {
+  animation: cueFillSimple140 1.4s linear forwards !important;
 }
-@keyframes cueFillRise140 {
-  0%   { height: 0%;    opacity: .55; }
-  100% { height: 71.4%; opacity: .95; }
-}
-body.game-started #manualKeyboard.manual-keyboard .key.due .cue-fill,
-body.game-started #manualKeyboard.manual-keyboard .key.active .cue-fill {
-  animation: cueFillCrest140 .6s linear forwards !important;
-}
-@keyframes cueFillCrest140 {
-  0%    { height: 71.4%; opacity: .95; }
-  66.7% { height: 100%;  opacity: .80; }  /* 0.4s 匀速走完剩下 40%（28.6% 键高） */
-  100%  { height: 100%;  opacity: 0; }    /* 到顶后 0.2s 渐隐 */
+@keyframes cueFillSimple140 {
+  0%    { height: 0%;    opacity: .55; }
+  71.4% { height: 71.4%; opacity: .95; }  /* 1 秒到金线/应按点 */
+  100%  { height: 100%;  opacity: .80; }  /* 再 0.4 秒到顶 */
 }
 /* miss / 按早：提示字打叉后淡出 */
 body.game-started #manualKeyboard.manual-keyboard .cue-lyric.fail {

@@ -2260,13 +2260,11 @@ function shatterCueLyricElement(el) {
 function hitCue(midi, cue) {
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
     if (cue?._id && k.dataset.cueId && k.dataset.cueId !== cue._id) return;
-    k.classList.remove('cue');
     const lyric = k.querySelector('.cue-lyric');
     if (lyric && lyric.textContent) {
       lyric.classList.remove('shatter');
       lyric.classList.add('hold');
     }
-    void k.offsetWidth;
     k.classList.add('due');
   });
 }
@@ -2464,7 +2462,7 @@ function autoPressCue(active) {
   const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
   const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
   keys.forEach(key => {
-    key.classList.remove('cue', 'due', 'miss', 'release');
+    key.classList.remove('due', 'miss', 'release');
     key.classList.add('active');
     burstParticles(key, 'manual');
     setTimeout(() => {
@@ -2702,7 +2700,7 @@ function renderManualKeyboard() {
         // 按早/按错：字打叉淡出（docs/UI.md）。
         failActiveCue();
       }
-      key.classList.remove('cue', 'due', 'miss', 'release');
+      key.classList.remove('due', 'miss', 'release');
       key.classList.add('active');
       playStyledHarmony(label);
       burstParticles(key, 'manual');
