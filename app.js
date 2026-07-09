@@ -481,24 +481,18 @@ function sliceHarmonyHalf(notes, half) {
   return half === 0 ? notes.slice(0, mid) : notes.slice(mid);
 }
 
-// 小节是乐曲的固定时间网格：由主旋律 BPM + 拍号从曲子开头 0 起算，跟按什么和弦无关。
-// 返回 [barStart, barEnd)：包含 time 的那个小节的起止秒。
-function barBoundsAt(time, pattern) {
-  const barSec = Math.max(0.001, patternBeats(pattern) * beatMs() / 1000);
-  const idx = Math.floor(time / barSec);
-  return { barStart: idx * barSec, barEnd: (idx + 1) * barSec, barSec };
-}
-
-// 把半段的 N 个音【平均】铺满「从按下时刻 now 到当前小节结束线」这段时间。
-// 按早 → now 离小节结束远 → 每个音间隔自动变大（平均拉长）；
-// 按晚 → now 离小节结束近 → 间隔自动变小（平均加快）。音符首尾相接，不留空档。
-// 返回每个音的绝对起始延迟(秒)和持续时长(秒)。
-function layoutHalfInBar(notes, now, pattern) {
+// 把半段的 N 个音【平均】铺满「从按下时刻 now 到下一个和弦提示」这段时间。
+// 分解和弦跟着和弦提示走：每个和弦提示给这段音的时间 = 它持续到下一个提示的时长。
+// 全自动 now≈cue 时间，提示间隔稳定（《后来》基本恒为 1.6s）→ 每次都是恒定速度、稳定 N 个音；
+// 手动按早 → now 离下个提示远 → 间隔变大（拉长）；按晚 → 间隔变小（加快）。
+// cueTime 是这次和弦提示的时间；音符首尾相接，不留空档。
+function layoutHalfInBar(notes, now, cueTime) {
   const n = notes.length;
   if (!n) return [];
-  const { barEnd } = barBoundsAt(now, pattern);
-  // 小节剩余时间太短（按得非常晚/正好压线）时给一个下限，避免音全挤成一坨。
-  const available = Math.max(0.18, barEnd - now - 0.012);
+  const nextCue = nextChordCueTimeAfter(Number.isFinite(cueTime) ? cueTime : now);
+  const end = Number.isFinite(nextCue) ? nextCue : now + beatMs() / 1000 * 2;
+  // 提示间隔异常短/已越过时给下限，避免音全挤成一坨。
+  const available = Math.max(0.18, end - now - 0.012);
   const step = available / n;
   return notes.map((note, i) => ({
     note,
@@ -2519,8 +2513,9 @@ function playStyledHarmony(root, forcedCue = null) {
     const fullPhrase = fullChordPhrase(pattern);
     const half = chordHalfForCue(cue);
     const notes = sliceHarmonyHalf(fullPhrase, half);
-    // 半段的音平均铺满「按下时刻 → 当前小节结束线」：按早自动拉长、按晚自动加快。
-    const laidOut = layoutHalfInBar(notes, now, pattern);
+    // 半段的音平均铺满「按下时刻 → 下一个和弦提示」：全自动稳定恒速，手动按早拉长/按晚加快。
+    const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
+    const laidOut = layoutHalfInBar(notes, now, cueTime);
     for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const velocity = normalizedHarmonyVelocity(n.velocity);
