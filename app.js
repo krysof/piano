@@ -18,6 +18,7 @@ let lastLyricParticleAt = 0;
 let timers = [];
 let cueTimers = [];
 let harmonyTimers = [];
+let harmonyHalfState = { root: null, half: 0 };
 let cueRuntimeRaf = null;
 let activeCue = null;
 let nextCueIndex = 0;
@@ -441,6 +442,30 @@ function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42
 function clearHarmonyTimers() {
   harmonyTimers.forEach(clearTimeout);
   harmonyTimers = [];
+}
+
+// 同一根音的和弦分两次按下才弹完：第一次按弹前半段音，第二次按同一根音弹后半段；
+// 换到别的根音则从前半段重新开始。返回本次应弹的半段序号（0=前半，1=后半）。
+function advanceHarmonyHalf(root) {
+  if (harmonyHalfState.root !== root) {
+    // 换新根音：本次弹前半，记录下次弹后半。
+    harmonyHalfState = { root, half: 1 };
+    return 0;
+  }
+  const half = harmonyHalfState.half;
+  harmonyHalfState.half = half === 0 ? 1 : 0;
+  return half;
+}
+
+// 把一段 pattern 事件按时间顺序拆成前半/后半；half=0 取前半，half=1 取后半。
+// 每个半段的 offset 归一化到从 0 开始，保证按下时首音立即响。
+function sliceHarmonyHalf(events, half) {
+  if (!events || events.length <= 1) return events || [];
+  const mid = Math.ceil(events.length / 2);
+  const part = half === 0 ? events.slice(0, mid) : events.slice(mid);
+  if (!part.length) return part;
+  const base = part[0].offset || 0;
+  return part.map(e => ({ note: e.note, offset: Math.max(0, (e.offset || 0) - base) }));
 }
 
 function updateToneButton() {
@@ -2454,7 +2479,11 @@ function playStyledHarmony(root, forcedCue = null) {
     const beatSec = beat / 1000;
     const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
     const baseSpeed = isManualMode() ? manualSpeedScale : 1;
-    const events = patternPhraseForCue(pattern, cueTime, now);
+    const fullPhrase = patternPhraseForCue(pattern, cueTime, now);
+    // 全自动每个和弦只触发一次，需一次弹完整段；手动/半自动由玩家分两次按下弹完。
+    const events = isAutoChordMode()
+      ? fullPhrase
+      : sliceHarmonyHalf(fullPhrase, advanceHarmonyHalf(root));
     const speed = fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed);
     for (const { note: n, offset } of events) {
       const delay = Math.max(0, offset * 1000 * speed);
@@ -2503,6 +2532,7 @@ function stopPlayback() {
   updatePlayButton();
   playOffset = 0;
   nextManualMelodyIndex = 0;
+  harmonyHalfState = { root: null, half: 0 };
   clearTimers();
   stopRecording(false);
   releaseWakeLock();
@@ -2516,6 +2546,7 @@ function finishPlayback() {
   updatePlayButton();
   playOffset = song?.duration || 0;
   nextManualMelodyIndex = 0;
+  harmonyHalfState = { root: null, half: 0 };
   clearTimers();
   stopRecording(true);
   releaseWakeLock();
