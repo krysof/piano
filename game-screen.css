@@ -221,14 +221,10 @@ body.game-started .karaoke-status .mic-meter {
   transform: translateY(-50%) !important;
 }
 
-/* ---------- 修复：当前行 ▶ 图标不占布局流，避免把文字推右导致该行不居中 ---------- */
+/* ---------- 修复：禁用行盒子上的 ▶（styles.css 有重复定义），只保留 .lyric-wrap::before 那一个
+   ▶（它在文字左侧外绝对定位、不推挤文字），避免两个三角标 + 行内 ▶ 占宽导致该行不居中 ---------- */
 body.game-started .karaoke-line.active::before {
-  position: absolute !important;
-  right: 100% !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  margin-right: 0 !important;
-  margin: 0 !important;
+  content: none !important;
 }
 
 /* ---------- 修复：卡拉OK紫色拉幕末尾字盖不全 ----------
