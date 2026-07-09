@@ -457,13 +457,12 @@ function advanceHarmonyHalf(root) {
   return half;
 }
 
-// 把一段 pattern 事件按时间顺序拆成前半/后半；half=0 取前半，half=1 取后半。
-// 每个半段的 offset 归一化到从 0 开始，保证按下时首音立即响。
+// 把一段 pattern 事件交替抽取成两半：half=0 取第 0/2/4… 颗，half=1 取第 1/3/5… 颗。
+// 保留原始 offset，让每半段的音自然均匀铺满整个小节（间隔翻倍，不挤在前面）。
 function sliceHarmonyHalf(events, half) {
   if (!events || events.length <= 1) return events || [];
-  const mid = Math.ceil(events.length / 2);
-  const part = half === 0 ? events.slice(0, mid) : events.slice(mid);
-  if (!part.length) return part;
+  const part = events.filter((_, i) => i % 2 === half);
+  if (!part.length) return events;
   const base = part[0].offset || 0;
   return part.map(e => ({ note: e.note, offset: Math.max(0, (e.offset || 0) - base) }));
 }
@@ -2485,9 +2484,7 @@ function playStyledHarmony(root, forcedCue = null) {
     const events = autoMode
       ? fullPhrase
       : sliceHarmonyHalf(fullPhrase, advanceHarmonyHalf(root));
-    // 半段只有一半音符，用双倍速度弹完，保持原来的密度感（不拖慢变稀）。
-    const halfSpeed = autoMode ? 1 : 0.5;
-    const speed = fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed) * halfSpeed;
+    const speed = fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed);
     for (const { note: n, offset } of events) {
       const delay = Math.max(0, offset * 1000 * speed);
       const midi = patternPitchToChordMidi(n.pitch, chordName);
