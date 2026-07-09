@@ -223,13 +223,20 @@ body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) {
    一条按键 = 140%：出现(0) → 1 秒 → 金线/应按点(100，键高 71.4%) → 0.4 秒 → 顶(140)。
    提示字/符号放在最上面 40% 区（键高顶部 28.6%），z 轴在填色之上，不被覆盖。
    全程匀速 71.4%键高/秒；成功→字破碎淡出，miss/按早→字打叉淡出。 */
+body.game-started #manualKeyboard.manual-keyboard .cue-fill {
+  height: 100% !important;
+  transform-origin: 50% 100% !important;
+  transform: scaleY(0) translateZ(0) !important;
+  will-change: transform, opacity !important;
+  backface-visibility: hidden !important;
+}
 body.game-started #manualKeyboard.manual-keyboard .key.cue .cue-fill {
   animation: cueFillSimple140 1.4s linear forwards !important;
 }
 @keyframes cueFillSimple140 {
-  0%    { height: 0%;    opacity: .55; }
-  71.4% { height: 71.4%; opacity: .95; }  /* 1 秒到金线/应按点 */
-  100%  { height: 100%;  opacity: .80; }  /* 再 0.4 秒到顶 */
+  0%    { transform: scaleY(0) translateZ(0);     opacity: .55; }
+  71.4% { transform: scaleY(.714) translateZ(0); opacity: .95; }  /* 1 秒到金线/应按点 */
+  100%  { transform: scaleY(1) translateZ(0);    opacity: .80; }  /* 再 0.4 秒到顶 */
 }
 /* miss / 按早：提示字打叉后淡出 */
 body.game-started #manualKeyboard.manual-keyboard .cue-lyric.fail {
@@ -324,9 +331,9 @@ body.game-started .manual-keyboard .cue-fill {
     color-mix(in srgb, var(--note-color, #b07d1c) 72%, #000) 100%) !important;
   border-top: 3px solid color-mix(in srgb, var(--note-color, #f3cd6a) 40%, #fff) !important;
   box-shadow:
-    0 -10px 24px color-mix(in srgb, var(--note-color, #f3cd6a) 80%, transparent),
-    inset 0 2px 0 rgba(255,255,255,.55),
-    inset 0 0 18px rgba(255,255,255,.20) !important;
+    0 -5px 12px color-mix(in srgb, var(--note-color, #f3cd6a) 55%, transparent),
+    inset 0 2px 0 rgba(255,255,255,.45),
+    inset 0 0 10px rgba(255,255,255,.16) !important;
 }
 body.game-started .manual-keyboard .key.cue .cue-fill {
   animation: cueFillTo70Strong 1s linear forwards !important;
