@@ -406,55 +406,9 @@ function flash(keyboardId, midi, ms = 520, mode = 'active') {
     setTimeout(() => {
       k.classList.remove(mode);
       k.classList.add('release');
-      if (mode !== 'harmony') burstParticles(k, keyboardId === 'playbackKeyboard' ? 'playback' : 'manual');
       setTimeout(() => k.classList.remove('release'), 360);
     }, ms);
   });
-}
-
-function burstParticles(key, source) {
-  const rect = key.getBoundingClientRect();
-  const root = document.body;
-  const noteClass = [...key.classList].find(c => c.startsWith('note-')) || 'note-c';
-  const count = source === 'manual' ? 8 : 8;
-  for (let i = 0; i < count; i++) {
-    const p = document.createElement('i');
-    p.className = `particle ${source} ${noteClass}`;
-    const x = rect.left + rect.width * (0.18 + Math.random() * 0.64);
-    const y = rect.top + rect.height * (0.18 + Math.random() * 0.70);
-    const angle = Math.random() * Math.PI * 2;
-    const dist = (source === 'manual' ? 42 : 28) + Math.random() * (source === 'manual' ? 54 : 36);
-    p.style.left = `${x}px`;
-    p.style.top = `${y}px`;
-    p.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
-    p.style.setProperty('--dy', `${Math.sin(angle) * dist - Math.random() * 22}px`);
-    p.style.setProperty('--rot', `${Math.random() * 540 - 270}deg`);
-    p.style.setProperty('--size', `${4 + Math.random() * (source === 'manual' ? 8 : 5)}px`);
-    root.appendChild(p);
-    setTimeout(() => p.remove(), 820);
-  }
-}
-
-function burstMissParticles(key) {
-  const rect = key.getBoundingClientRect();
-  const root = document.body;
-  const count = 26;
-  for (let i = 0; i < count; i++) {
-    const p = document.createElement('i');
-    p.className = 'particle miss';
-    const x = rect.left + rect.width * (0.18 + Math.random() * 0.64);
-    const y = rect.top + rect.height * (0.22 + Math.random() * 0.58);
-    const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.35;
-    const dist = 34 + Math.random() * 78;
-    p.style.left = `${x}px`;
-    p.style.top = `${y}px`;
-    p.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
-    p.style.setProperty('--dy', `${Math.sin(angle) * dist + 22}px`);
-    p.style.setProperty('--rot', `${Math.random() * 900 - 450}deg`);
-    p.style.setProperty('--size', `${3 + Math.random() * 9}px`);
-    root.appendChild(p);
-    setTimeout(() => p.remove(), 900);
-  }
 }
 
 function cueProgressForKey(key) {
@@ -2219,44 +2173,6 @@ function startCue(midi, cue) {
   });
 }
 
-function shatterCueLyricElement(el) {
-  if (!el || !el.textContent || el.dataset.floatShattered === '1') return;
-  el.dataset.floatShattered = '1';
-  const r = el.getBoundingClientRect();
-  const cs = getComputedStyle(el);
-  const clone = document.createElement('span');
-  clone.className = `chord-float-shatter${el.classList.contains('blank') ? ' blank' : ''}`;
-  clone.style.left = `${r.left + r.width / 2}px`;
-  clone.style.top = `${r.top + r.height / 2}px`;
-  clone.style.fontSize = cs.fontSize;
-  const label = document.createElement('span');
-  label.className = 'cue-float-label';
-  label.textContent = el.textContent;
-  clone.appendChild(label);
-  const key = el.closest('.key');
-  const keyStyle = key ? getComputedStyle(key) : null;
-  const cue2 = keyStyle?.getPropertyValue('--cue2')?.trim() || cs.color || '#31d8ff';
-  const cue3 = keyStyle?.getPropertyValue('--cue3')?.trim() || '#168bff';
-  clone.style.setProperty('--cue2', cue2);
-  clone.style.setProperty('--cue3', cue3);
-  const pieces = el.classList.contains('blank') ? 18 : 28;
-  for (let i = 0; i < pieces; i++) {
-    const dot = document.createElement('span');
-    dot.className = 'cue-debris';
-    const angle = (Math.PI * 2 * i / pieces) + (Math.random() - .5) * .95;
-    const dist = 18 + Math.random() * 64;
-    dot.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
-    dot.style.setProperty('--dy', `${Math.sin(angle) * dist - 18 - Math.random() * 28}px`);
-    dot.style.setProperty('--s', `${3 + Math.random() * 8}px`);
-    dot.style.setProperty('--rot', `${Math.random() * 780 - 390}deg`);
-    dot.style.setProperty('--delay', `${Math.random() * .10}s`);
-    dot.style.setProperty('--hue', `${Math.round(Math.random() * 60 - 30)}deg`);
-    clone.appendChild(dot);
-  }
-  document.body.appendChild(clone);
-  setTimeout(() => clone.remove(), 980);
-}
-
 function hitCue(midi, cue) {
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
     if (cue?._id && k.dataset.cueId && k.dataset.cueId !== cue._id) return;
@@ -2285,7 +2201,6 @@ function finishActiveCue() {
   if (!activeCue) return;
   document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
     if (el.textContent && !el.classList.contains('hit')) {
-      shatterCueLyricElement(el);
       el.classList.add('hit');
     }
   });
@@ -2477,7 +2392,6 @@ function autoPressCue(active) {
   keys.forEach(key => {
     key.classList.remove('chord-due', 'miss', 'chord-release');
     key.classList.add('chord-press');
-    burstParticles(key, 'manual');
     setTimeout(() => {
       key.classList.remove('chord-press');
       key.classList.add('chord-release');
@@ -2716,8 +2630,7 @@ function renderManualKeyboard() {
       key.classList.remove('chord-due', 'miss', 'chord-release');
       key.classList.add('chord-press');
       playStyledHarmony(label);
-      burstParticles(key, 'manual');
-      setTimeout(() => {
+        setTimeout(() => {
         key.classList.remove('chord-press');
         key.classList.add('chord-release');
         setTimeout(() => key.classList.remove('chord-release'), 220);

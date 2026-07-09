@@ -1,8 +1,18 @@
 /* ============================================================
-   chord-keys.css — 和弦键提示系统重写
+   chord-keys.css — 和弦键提示系统最终版
    不使用旧的 .cue/.due/.active/.release/.cue-fill/.cue-lyric/.hit-line，
-   避免 styles.css 历史规则干扰。
+   也不再使用粒子/碎片 DOM，避免 styles.css 历史规则干扰和点击卡顿。
    ============================================================ */
+
+body.game-started #manualKeyboard.manual-keyboard .cue-fill,
+body.game-started #manualKeyboard.manual-keyboard .cue-lyric,
+body.game-started #manualKeyboard.manual-keyboard .hit-line,
+body.game-started .particle,
+body.game-started .chord-float-shatter,
+body.game-started .cue-float-shatter {
+  display: none !important;
+  animation: none !important;
+}
 
 body.game-started #manualKeyboard.manual-keyboard .key.white {
   contain: layout paint !important;
