@@ -2481,10 +2481,13 @@ function playStyledHarmony(root, forcedCue = null) {
     const baseSpeed = isManualMode() ? manualSpeedScale : 1;
     const fullPhrase = patternPhraseForCue(pattern, cueTime, now);
     // 全自动每个和弦只触发一次，需一次弹完整段；手动/半自动由玩家分两次按下弹完。
-    const events = isAutoChordMode()
+    const autoMode = isAutoChordMode();
+    const events = autoMode
       ? fullPhrase
       : sliceHarmonyHalf(fullPhrase, advanceHarmonyHalf(root));
-    const speed = fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed);
+    // 半段只有一半音符，用双倍速度弹完，保持原来的密度感（不拖慢变稀）。
+    const halfSpeed = autoMode ? 1 : 0.5;
+    const speed = fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed) * halfSpeed;
     for (const { note: n, offset } of events) {
       const delay = Math.max(0, offset * 1000 * speed);
       const midi = patternPitchToChordMidi(n.pitch, chordName);
