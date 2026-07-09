@@ -458,17 +458,29 @@ function advanceHarmonyHalf(root) {
 }
 
 // 把一段 pattern 事件按顺序切成前半/后半：half=0 取前半，half=1 取后半。
-// 音符数减半，每个音符间隔和持续时长都拉成原来的 2 倍，铺满整个小节。
+// 只切分并把首音 offset 归零；拉伸铺满小节的工作交给 playStyledHarmony 里的填充 speed。
 function sliceHarmonyHalf(events, half) {
   if (!events || events.length <= 1) return events || [];
   const mid = Math.ceil(events.length / 2);
   const part = half === 0 ? events.slice(0, mid) : events.slice(mid);
   if (!part.length) return events;
   const base = part[0].offset || 0;
-  return part.map(e => ({
-    note: { ...e.note, duration: Number(e.note.duration || 0.35) * 2 },
-    offset: Math.max(0, (e.offset || 0) - base) * 2,
-  }));
+  return part.map(e => ({ note: e.note, offset: Math.max(0, (e.offset || 0) - base) }));
+}
+
+// 半段音符数减半，把它们拉伸铺满到下一个和弦提示的实际时间（允许拉长，不像
+// fitPhraseToNextCue 只压缩）。这样无论 cue 间隔多长，半段都均匀填满整个小节，
+// 音符持续时长随之拉长、首尾相接不留空档。
+function fillSpeedForHalf(events, beatSec, cueTime, now) {
+  if (!events?.length) return 1;
+  const nextTime = nextChordCueTimeAfter(cueTime);
+  const end = Number.isFinite(nextTime) ? nextTime : now + 2;
+  const available = Math.max(0.12, end - now - 0.018);
+  const naturalEnd = events.reduce((max, { note: n, offset }) => {
+    const dur = Math.max(0.05, Number(n.duration || 0.35) * beatSec);
+    return Math.max(max, Number(offset || 0) + dur);
+  }, 0.001);
+  return Math.max(0.35, Math.min(4, available / naturalEnd));
 }
 
 function updateToneButton() {
@@ -2488,7 +2500,10 @@ function playStyledHarmony(root, forcedCue = null) {
     const events = autoMode
       ? fullPhrase
       : sliceHarmonyHalf(fullPhrase, advanceHarmonyHalf(root));
-    const speed = fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed);
+    // 全自动整段：只在按慢时压缩追赶；半段：拉伸铺满整个小节。
+    const speed = autoMode
+      ? fitPhraseToNextCue(events, beatSec, cueTime, now, baseSpeed)
+      : fillSpeedForHalf(events, beatSec, cueTime, now);
     for (const { note: n, offset } of events) {
       const delay = Math.max(0, offset * 1000 * speed);
       const midi = patternPitchToChordMidi(n.pitch, chordName);
