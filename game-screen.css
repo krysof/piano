@@ -220,3 +220,29 @@ body.game-started .karaoke-status .mic-meter {
   top: 50% !important;
   transform: translateY(-50%) !important;
 }
+
+/* ---------- 修复：当前行 ▶ 图标不占布局流，避免把文字推右导致该行不居中 ---------- */
+body.game-started .karaoke-line.active::before {
+  position: absolute !important;
+  right: 100% !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  margin-right: 0 !important;
+  margin: 0 !important;
+}
+
+/* ---------- 修复：卡拉OK紫色拉幕末尾字盖不全 ----------
+   蓝层与底层用完全相同的盒模型和内容，只用 clip-path 从右裁一次；
+   宽度锚定 base 一致（left:0/right:0），progress=100% 时右裁为 0，完整覆盖末字。 */
+body.game-started .karaoke-line .lyric-blue {
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: none !important;
+  left: 0 !important;
+  right: auto !important;
+  overflow: visible !important;
+  clip-path: inset(0 calc(100% - var(--progress, 0%)) 0 0) !important;
+  -webkit-clip-path: inset(0 calc(100% - var(--progress, 0%)) 0 0) !important;
+  white-space: pre !important;
+  text-align: inherit !important;
+}
