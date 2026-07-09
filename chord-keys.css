@@ -79,12 +79,17 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol:empty {
 }
 
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank {
-  min-width: 1.35em !important;
-  width: auto !important;
-  height: auto !important;
-  padding: .08em .28em .14em !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 1.58em !important;
+  width: 1.58em !important;
+  height: 1.30em !important;
+  padding: 0 !important;
   color: transparent !important;
   text-shadow: none !important;
+  overflow: hidden !important;
   background: linear-gradient(180deg, rgba(245,207,107,.98), rgba(176,125,28,.96)) !important;
   border: 1px solid rgba(255,240,196,.70) !important;
   box-shadow: 0 0 14px rgba(243,205,106,.48), inset 0 1px 0 rgba(255,255,255,.40) !important;
@@ -92,10 +97,11 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank {
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank::before {
   content: '' !important;
   display: block !important;
-  width: .62em !important;
-  height: .62em !important;
-  margin: .07em auto 0 !important;
-  border-radius: .18em !important;
+  flex: 0 0 auto !important;
+  width: .58em !important;
+  height: .58em !important;
+  margin: 0 !important;
+  border-radius: .16em !important;
   background: var(--note-color, #fff) !important;
   box-shadow: 0 0 9px var(--note-color, #fff), inset 0 0 4px rgba(255,255,255,.68) !important;
 }
