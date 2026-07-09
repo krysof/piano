@@ -459,15 +459,22 @@ function advanceHarmonyHalf(root, cue) {
   return adjacentSame ? 1 : 0;
 }
 
-// 把一段 pattern 事件按顺序切成前半/后半：half=0 取前半，half=1 取后半。
-// 只切分并把首音 offset 归零；拉伸铺满小节的工作交给 playStyledHarmony 里的填充 speed。
-function sliceHarmonyHalf(events, half) {
-  if (!events || events.length <= 1) return events || [];
-  const mid = Math.ceil(events.length / 2);
-  const part = half === 0 ? events.slice(0, mid) : events.slice(mid);
-  if (!part.length) return events;
-  const base = part[0].offset || 0;
-  return part.map(e => ({ note: e.note, offset: Math.max(0, (e.offset || 0) - base) }));
+// 取一个和弦【完整整段】的分解和弦音符，纯按 pattern beat 顺序排列。
+// 不做任何“按慢丢音/按早对齐”的时间处理（那些交给 layoutHalfInBar），
+// 独立于旧的 patternPhraseForCue，避免旧逻辑砍掉音符导致整段不足。
+function fullChordPhrase(pattern) {
+  if (!pattern?.notes?.length) return [];
+  return pattern.notes
+    .map(n => ({ note: n, beat: Number(n.beat || 0) }))
+    .sort((a, b) => a.beat - b.beat)
+    .map(e => e.note);
+}
+
+// 把整段音符切成前半/后半：half=0 取前半，half=1 取后半。返回 note 数组。
+function sliceHarmonyHalf(notes, half) {
+  if (!notes || notes.length <= 1) return notes || [];
+  const mid = Math.ceil(notes.length / 2);
+  return half === 0 ? notes.slice(0, mid) : notes.slice(mid);
 }
 
 // 小节是乐曲的固定时间网格：由主旋律 BPM + 拍号从曲子开头 0 起算，跟按什么和弦无关。
@@ -482,15 +489,15 @@ function barBoundsAt(time, pattern) {
 // 按早 → now 离小节结束远 → 每个音间隔自动变大（平均拉长）；
 // 按晚 → now 离小节结束近 → 间隔自动变小（平均加快）。音符首尾相接，不留空档。
 // 返回每个音的绝对起始延迟(秒)和持续时长(秒)。
-function layoutHalfInBar(events, now, pattern) {
-  const n = events.length;
+function layoutHalfInBar(notes, now, pattern) {
+  const n = notes.length;
   if (!n) return [];
   const { barEnd } = barBoundsAt(now, pattern);
   // 小节剩余时间太短（按得非常晚/正好压线）时给一个下限，避免音全挤成一坨。
   const available = Math.max(0.18, barEnd - now - 0.012);
   const step = available / n;
-  return events.map((e, i) => ({
-    note: e.note,
+  return notes.map((note, i) => ({
+    note,
     delay: i * step,
     duration: step,
   }));
@@ -2503,14 +2510,13 @@ function playStyledHarmony(root, forcedCue = null) {
   warmHarmonyTones(false);
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
-    const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
-    const fullPhrase = patternPhraseForCue(pattern, cueTime, now);
     // 演奏模式（全自动/半自动/手动）只决定谁触发、按后是否推进，不影响伴奏内容。
-    // 每次按下弹半段：整段分解和弦分两段，各对应乐谱里一次和弦提示（详见 advanceHarmonyHalf）。
+    // 取完整整段（新函数，不受旧 patternPhraseForCue 的按慢丢音逻辑影响），再切半段。
+    const fullPhrase = fullChordPhrase(pattern);
     const half = advanceHarmonyHalf(root, cue);
-    const events = sliceHarmonyHalf(fullPhrase, half);
+    const notes = sliceHarmonyHalf(fullPhrase, half);
     // 半段的音平均铺满「按下时刻 → 当前小节结束线」：按早自动拉长、按晚自动加快。
-    const laidOut = layoutHalfInBar(events, now, pattern);
+    const laidOut = layoutHalfInBar(notes, now, pattern);
     for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const velocity = normalizedHarmonyVelocity(n.velocity);
