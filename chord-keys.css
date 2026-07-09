@@ -80,14 +80,13 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol:empty {
 
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank {
   box-sizing: border-box !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: block !important;
   min-width: 1.58em !important;
   width: 1.58em !important;
   height: 1.30em !important;
   padding: 0 !important;
   color: transparent !important;
+  line-height: 0 !important;
   text-shadow: none !important;
   overflow: hidden !important;
   background: linear-gradient(180deg, rgba(245,207,107,.98), rgba(176,125,28,.96)) !important;
@@ -96,12 +95,15 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank {
 }
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank::before {
   content: '' !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
   display: block !important;
-  flex: 0 0 auto !important;
   width: .58em !important;
   height: .58em !important;
   margin: 0 !important;
   border-radius: .16em !important;
+  transform: translate(-50%, -50%) !important;
   background: var(--note-color, #fff) !important;
   box-shadow: 0 0 9px var(--note-color, #fff), inset 0 0 4px rgba(255,255,255,.68) !important;
 }
