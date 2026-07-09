@@ -188,3 +188,35 @@ body.game-started .manual-keyboard .key-label {
     0 0 3px rgba(0,0,0,.55),
     0 0 16px color-mix(in srgb, currentColor 65%, transparent) !important;
 }
+
+/* ---------- 歌词字放大（歌词框空位多，字号加大填满）；含 next 行 ---------- */
+body.game-started .karaoke-line,
+body.game-started .karaoke-line.next {
+  font-size: clamp(20px, 5.6vw, 38px) !important;
+  line-height: 1.12 !important;
+}
+body.game-started .karaoke-line.active {
+  font-size: clamp(23px, 6.6vw, 44px) !important;
+}
+
+/* ---------- 时间放到歌词框底部正中 ---------- */
+/* .karaoke-status 是 grid 最后一行、position:relative；历史规则用 left/right/transform 把它推歪。
+   这里全部归零，让它老实待在 grid 居中格里，再内部水平居中。 */
+body.game-started .karaoke-status {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 2px auto 0 !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+/* 麦克风电平移到时间右侧绝对定位，不影响时间水平居中 */
+body.game-started .karaoke-status .mic-meter {
+  position: absolute !important;
+  left: calc(100% + 12px) !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
