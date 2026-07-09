@@ -1,0 +1,143 @@
+/* ============================================================
+   chord-keys.css — 和弦键提示系统重写
+   不使用旧的 .cue/.due/.active/.release/.cue-fill/.cue-lyric/.hit-line，
+   避免 styles.css 历史规则干扰。
+   ============================================================ */
+
+body.game-started #manualKeyboard.manual-keyboard .key.white {
+  contain: layout paint !important;
+  transform: translateZ(0) !important;
+}
+
+body.game-started #manualKeyboard.manual-keyboard .chord-fill {
+  position: absolute !important;
+  z-index: 2 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  transform-origin: 50% 100% !important;
+  transform: scaleY(var(--chord-scale, 0)) translateZ(0) !important;
+  opacity: calc(.50 + (var(--chord-scale, 0) * .34)) !important;
+  will-change: transform, opacity !important;
+  backface-visibility: hidden !important;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--note-color, #f3cd6a) 62%, #fff) 0%,
+    var(--note-color, #f3cd6a) 40%,
+    color-mix(in srgb, var(--note-color, #b07d1c) 72%, #000) 100%) !important;
+  border-top: 2px solid color-mix(in srgb, var(--note-color, #f3cd6a) 40%, #fff) !important;
+  box-shadow:
+    0 -4px 10px color-mix(in srgb, var(--note-color, #f3cd6a) 48%, transparent),
+    inset 0 1px 0 rgba(255,255,255,.38) !important;
+}
+
+body.game-started #manualKeyboard.manual-keyboard .chord-line {
+  position: absolute !important;
+  z-index: 4 !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 28.6% !important;
+  height: 2px !important;
+  margin-top: -1px !important;
+  pointer-events: none !important;
+  background: linear-gradient(90deg,
+    rgba(228,190,104,.35),
+    rgba(255,244,208,.95) 50%,
+    rgba(228,190,104,.35)) !important;
+  box-shadow: 0 0 7px rgba(243,205,106,.50) !important;
+}
+
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol {
+  position: absolute !important;
+  z-index: 5 !important;
+  top: 4% !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateZ(0) !important;
+  min-width: 1.35em !important;
+  padding: .08em .28em .14em !important;
+  border-radius: 999px !important;
+  font-size: clamp(22px, 6vw, 42px) !important;
+  line-height: 1.08 !important;
+  font-weight: 1000 !important;
+  color: #fff !important;
+  pointer-events: none !important;
+  background: linear-gradient(180deg, rgba(245,207,107,.98), rgba(176,125,28,.96)) !important;
+  border: 1px solid rgba(255,240,196,.70) !important;
+  box-shadow: 0 0 14px rgba(243,205,106,.48), inset 0 1px 0 rgba(255,255,255,.40) !important;
+  text-shadow: 0 2px 4px rgba(80,48,6,.65) !important;
+  opacity: 0 !important;
+  transition: opacity .14s linear, transform .14s linear !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-cue .chord-symbol,
+body.game-started #manualKeyboard.manual-keyboard .chord-due .chord-symbol,
+body.game-started #manualKeyboard.manual-keyboard .chord-press .chord-symbol {
+  opacity: 1 !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol:empty {
+  display: none !important;
+}
+
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank {
+  color: transparent !important;
+  text-shadow: none !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank::before {
+  content: '' !important;
+  display: block !important;
+  width: .62em !important;
+  height: .62em !important;
+  margin: .07em auto 0 !important;
+  border-radius: .18em !important;
+  background: var(--note-color, #fff) !important;
+  box-shadow: 0 0 9px var(--note-color, #fff), inset 0 0 4px rgba(255,255,255,.68) !important;
+}
+
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.fail {
+  opacity: 0 !important;
+  transition: opacity .42s ease .30s !important;
+  filter: grayscale(.35) brightness(.9) !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.fail::after {
+  content: '✕' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.05em !important;
+  font-weight: 1000 !important;
+  color: #ff5d6d !important;
+  text-shadow: 0 0 10px rgba(255,60,90,.85), 0 1px 3px rgba(0,0,0,.6) !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit {
+  opacity: 0 !important;
+  transform: translateX(-50%) translateY(-12px) scale(.85) translateZ(0) !important;
+  transition: opacity .32s ease, transform .32s ease !important;
+}
+
+body.game-started #manualKeyboard.manual-keyboard .key.chord-press {
+  transform: translateY(2px) translateZ(0) !important;
+  filter: brightness(1.07) saturate(1.10) !important;
+  outline: 0 !important;
+  animation: none !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .key.chord-release {
+  transform: translateY(0) translateZ(0) !important;
+  filter: none !important;
+  animation: none !important;
+}
+
+.chord-float-shatter {
+  position: fixed !important;
+  z-index: 10000 !important;
+  pointer-events: none !important;
+  transform: translate(-50%, -50%) !important;
+  color: #fff !important;
+  text-shadow: 0 0 10px rgba(243,205,106,.65) !important;
+  animation: chordFloatVanish .58s ease-out forwards !important;
+}
+@keyframes chordFloatVanish {
+  0% { opacity: 1; filter: blur(0); }
+  100% { opacity: 0; filter: blur(4px); transform: translate(-50%, -76%) scale(.72); }
+}

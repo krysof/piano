@@ -416,7 +416,7 @@ function burstParticles(key, source) {
   const rect = key.getBoundingClientRect();
   const root = document.body;
   const noteClass = [...key.classList].find(c => c.startsWith('note-')) || 'note-c';
-  const count = source === 'manual' ? 18 : 12;
+  const count = source === 'manual' ? 8 : 8;
   for (let i = 0; i < count; i++) {
     const p = document.createElement('i');
     p.className = `particle ${source} ${noteClass}`;
@@ -2167,8 +2167,11 @@ function clearTimers() {
   manualMelodyTimers.forEach(clearTimeout);
   manualMelodyTimers = [];
   clearInterval(clockTimer); clockTimer = null;
-  document.querySelectorAll('#manualKeyboard .cue, #manualKeyboard .due').forEach(k => k.classList.remove('cue', 'due'));
-  document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => { el.textContent = ''; });
+  document.querySelectorAll('#manualKeyboard .chord-cue, #manualKeyboard .chord-due').forEach(k => {
+    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release');
+    k.style.removeProperty('--chord-scale');
+  });
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => { el.textContent = ''; });
   cueState.clear();
 }
 
@@ -2199,22 +2202,20 @@ function startCue(midi, cue) {
     const perfNow = performance.now();
     const due = playing ? playStartedAt + (cue.time - playOffset) * 1000 : perfNow + Math.max(0, (cue.time - currentPlayTime()) * 1000);
     cueState.set(k.dataset.root, { start: due - 1000, due, end: due + 400, cueId: cue?._id });
-    const lyric = k.querySelector('.cue-lyric');
-    if (lyric) {
+    const symbol = k.querySelector('.chord-symbol');
+    if (symbol) {
       const display = cueLyricDisplayForCue(cue);
-      lyric.textContent = display.text;
-      lyric.classList.toggle('blank', !!display.blank);
-      lyric.dataset.cueId = cue?._id || '';
-      delete lyric.dataset.floatShattered;
-      lyric.classList.remove('shatter', 'hold', 'appear', 'fail');
-      void lyric.offsetWidth;
-      lyric.classList.add('appear');
+      symbol.textContent = display.text;
+      symbol.classList.toggle('blank', !!display.blank);
+      symbol.dataset.cueId = cue?._id || '';
+      delete symbol.dataset.floatShattered;
+      symbol.classList.remove('hit', 'fail');
     }
-    k.classList.remove('due', 'active', 'release');
-    k.classList.remove('cue');
+    k.classList.remove('chord-due', 'chord-press', 'chord-release');
+    k.classList.remove('chord-cue');
     setCueFillProgress(k, 0);
     void k.offsetWidth;
-    k.classList.add('cue');
+    k.classList.add('chord-cue');
   });
 }
 
@@ -2224,7 +2225,7 @@ function shatterCueLyricElement(el) {
   const r = el.getBoundingClientRect();
   const cs = getComputedStyle(el);
   const clone = document.createElement('span');
-  clone.className = `cue-float-shatter${el.classList.contains('blank') ? ' blank' : ''}`;
+  clone.className = `chord-float-shatter${el.classList.contains('blank') ? ' blank' : ''}`;
   clone.style.left = `${r.left + r.width / 2}px`;
   clone.style.top = `${r.top + r.height / 2}px`;
   clone.style.fontSize = cs.fontSize;
@@ -2259,24 +2260,19 @@ function shatterCueLyricElement(el) {
 function hitCue(midi, cue) {
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
     if (cue?._id && k.dataset.cueId && k.dataset.cueId !== cue._id) return;
-    const lyric = k.querySelector('.cue-lyric');
-    if (lyric && lyric.textContent) {
-      lyric.classList.remove('shatter');
-      lyric.classList.add('hold');
-    }
-    k.classList.add('due');
+    k.classList.add('chord-due');
   });
 }
 
 function clearManualCueVisuals() {
-  document.querySelectorAll('#manualKeyboard .cue, #manualKeyboard .due').forEach(k => {
-    k.classList.remove('cue', 'due');
-    k.style.removeProperty('--cue-scale');
+  document.querySelectorAll('#manualKeyboard .chord-cue, #manualKeyboard .chord-due').forEach(k => {
+    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release');
+    k.style.removeProperty('--chord-scale');
     delete k.dataset.cueId;
   });
-  document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => {
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
     el.textContent = '';
-    el.classList.remove('blank', 'shatter', 'hold', 'appear', 'fail');
+    el.classList.remove('blank', 'hit', 'fail');
     delete el.dataset.floatShattered;
     delete el.dataset.cueId;
   });
@@ -2287,30 +2283,27 @@ let cueCleanupTimer = null;
 
 function finishActiveCue() {
   if (!activeCue) return;
-  document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => {
-    if (el.textContent && !el.classList.contains('shatter')) {
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
+    if (el.textContent && !el.classList.contains('hit')) {
       shatterCueLyricElement(el);
-      el.classList.remove('hold', 'shatter');
-      void el.offsetWidth;
-      el.classList.add('shatter');
+      el.classList.add('hit');
     }
   });
   clearTimeout(cueCleanupTimer);
-  cueCleanupTimer = setTimeout(clearManualCueVisuals, 820);
+  cueCleanupTimer = setTimeout(clearManualCueVisuals, 620);
   activeCue = null;
 }
 
 // 没按/按早/按错：提示字打叉后淡出，不做破碎动画（docs/UI.md）。
 function failActiveCue() {
   if (!activeCue) return;
-  document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => {
-    if (el.textContent && !el.classList.contains('shatter')) {
-      el.classList.remove('hold');
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
+    if (el.textContent && !el.classList.contains('hit')) {
       el.classList.add('fail');
     }
   });
   clearTimeout(cueCleanupTimer);
-  cueCleanupTimer = setTimeout(clearManualCueVisuals, 820);
+  cueCleanupTimer = setTimeout(clearManualCueVisuals, 620);
   activeCue = null;
 }
 
@@ -2325,7 +2318,7 @@ function startCueRuntimeLoop() {
 
 function setCueFillProgress(key, progress) {
   const scale = Math.max(0, Math.min(1, progress / 140));
-  key.style.setProperty('--cue-scale', scale.toFixed(4));
+  key.style.setProperty('--chord-scale', scale.toFixed(4));
 }
 
 function updateCueRuntime() {
@@ -2482,13 +2475,13 @@ function autoPressCue(active) {
   const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
   const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
   keys.forEach(key => {
-    key.classList.remove('due', 'miss', 'release');
-    key.classList.add('active');
+    key.classList.remove('chord-due', 'miss', 'chord-release');
+    key.classList.add('chord-press');
     burstParticles(key, 'manual');
     setTimeout(() => {
-      key.classList.remove('active');
-      key.classList.add('release');
-      setTimeout(() => key.classList.remove('release'), 360);
+      key.classList.remove('chord-press');
+      key.classList.add('chord-release');
+      setTimeout(() => key.classList.remove('chord-release'), 220);
     }, 520);
   });
   playStyledHarmony(root, active.cue);
@@ -2702,7 +2695,7 @@ function renderManualKeyboard() {
     key.dataset.midi = midi;
     key.dataset.root = label;
     key.dataset.display = displayLabel;
-    key.innerHTML = `<span class="cue-fill"></span><span class="hit-line"></span><span class="cue-lyric"></span><span class="key-label">${displayLabel}</span>`;
+    key.innerHTML = `<span class="chord-fill"></span><span class="chord-line"></span><span class="chord-symbol"></span><span class="key-label">${displayLabel}</span>`;
     key.title = `${displayLabel} (${label})`;
     key.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
@@ -2720,14 +2713,14 @@ function renderManualKeyboard() {
         // 按早/按错：字打叉淡出（docs/UI.md）。
         failActiveCue();
       }
-      key.classList.remove('due', 'miss', 'release');
-      key.classList.add('active');
+      key.classList.remove('chord-due', 'miss', 'chord-release');
+      key.classList.add('chord-press');
       playStyledHarmony(label);
       burstParticles(key, 'manual');
       setTimeout(() => {
-        key.classList.remove('active');
-        key.classList.add('release');
-        setTimeout(() => key.classList.remove('release'), 360);
+        key.classList.remove('chord-press');
+        key.classList.add('chord-release');
+        setTimeout(() => key.classList.remove('chord-release'), 220);
       }, 520);
       cueState.delete(label);
     });
