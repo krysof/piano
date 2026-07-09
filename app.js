@@ -481,23 +481,33 @@ function sliceHarmonyHalf(notes, half) {
   return half === 0 ? notes.slice(0, mid) : notes.slice(mid);
 }
 
-// 把半段的 N 个音【平均】铺满「从按下时刻 now 到下一个和弦提示」这段时间。
-// 分解和弦跟着和弦提示走：每个和弦提示给这段音的时间 = 它持续到下一个提示的时长。
-// 全自动 now≈cue 时间，提示间隔稳定（《后来》基本恒为 1.6s）→ 每次都是恒定速度、稳定 N 个音；
-// 手动按早 → now 离下个提示远 → 间隔变大（拉长）；按晚 → 间隔变小（加快）。
-// cueTime 是这次和弦提示的时间；音符首尾相接，不留空档。
-function layoutHalfInBar(notes, now, cueTime) {
+// 按 pattern【原始节奏】播放半段：保留每个音的 beat 相对位置和 duration 比例，
+// 不做平均等分——因为风格包本身就定义好了节奏型（GS_1 分解本来就等分；GS_3 扫弦是成簇的，
+// 平均分会毁掉扫弦感）。整段可【等比缩放】去适配「按下时刻 → 下一个和弦提示」的时长：
+// 全自动 now≈cue 时基本 1:1；手动按早→时长富余→拉伸变慢；按晚→时长紧→压缩变快。
+// 缩放只改整体快慢，不破坏节奏型内部的相对时序与时值比例。
+function layoutHalfByBeat(notes, now, cueTime) {
   const n = notes.length;
   if (!n) return [];
+  const beatSec = beatMs() / 1000;
+  // 半段起点 beat（后半段从它自己第一个音的 beat 归零），得到每个音相对本段起点的原始秒偏移。
+  const baseBeat = Math.min(...notes.map(nn => Number(nn.beat || 0)));
+  const rel = notes.map(nn => ({
+    note: nn,
+    off: Math.max(0, (Number(nn.beat || 0) - baseBeat)) * beatSec,
+    dur: Math.max(0.05, Number(nn.duration || 0.5) * beatSec),
+  }));
+  // 本段原始跨度（到最后一个音起点）。
+  const originalSpan = Math.max(0.001, Math.max(...rel.map(e => e.off)));
   const nextCue = nextChordCueTimeAfter(Number.isFinite(cueTime) ? cueTime : now);
-  const end = Number.isFinite(nextCue) ? nextCue : now + beatMs() / 1000 * 2;
-  // 提示间隔异常短/已越过时给下限，避免音全挤成一坨。
+  const end = Number.isFinite(nextCue) ? nextCue : now + beatSec * 2;
   const available = Math.max(0.18, end - now - 0.012);
-  const step = available / n;
-  return notes.map((note, i) => ({
-    note,
-    delay: i * step,
-    duration: step,
+  // 等比缩放整段去铺满 available；下限防止极端拉伸/压缩。
+  const scale = Math.max(0.35, Math.min(2.5, available / originalSpan));
+  return rel.map(e => ({
+    note: e.note,
+    delay: e.off * scale,
+    duration: e.dur * scale,
   }));
 }
 
@@ -2513,9 +2523,9 @@ function playStyledHarmony(root, forcedCue = null) {
     const fullPhrase = fullChordPhrase(pattern);
     const half = chordHalfForCue(cue);
     const notes = sliceHarmonyHalf(fullPhrase, half);
-    // 半段的音平均铺满「按下时刻 → 下一个和弦提示」：全自动稳定恒速，手动按早拉长/按晚加快。
+    // 按 pattern 原始节奏播放半段（分解等分、扫弦成簇都保留），整段等比缩放到下一个提示。
     const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
-    const laidOut = layoutHalfInBar(notes, now, cueTime);
+    const laidOut = layoutHalfByBeat(notes, now, cueTime);
     for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const velocity = normalizedHarmonyVelocity(n.velocity);
