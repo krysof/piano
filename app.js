@@ -2234,9 +2234,17 @@ function burstChordSymbol(el) {
   }
 }
 
-// 没按/按早/按错：提示字打叉后淡出，不做破碎动画（docs/UI.md）。
+// 没按/按早/按错：整键轻微快速摇晃，不显示 X（docs/UI.md）。
 function failActiveCue() {
   if (!activeCue) return;
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${activeCue.midi}"]`).forEach(k => {
+    if (!activeCue.cue?._id || !k.dataset.cueId || k.dataset.cueId === activeCue.cue._id) {
+      k.classList.remove('chord-miss');
+      void k.offsetWidth;
+      k.classList.add('chord-miss');
+      setTimeout(() => k.classList.remove('chord-miss'), 320);
+    }
+  });
   document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
     if (el.textContent && !el.classList.contains('hit')) {
       el.classList.add('fail');

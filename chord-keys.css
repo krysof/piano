@@ -120,20 +120,11 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank::before {
 
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.fail {
   opacity: 0 !important;
-  transition: opacity .42s ease .30s !important;
-  filter: grayscale(.35) brightness(.9) !important;
+  transition: opacity .28s ease !important;
 }
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.fail::after {
-  content: '✕' !important;
-  position: absolute !important;
-  inset: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  font-size: 1.05em !important;
-  font-weight: 1000 !important;
-  color: #ff5d6d !important;
-  text-shadow: 0 0 10px rgba(255,60,90,.85), 0 1px 3px rgba(0,0,0,.6) !important;
+  content: none !important;
+  display: none !important;
 }
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit {
   opacity: 1 !important;
@@ -177,6 +168,17 @@ body.game-started #manualKeyboard.manual-keyboard .key.chord-release {
   transform: translateY(0) translateZ(0) !important;
   filter: none !important;
   animation: none !important;
+}
+body.game-started #manualKeyboard.manual-keyboard .key.chord-miss {
+  animation: chordKeyMissShake .30s ease-out both !important;
+}
+@keyframes chordKeyMissShake {
+  0%   { transform: translateX(0) translateZ(0); }
+  18%  { transform: translateX(-3px) translateZ(0); }
+  36%  { transform: translateX(3px) translateZ(0); }
+  54%  { transform: translateX(-2px) translateZ(0); }
+  72%  { transform: translateX(2px) translateZ(0); }
+  100% { transform: translateX(0) translateZ(0); }
 }
 
 .chord-float-shatter {
