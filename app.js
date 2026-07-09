@@ -2517,6 +2517,7 @@ function playStyledHarmony(root, forcedCue = null) {
     const notes = sliceHarmonyHalf(fullPhrase, half);
     // 半段的音平均铺满「按下时刻 → 当前小节结束线」：按早自动拉长、按晚自动加快。
     const laidOut = layoutHalfInBar(notes, now, pattern);
+    console.log(`[harmony] root=${root} code=${code} slot=${slot} 整段=${fullPhrase.length} half=${half} 半段=${notes.length} 发声=${laidOut.length}`);
     for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const velocity = normalizedHarmonyVelocity(n.velocity);
