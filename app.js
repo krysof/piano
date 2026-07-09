@@ -2202,6 +2202,7 @@ function finishActiveCue() {
   if (!activeCue) return;
   document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
     if (el.textContent && !el.classList.contains('hit')) {
+      burstChordSymbol(el);
       el.classList.add('hit');
       el.closest('.key')?.classList.add('chord-hit');
     }
@@ -2209,6 +2210,28 @@ function finishActiveCue() {
   clearTimeout(cueCleanupTimer);
   cueCleanupTimer = setTimeout(clearManualCueVisuals, 620);
   activeCue = null;
+}
+
+function burstChordSymbol(el) {
+  if (!el || el.dataset.floatShattered === '1') return;
+  el.dataset.floatShattered = '1';
+  const key = el.closest('.key');
+  if (!key) return;
+  const text = el.classList.contains('blank') ? '' : (el.dataset.text || el.textContent || '');
+  const count = text ? 8 : 5;
+  for (let i = 0; i < count; i++) {
+    const shard = document.createElement('span');
+    shard.className = 'chord-shard';
+    const angle = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.4;
+    const dist = 14 + Math.random() * 30;
+    shard.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    shard.style.setProperty('--dy', `${Math.sin(angle) * dist - Math.random() * 10}px`);
+    shard.style.setProperty('--rot', `${Math.random() * 160 - 80}deg`);
+    shard.style.setProperty('--s', `${3 + Math.random() * 5}px`);
+    shard.style.setProperty('--delay', `${Math.random() * .06}s`);
+    key.appendChild(shard);
+    setTimeout(() => shard.remove(), 720);
+  }
 }
 
 // 没按/按早/按错：提示字打叉后淡出，不做破碎动画（docs/UI.md）。
@@ -2624,7 +2647,7 @@ function renderManualKeyboard() {
         activeCue.pressed = true;
         hitCue(activeCue.midi, activeCue.cue);
         const pressedCue = activeCue;
-        window.setTimeout(() => { if (activeCue === pressedCue) finishActiveCue(); }, 400);
+        window.setTimeout(() => { if (activeCue === pressedCue) finishActiveCue(); }, 260);
       } else {
         // 按早/按错：字打叉淡出（docs/UI.md）。
         failActiveCue();

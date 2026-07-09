@@ -143,33 +143,24 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit {
   border-color: transparent !important;
   box-shadow: none !important;
 }
-body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::before,
-body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::after {
-  content: attr(data-text) !important;
+body.game-started #manualKeyboard.manual-keyboard .chord-shard {
   position: absolute !important;
+  z-index: 6 !important;
   left: 50% !important;
-  top: 50% !important;
+  top: 10% !important;
   display: block !important;
-  color: #fff !important;
+  width: var(--s, 5px) !important;
+  height: var(--s, 5px) !important;
+  border-radius: 2px !important;
   opacity: 1 !important;
-  text-shadow: 0 0 10px rgba(243,205,106,.75), 0 2px 4px rgba(80,48,6,.65) !important;
+  background: linear-gradient(180deg, #fff8d8, #f3cd6a 62%, #b97b20) !important;
+  box-shadow: 0 0 8px rgba(243,205,106,.75) !important;
   pointer-events: none !important;
+  animation: chordShardBurst .58s ease-out var(--delay, 0s) forwards !important;
 }
-body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::before {
-  animation: chordSymbolChipLeft .62s ease-out forwards !important;
-  clip-path: polygon(0 0, 56% 0, 48% 100%, 0 100%) !important;
-}
-body.game-started #manualKeyboard.manual-keyboard .chord-symbol.hit::after {
-  animation: chordSymbolChipRight .62s ease-out forwards !important;
-  clip-path: polygon(48% 0, 100% 0, 100% 100%, 42% 100%) !important;
-}
-@keyframes chordSymbolChipLeft {
-  0% { opacity: 1; transform: translate(-50%, -50%) translateX(0) translateY(0) rotate(0deg); filter: blur(0); }
-  100% { opacity: 0; transform: translate(-50%, -50%) translateX(-16px) translateY(-12px) rotate(-16deg); filter: blur(2px); }
-}
-@keyframes chordSymbolChipRight {
-  0% { opacity: 1; transform: translate(-50%, -50%) translateX(0) translateY(0) rotate(0deg); filter: blur(0); }
-  100% { opacity: 0; transform: translate(-50%, -50%) translateX(16px) translateY(-12px) rotate(16deg); filter: blur(2px); }
+@keyframes chordShardBurst {
+  0% { opacity: 1; transform: translate(-50%, -50%) translate(0, 0) rotate(0deg) scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(.45); filter: blur(2px); }
 }
 body.game-started #manualKeyboard.manual-keyboard .key.chord-hit .chord-fill {
   opacity: 0 !important;
