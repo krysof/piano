@@ -481,34 +481,30 @@ function sliceHarmonyHalf(notes, half) {
   return half === 0 ? notes.slice(0, mid) : notes.slice(mid);
 }
 
-// 按 pattern【原始节奏】播放半段：保留每个音的 beat 相对位置和 duration 比例，
-// 不做平均等分——因为风格包本身就定义好了节奏型（GS_1 分解本来就等分；GS_3 扫弦是成簇的，
-// 平均分会毁掉扫弦感）。整段可【等比缩放】去适配「按下时刻 → 下一个和弦提示」的时长：
-// 全自动 now≈cue 时基本 1:1；手动按早→时长富余→拉伸变慢；按晚→时长紧→压缩变快。
-// 缩放只改整体快慢，不破坏节奏型内部的相对时序与时值比例。
-function layoutHalfByBeat(notes, now, cueTime) {
+// 播放半段：pattern 的 beat/duration 只当【百分比/比例】用，不是绝对拍数。
+// 段的真实总时长由主旋律 BPM 决定：一整段 pattern = 一个小节（patternBeats 拍），
+// 前半占前半个小节、后半占后半个小节，即每半段 = patternBeats/2 拍。
+// 把每个音的 beat 归一化成本段内的 0~1 百分比，再 × 段总时长，铺出真实时间。
+// 这样 GS_1 等分比例→均匀，GS_3 扫弦成簇比例→保持簇，且整段严格贴主旋律 BPM。
+function layoutHalfByBeat(notes, half, pattern) {
   const n = notes.length;
   if (!n) return [];
   const beatSec = beatMs() / 1000;
-  // 半段起点 beat（后半段从它自己第一个音的 beat 归零），得到每个音相对本段起点的原始秒偏移。
+  const halfBeats = Math.max(0.001, patternBeats(pattern) / 2); // 半段占的拍数
+  const spanBeats = halfBeats;                                   // 归一化分母
+  // 本段起点 beat（后半段从它自己第一个音归零）。
   const baseBeat = Math.min(...notes.map(nn => Number(nn.beat || 0)));
-  const rel = notes.map(nn => ({
-    note: nn,
-    off: Math.max(0, (Number(nn.beat || 0) - baseBeat)) * beatSec,
-    dur: Math.max(0.05, Number(nn.duration || 0.5) * beatSec),
-  }));
-  // 本段原始跨度（到最后一个音起点）。
-  const originalSpan = Math.max(0.001, Math.max(...rel.map(e => e.off)));
-  const nextCue = nextChordCueTimeAfter(Number.isFinite(cueTime) ? cueTime : now);
-  const end = Number.isFinite(nextCue) ? nextCue : now + beatSec * 2;
-  const available = Math.max(0.18, end - now - 0.012);
-  // 等比缩放整段去铺满 available；下限防止极端拉伸/压缩。
-  const scale = Math.max(0.35, Math.min(2.5, available / originalSpan));
-  return rel.map(e => ({
-    note: e.note,
-    delay: e.off * scale,
-    duration: e.dur * scale,
-  }));
+  // 段总时长 = 半段拍数 × 主旋律 beatSec（严格跟 BPM）。
+  const segSec = halfBeats * beatSec;
+  return notes.map(nn => {
+    const ratio = Math.max(0, (Number(nn.beat || 0) - baseBeat) / spanBeats);   // 0~1 百分比
+    const durRatio = Math.max(0.03, Number(nn.duration || 0.5) / halfBeats);    // 时值也按比例
+    return {
+      note: nn,
+      delay: ratio * segSec,
+      duration: Math.max(0.05, durRatio * segSec),
+    };
+  });
 }
 
 function updateToneButton() {
@@ -2523,9 +2519,8 @@ function playStyledHarmony(root, forcedCue = null) {
     const fullPhrase = fullChordPhrase(pattern);
     const half = chordHalfForCue(cue);
     const notes = sliceHarmonyHalf(fullPhrase, half);
-    // 按 pattern 原始节奏播放半段（分解等分、扫弦成簇都保留），整段等比缩放到下一个提示。
-    const cueTime = Number.isFinite(cue?.time) ? cue.time : now;
-    const laidOut = layoutHalfByBeat(notes, now, cueTime);
+    // pattern 的 beat 只当百分比，段总时长按主旋律 BPM 分配（半段 = 半个小节的拍数×beatSec）。
+    const laidOut = layoutHalfByBeat(notes, half, pattern);
     for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const velocity = normalizedHarmonyVelocity(n.velocity);
