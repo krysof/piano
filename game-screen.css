@@ -226,17 +226,11 @@ body.game-started #manualKeyboard.manual-keyboard .key.due:not(.active) {
 body.game-started #manualKeyboard.manual-keyboard .cue-fill {
   height: 100% !important;
   transform-origin: 50% 100% !important;
-  transform: scaleY(0) translateZ(0) !important;
+  transform: scaleY(var(--cue-scale, 0)) translateZ(0) !important;
+  opacity: calc(.55 + (var(--cue-scale, 0) * .35)) !important;
   will-change: transform, opacity !important;
   backface-visibility: hidden !important;
-}
-body.game-started #manualKeyboard.manual-keyboard .key.cue .cue-fill {
-  animation: cueFillSimple140 1.4s linear forwards !important;
-}
-@keyframes cueFillSimple140 {
-  0%    { transform: scaleY(0) translateZ(0);     opacity: .55; }
-  71.4% { transform: scaleY(.714) translateZ(0); opacity: .95; }  /* 1 秒到金线/应按点 */
-  100%  { transform: scaleY(1) translateZ(0);    opacity: .80; }  /* 再 0.4 秒到顶 */
+  animation: none !important;
 }
 /* miss / 按早：提示字打叉后淡出 */
 body.game-started #manualKeyboard.manual-keyboard .cue-lyric.fail {

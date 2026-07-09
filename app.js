@@ -18,7 +18,7 @@ let lastLyricParticleAt = 0;
 let timers = [];
 let cueTimers = [];
 let harmonyTimers = [];
-let cueRuntimeTimer = null;
+let cueRuntimeRaf = null;
 let activeCue = null;
 let nextCueIndex = 0;
 let currentDrumCode = null;
@@ -2159,7 +2159,7 @@ function clearTimers() {
   clearCountdown();
   timers.forEach(clearTimeout); timers = [];
   cueTimers.forEach(clearTimeout); cueTimers = [];
-  clearInterval(cueRuntimeTimer); cueRuntimeTimer = null;
+  cancelAnimationFrame(cueRuntimeRaf); cueRuntimeRaf = null;
   activeCue = null;
   clearHarmonyTimers();
   harmonyAutoTimers.forEach(clearTimeout);
@@ -2179,8 +2179,7 @@ function scheduleAutoHarmonyFrom(offset = 0) {
   nextCueIndex = song.chordCues.findIndex(c => c.time >= offset - 0.02);
   if (nextCueIndex < 0) nextCueIndex = song.chordCues.length;
   activeCue = null;
-  cueRuntimeTimer = setInterval(updateCueRuntime, 40);
-  updateCueRuntime();
+  startCueRuntimeLoop();
 }
 
 
@@ -2189,8 +2188,7 @@ function scheduleChordCues(offset = 0) {
   nextCueIndex = song.chordCues.findIndex(c => c.time >= offset - 0.02);
   if (nextCueIndex < 0) nextCueIndex = song.chordCues.length;
   activeCue = null;
-  cueRuntimeTimer = setInterval(updateCueRuntime, 40);
-  updateCueRuntime();
+  startCueRuntimeLoop();
 }
 
 function startCue(midi, cue) {
@@ -2214,6 +2212,7 @@ function startCue(midi, cue) {
     }
     k.classList.remove('due', 'active', 'release');
     k.classList.remove('cue');
+    setCueFillProgress(k, 0);
     void k.offsetWidth;
     k.classList.add('cue');
   });
@@ -2272,6 +2271,7 @@ function hitCue(midi, cue) {
 function clearManualCueVisuals() {
   document.querySelectorAll('#manualKeyboard .cue, #manualKeyboard .due').forEach(k => {
     k.classList.remove('cue', 'due');
+    k.style.removeProperty('--cue-scale');
     delete k.dataset.cueId;
   });
   document.querySelectorAll('#manualKeyboard .cue-lyric').forEach(el => {
@@ -2314,10 +2314,30 @@ function failActiveCue() {
   activeCue = null;
 }
 
+function startCueRuntimeLoop() {
+  cancelAnimationFrame(cueRuntimeRaf);
+  const loop = () => {
+    updateCueRuntime();
+    cueRuntimeRaf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+function setCueFillProgress(key, progress) {
+  const scale = Math.max(0, Math.min(1, progress / 140));
+  key.style.setProperty('--cue-scale', scale.toFixed(4));
+}
+
 function updateCueRuntime() {
   if ((!playing && !isManualMode()) || !song?.chordCues?.length) return;
   const now = currentPlayTime();
   if (activeCue) {
+    const progress = 100 + (now - activeCue.cue.time) * 100;
+    document.querySelectorAll(`#manualKeyboard .key[data-midi="${activeCue.midi}"]`).forEach(k => {
+      if (!activeCue.cue?._id || !k.dataset.cueId || k.dataset.cueId === activeCue.cue._id) {
+        setCueFillProgress(k, progress);
+      }
+    });
     if (!activeCue.hit && now >= activeCue.cue.time) {
       activeCue.hit = true;
       hitCue(activeCue.midi, activeCue.cue);
