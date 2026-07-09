@@ -79,18 +79,25 @@ body.game-started #manualKeyboard.manual-keyboard .chord-symbol:empty {
 }
 
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank {
+  min-width: 0 !important;
+  width: .46em !important;
+  height: .46em !important;
+  padding: 0 !important;
   color: transparent !important;
   text-shadow: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.blank::before {
   content: '' !important;
   display: block !important;
-  width: .62em !important;
-  height: .62em !important;
-  margin: .07em auto 0 !important;
-  border-radius: .18em !important;
+  width: .46em !important;
+  height: .46em !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
   background: var(--note-color, #fff) !important;
-  box-shadow: 0 0 9px var(--note-color, #fff), inset 0 0 4px rgba(255,255,255,.68) !important;
+  box-shadow: 0 0 8px var(--note-color, #fff), inset 0 0 3px rgba(255,255,255,.68) !important;
 }
 
 body.game-started #manualKeyboard.manual-keyboard .chord-symbol.fail {
