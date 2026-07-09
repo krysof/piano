@@ -18,7 +18,6 @@ let lastLyricParticleAt = 0;
 let timers = [];
 let cueTimers = [];
 let harmonyTimers = [];
-let harmonyHalfState = { cueIndex: -1, root: null };
 let cueRuntimeRaf = null;
 let activeCue = null;
 let nextCueIndex = 0;
@@ -444,19 +443,24 @@ function clearHarmonyTimers() {
   harmonyTimers = [];
 }
 
-// 整段分解和弦分两段，每段对应乐谱里的一次和弦提示（cue）。
-// 只有当这次的和弦提示与上一次在乐谱里【紧邻且同根音】时，才接后半段；
-// 否则（中间换过和弦、或不相邻）都从前半段开始。所以没有连续第二次同和弦时，
-// 后半段永远不会出现。返回本次应弹的半段序号（0=前半，1=后半）。
-function advanceHarmonyHalf(root, cue) {
+// 整段分解和弦分前后两段，每段对应乐谱里的一次和弦提示（cue）。
+// 判定只看乐谱结构，与“上次按了没、按多快”无关：找到这个 cue 在乐谱里的位置，
+// 看它前面那个 cue 是不是同一个根音——
+//   前一个不同（或没有前一个）→ 这是一段连续同和弦的第 1 个 → 弹前半（0）；
+//   前一个相同 → 连续同和弦的后续 → 与前一个交替，弹后半（1），再一个又回前半。
+// 因此孤立的单个和弦永远只弹前半；只有乐谱里连续排了同根音，后半才出现。
+function chordHalfForCue(cue) {
   const cues = song?.chordCues || [];
   const idx = cue ? cues.indexOf(cue) : -1;
-  const adjacentSame =
-    idx >= 0 &&
-    harmonyHalfState.cueIndex === idx - 1 &&
-    harmonyHalfState.root === root;
-  harmonyHalfState = { cueIndex: idx, root };
-  return adjacentSame ? 1 : 0;
+  if (idx < 0) return 0;
+  const root = cue.root || rootFromChord(cue.chord);
+  // 往前数连续同根音的个数，用奇偶决定前/后半。
+  let run = 0;
+  for (let i = idx - 1; i >= 0; i--) {
+    const r = cues[i].root || rootFromChord(cues[i].chord);
+    if (r === root) run++; else break;
+  }
+  return run % 2 === 0 ? 0 : 1;
 }
 
 // 取一个和弦【完整整段】的分解和弦音符，纯按 pattern beat 顺序排列。
@@ -2513,11 +2517,10 @@ function playStyledHarmony(root, forcedCue = null) {
     // 演奏模式（全自动/半自动/手动）只决定谁触发、按后是否推进，不影响伴奏内容。
     // 取完整整段（新函数，不受旧 patternPhraseForCue 的按慢丢音逻辑影响），再切半段。
     const fullPhrase = fullChordPhrase(pattern);
-    const half = advanceHarmonyHalf(root, cue);
+    const half = chordHalfForCue(cue);
     const notes = sliceHarmonyHalf(fullPhrase, half);
     // 半段的音平均铺满「按下时刻 → 当前小节结束线」：按早自动拉长、按晚自动加快。
     const laidOut = layoutHalfInBar(notes, now, pattern);
-    console.log(`[harmony] root=${root} code=${code} slot=${slot} 整段=${fullPhrase.length} half=${half} 半段=${notes.length} 发声=${laidOut.length}`);
     for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const velocity = normalizedHarmonyVelocity(n.velocity);
@@ -2563,7 +2566,6 @@ function stopPlayback() {
   updatePlayButton();
   playOffset = 0;
   nextManualMelodyIndex = 0;
-  harmonyHalfState = { cueIndex: -1, root: null };
   clearTimers();
   stopRecording(false);
   releaseWakeLock();
@@ -2577,7 +2579,6 @@ function finishPlayback() {
   updatePlayButton();
   playOffset = song?.duration || 0;
   nextManualMelodyIndex = 0;
-  harmonyHalfState = { cueIndex: -1, root: null };
   clearTimers();
   stopRecording(true);
   releaseWakeLock();
