@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-30';
+const ASSET_VERSION = 'reset-20260710-31';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -599,7 +599,7 @@ function timingGrade(progress, correctKey = true) {
 }
 
 function showTimingRating(key, grade) {
-  if (!key || (!isSemiAutoMode() && !isManualMode())) return;
+  if (!key) return;
   key.querySelectorAll('.timing-rating').forEach(el => el.remove());
   const rating = document.createElement('span');
   rating.className = `timing-rating grade-${String(grade).toLowerCase()}`;
@@ -2624,6 +2624,7 @@ function autoPressCue(active) {
   const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
   const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
   keys.forEach(key => {
+    showTimingRating(key, 'S');
     showPickZoneFeedback(key, chordPatternSlotAtTime(active.cue.time));
     key.classList.remove('chord-due', 'miss', 'chord-release');
     key.classList.add('chord-press');
