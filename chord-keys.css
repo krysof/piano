@@ -103,6 +103,36 @@
 #manualKeyboard .chord-symbol.fail { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.86); transition-duration: 280ms; }
 #manualKeyboard .chord-symbol.hit { color: transparent; background: transparent; border-color: transparent; box-shadow: none; text-shadow: none; }
 
+#manualKeyboard .timing-rating {
+  position: absolute;
+  z-index: 24;
+  top: 6%;
+  left: 50%;
+  min-width: 1.8em;
+  color: #fff;
+  font-size: clamp(18px, 5.8cqw, 30px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: .02em;
+  text-align: center;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.72));
+  animation: timingRatingFloat .82s cubic-bezier(.18,.78,.2,1) forwards;
+}
+
+#manualKeyboard .timing-rating.grade-s { color: #fff7a8; text-shadow: 0 0 7px #ffd84f, 0 0 18px #ffb300; }
+#manualKeyboard .timing-rating.grade-a { color: #9fffe1; text-shadow: 0 0 7px #35e8b2, 0 0 16px #1bbf91; }
+#manualKeyboard .timing-rating.grade-b { color: #a9d8ff; text-shadow: 0 0 7px #5eaaff, 0 0 16px #426cff; }
+#manualKeyboard .timing-rating.grade-c { color: #e2bdff; text-shadow: 0 0 7px #b96dff, 0 0 16px #8047d7; }
+#manualKeyboard .timing-rating.grade-miss { color: #ff9b9b; text-shadow: 0 0 7px #ff4f5f, 0 0 16px #b91e3b; font-size: clamp(14px, 4.5cqw, 23px); }
+
+@keyframes timingRatingFloat {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.78); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
+  42% { opacity: 1; transform: translate(-50%, -6px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -30px) scale(.9); }
+}
+
 #manualKeyboard .chord-shard {
   position: absolute;
   z-index: 21;

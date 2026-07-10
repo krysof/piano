@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-29';
+const ASSET_VERSION = 'reset-20260710-30';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -586,6 +586,26 @@ function cueProgressForKey(key) {
 function isGoodTiming(key) {
   const p = cueProgressForKey(key);
   return p !== null && p >= 90 && p <= 110;
+}
+
+function timingGrade(progress, correctKey = true) {
+  if (!correctKey || !Number.isFinite(progress)) return 'MISS';
+  const error = Math.abs(progress - 100);
+  if (error <= 2) return 'S';
+  if (error <= 5) return 'A';
+  if (error <= 8) return 'B';
+  if (error <= 10) return 'C';
+  return 'MISS';
+}
+
+function showTimingRating(key, grade) {
+  if (!key || (!isSemiAutoMode() && !isManualMode())) return;
+  key.querySelectorAll('.timing-rating').forEach(el => el.remove());
+  const rating = document.createElement('span');
+  rating.className = `timing-rating grade-${String(grade).toLowerCase()}`;
+  rating.textContent = grade;
+  key.appendChild(rating);
+  rating.addEventListener('animationend', () => rating.remove(), { once: true });
 }
 function playVisualNote(midi, velocity, source) {
   playNote(midi, 0.65, velocity);
@@ -2229,10 +2249,11 @@ function burstChordSymbol(el) {
 }
 
 // 没按/按早/按错：整键轻微快速摇晃，不显示 X（docs/UI.md）。
-function failActiveCue() {
+function failActiveCue(showMissRating = true) {
   if (!activeCue) return;
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${activeCue.midi}"]`).forEach(k => {
     if (!activeCue.cue?._id || !k.dataset.cueId || k.dataset.cueId === activeCue.cue._id) {
+      if (showMissRating) showTimingRating(k, 'MISS');
       k.classList.remove('chord-miss');
       void k.offsetWidth;
       k.classList.add('chord-miss');
@@ -3047,6 +3068,7 @@ function renderManualKeyboard() {
           dueAt: pressCueState?.due,
         });
         if (timing.earlyRejected) {
+          showTimingRating(key, 'MISS');
           rejectEarlyChordPress(key);
           return;
         }
@@ -3059,7 +3081,10 @@ function renderManualKeyboard() {
       showPickZoneFeedback(key, pickSlot);
       warmHarmonyTones(false);
       // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
-      if (isGoodTiming(key) && activeCue && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id)) {
+      const matchesActiveCue = Boolean(activeCue
+        && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id));
+      showTimingRating(key, timingGrade(pressProgress, matchesActiveCue));
+      if (isGoodTiming(key) && matchesActiveCue) {
         activeCue.hit = true;
         activeCue.pressed = true;
         hitCue(activeCue.midi, activeCue.cue);
@@ -3067,7 +3092,7 @@ function renderManualKeyboard() {
         window.setTimeout(() => { if (activeCue === pressedCue) finishActiveCue(); }, 260);
       } else {
         // 按早/按错：字打叉淡出（docs/UI.md）。
-        failActiveCue();
+        failActiveCue(false);
       }
       key.classList.remove('chord-due', 'miss', 'chord-release');
       key.classList.add('chord-press');
