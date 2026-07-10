@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-23';
+const ASSET_VERSION = 'reset-20260710-24';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -3004,7 +3004,7 @@ function renderManualKeyboard() {
       const rect = key.getBoundingClientRect();
       const normalizedX = Math.max(0, Math.min(1, (ev.clientX - rect.left) / Math.max(1, rect.width)));
       const normalizedY = Math.max(0, Math.min(1, (ev.clientY - rect.top) / Math.max(1, rect.height)));
-      const pickBoundary = 0.42 + normalizedX * 0.16;
+      const pickBoundary = 0.47 + normalizedX * 0.16;
       const pickSlot = explicitZone
         ? Number(explicitZone.dataset.pickSlot || 0)
         : (normalizedY >= pickBoundary ? 0 : 1);

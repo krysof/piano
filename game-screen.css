@@ -459,7 +459,7 @@ body.game-started .game {
   z-index: 2;
   inset: 0;
   background: rgba(200,190,232,.28);
-  clip-path: polygon(0 41.6%, 100% 57.6%, 100% 58.4%, 0 42.4%);
+  clip-path: polygon(0 46.6%, 100% 62.6%, 100% 63.4%, 0 47.4%);
   content: '';
   pointer-events: none;
 }
@@ -481,14 +481,14 @@ body.game-started .game {
   justify-content: flex-start;
   padding: 0 0 clamp(10px, 1.8vh, 18px) clamp(9px, 16cqw, 24px);
   background: linear-gradient(180deg, rgba(139,92,246,.025), rgba(139,92,246,.11));
-  clip-path: polygon(0 42%, 100% 58%, 100% 100%, 0 100%);
+  clip-path: polygon(0 47%, 100% 63%, 100% 100%, 0 100%);
 }
 .pick-zone-b {
   align-items: flex-start;
   justify-content: flex-end;
   padding: clamp(9px, 1.6vh, 16px) clamp(9px, 16cqw, 24px) 0 0;
   background: linear-gradient(180deg, rgba(79,209,197,.018), rgba(79,209,197,.085));
-  clip-path: polygon(0 0, 100% 0, 100% 58%, 0 42%);
+  clip-path: polygon(0 0, 100% 0, 100% 63%, 0 47%);
 }
 .pick-zone-a.picked { color: #d5c8ff; background: linear-gradient(180deg, transparent 58%, rgba(139,92,246,.22)); box-shadow: inset -2px 0 0 rgba(139,92,246,.45); }
 .pick-zone-b.picked { color: #baf2ed; background: linear-gradient(180deg, transparent 58%, rgba(79,209,197,.18)); box-shadow: inset 2px 0 0 rgba(79,209,197,.4); }
