@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-26';
+const ASSET_VERSION = 'reset-20260710-27';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -2028,7 +2028,7 @@ async function loadDefaultMidi() {
     throw err;
   }
 }
-function scheduleFrom(offset = 0, preserveInteractive = false) {
+function scheduleFrom(offset = 0, preserveInteractive = false, skipChordCueAtOffset = false) {
   if (!song || !song.melodyTrack.notes.length) return;
   if (!preserveInteractive) resetInteractiveSequencer();
   clearTimers();
@@ -2043,7 +2043,7 @@ function scheduleFrom(offset = 0, preserveInteractive = false) {
   }
   scheduleDrumsFrom(offset);
   if (isAutoChordMode()) scheduleAutoHarmonyFrom(offset);
-  else scheduleChordCues(offset);
+  else scheduleChordCues(offset, skipChordCueAtOffset);
   timers.push(setTimeout(finishPlayback, Math.max(0, (song.duration - offset) * 1000) + 900));
   clockTimer = setInterval(() => { updateClock(); updateLyrics(); }, 33);
   updateClock();
@@ -2140,9 +2140,10 @@ function scheduleAutoHarmonyFrom(offset = 0) {
 }
 
 
-function scheduleChordCues(offset = 0) {
+function scheduleChordCues(offset = 0, skipCueAtOffset = false) {
   if (!song?.chordCues?.length) return;
-  nextCueIndex = song.chordCues.findIndex(c => c.time >= offset - 0.02);
+  const threshold = skipCueAtOffset ? offset + 0.02 : offset - 0.02;
+  nextCueIndex = song.chordCues.findIndex(c => c.time >= threshold);
   if (nextCueIndex < 0) nextCueIndex = song.chordCues.length;
   activeCue = null;
   startCueRuntimeLoop();
@@ -2931,18 +2932,21 @@ function finishInteractiveTransition(mode, boundary) {
   playOffset = Math.max(playOffset, Math.min(song?.duration || boundary, boundary));
   interactiveTransitioning = false;
   interactivePhrase = null;
+  // 触发追赶时，队首就是玩家已经提前按下、马上要真正播放的 boundary cue。
+  // 重新调度提示时必须跳过它，否则同一个 cue 会先以 100% 进度瞬间重画一次，
+  // 看起来像“下一个和弦飞快升起”。
+  const next = interactivePressQueue.shift();
   if (mode === 'semi') {
-    scheduleFrom(playOffset, true);
+    scheduleFrom(playOffset, true, Boolean(next));
   } else {
     const notes = song?.melodyTrack?.notes || [];
     const boundaryIndex = notes.findIndex(note => note.time >= playOffset - 0.001);
     if (boundaryIndex >= 0) nextManualMelodyIndex = Math.max(nextManualMelodyIndex, boundaryIndex);
     ensureManualClock();
-    scheduleChordCues(playOffset);
+    scheduleChordCues(playOffset, Boolean(next));
     updateClock();
     updateLyrics();
   }
-  const next = interactivePressQueue.shift();
   if (next) beginInteractivePhrase(next.root, next.cue, next.timing);
   if (interactivePressQueue.length) {
     const following = interactivePressQueue.shift();
