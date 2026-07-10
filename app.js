@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-15';
+const ASSET_VERSION = 'reset-20260710-16';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -2822,35 +2822,19 @@ function setupStartScreen() {
       updatePlaybackToggles();
     });
   });
-  const melodyCard = screen.querySelector('[data-group="melody"].source-card');
-  if (melodyCard) {
-    melodyCard.addEventListener('click', () => {
-      melodyUserTouched = true;
-      melodyEnabled = !melodyEnabled;
-      if (melodyEnabled) guideMode = false;
-      melodyCard.querySelector('[data-melody="on"]')?.classList.toggle('selected', melodyEnabled);
-      melodyCard.classList.toggle('is-off', !melodyEnabled);
-      syncMelodyGuideMenu(screen);
-      updatePlaybackToggles();
-    });
-  } else {
-    screen.querySelectorAll('[data-melody]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        melodyUserTouched = true;
-        melodyEnabled = btn.dataset.melody !== 'off';
-        if (melodyEnabled) guideMode = false;
-        syncMelodyGuideMenu(screen);
-        updatePlaybackToggles();
-      });
-    });
-  }
-  screen.querySelectorAll('[data-mic]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      micEnabled = btn.dataset.mic === 'on';
-      if (!micEnabled) stopMic();
-      updateMicMenu();
-      if (micEnabled) await ensureMic();
-    });
+  screen.querySelector('[data-group="melody"]')?.addEventListener('click', () => {
+    if (guideMode) return;
+    melodyUserTouched = true;
+    melodyEnabled = !melodyEnabled;
+    if (melodyEnabled) guideMode = false;
+    syncMelodyGuideMenu(screen);
+    updatePlaybackToggles();
+  });
+  screen.querySelector('[data-group="mic"]')?.addEventListener('click', async () => {
+    micEnabled = !micEnabled;
+    if (!micEnabled) stopMic();
+    updateMicMenu();
+    if (micEnabled) await ensureMic();
   });
   $('menuKeyDown')?.addEventListener('click', () => applyKeyShift(-1));
   $('menuKeyUp')?.addEventListener('click', () => applyKeyShift(1));
@@ -2888,16 +2872,10 @@ function setupStartScreen() {
   updateVolumeButtons();
   updateMicMenu();
   syncMelodyGuideMenu(screen);
-  screen.querySelectorAll('[data-guide]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      guideMode = btn.dataset.guide === 'on';
-      if (guideMode) {
-        melodyEnabled = false;
-        melodyUserTouched = true;
-      }
-      syncMelodyGuideMenu(screen);
-      updatePlaybackToggles();
-    });
+  screen.querySelector('[data-group="guide"]')?.addEventListener('click', () => {
+    guideMode = !guideMode;
+    syncMelodyGuideMenu(screen);
+    updatePlaybackToggles();
   });
   $('startGameBtn')?.addEventListener('click', startGameFromMenu);
 }
