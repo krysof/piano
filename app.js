@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-06';
+const ASSET_VERSION = 'reset-20260710-07';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -40,6 +40,7 @@ let melodyEnabled = true;
 let melodyUserTouched = false;
 let melodyGain = 1.0;
 let harmonyGain = 1.55;
+let drumGain = 1.55;
 let micEnabled = false;
 // 麦克风固定 95% 防爆麦：这是内部隐藏值，不在界面暴露，也不允许用户调节。
 const FIXED_MIC_GAIN = 0.95;
@@ -453,7 +454,7 @@ function playDrumOsc(when, duration, peak, type, startFrequency, endFrequency = 
 function playDrumKitNote(midi, velocity, patternDuration) {
   ensureAudio();
   const now = audio.ctx.currentTime;
-  const level = Math.min(1, 0.035 + Math.max(0, velocity) * 1.05);
+  const level = Math.min(1.6, (0.035 + Math.max(0, velocity) * 1.05) * drumGain);
   const voice = drumVoiceForMidi(midi);
   if (voice === 'kick') {
     playDrumOsc(now, 0.34, level * 0.95, 'sine', 155, 46);
@@ -482,10 +483,22 @@ function playDrumKitNote(midi, velocity, patternDuration) {
   }
 }
 
-function playDrumPatternNote(patternNote) {
+function prepareDrumPattern(pattern, drumCode = pattern?.code) {
+  if (!pattern?.notes?.length || !window.FreezaDrumKits) return Promise.resolve();
+  ensureAudio();
+  return window.FreezaDrumKits.preload(
+    audio.ctx,
+    drumCode,
+    pattern.notes.map(note => drumPitchToMidi(note.pitch)),
+  );
+}
+
+function playDrumPatternNote(patternNote, drumCode = currentDrumCode) {
+  ensureAudio();
   const midi = drumPitchToMidi(patternNote.pitch);
   const velocity = Math.max(0, Math.min(1, Number(patternNote.velocity || 0) / 127));
   const duration = Math.max(0.05, Number(patternNote.duration || 0.2) * beatMs() / 1000);
+  if (window.FreezaDrumKits?.play(audio.ctx, audio.master, drumCode, midi, velocity, drumGain)) return;
   playDrumKitNote(midi, velocity, duration);
 }
 
@@ -630,15 +643,19 @@ function percentLabel(v) {
 function updateVolumeButtons() {
   const mv = $('menuMelodyVolValue');
   const hv = $('menuHarmonyVolValue');
+  const dv = $('menuDrumVolValue');
   const micv = $('menuMicGainValue');
   const mr = $('menuMelodyVolRange');
   const hr = $('menuHarmonyVolRange');
+  const dr = $('menuDrumVolRange');
   const mir = $('menuMicGainRange');
   if (mv) mv.textContent = percentLabel(melodyGain);
   if (hv) hv.textContent = percentLabel(harmonyGain);
+  if (dv) dv.textContent = percentLabel(drumGain);
   if (micv) micv.textContent = percentLabel(micGain);
   if (mr) { mr.value = String(Math.round(melodyGain * 100)); mr.style.setProperty('--pct', `${Math.round((melodyGain * 100 - 25) / 175 * 100)}%`); }
   if (hr) { hr.value = String(Math.round(harmonyGain * 100)); hr.style.setProperty('--pct', `${Math.round((harmonyGain * 100 - 25) / 175 * 100)}%`); }
+  if (dr) { dr.value = String(Math.round(drumGain * 100)); dr.style.setProperty('--pct', `${Math.round((drumGain * 100 - 25) / 175 * 100)}%`); }
   if (mir) { mir.value = String(Math.round(micGain * 100)); mir.style.setProperty('--pct', `${Math.round((micGain * 100 - 25) / 175 * 100)}%`); }
 }
 
@@ -2234,6 +2251,7 @@ function scheduleDrumsFrom(offset = 0) {
   }
   const pattern = currentDrumPattern();
   if (!pattern?.notes?.length || !song?.duration) return;
+  prepareDrumPattern(pattern, currentDrumCode || pattern.code);
   const beat = beatMs();
   const barBeats = patternBeats(pattern);
   const barSec = barBeats * beat / 1000;
@@ -2244,7 +2262,7 @@ function scheduleDrumsFrom(offset = 0) {
       const t = barStart + Number(n.beat || 0) * beat / 1000;
       if (t < offset - 0.02 || t > song.duration + 0.5) continue;
       const delay = Math.max(0, (t - offset) * 1000);
-      timers.push(setTimeout(() => playDrumPatternNote(n), delay));
+      timers.push(setTimeout(() => playDrumPatternNote(n, currentDrumCode || pattern.code), delay));
     }
   }
 }
@@ -2263,11 +2281,12 @@ function scheduleAutomatedDrumsFrom(offset = 0) {
       console.warn('No drum pattern for LLDRUM', ev.drumCodes);
       continue;
     }
-    scheduleDrumPatternWindow(pattern, Math.max(offset, ev.time), ev.time, Math.min(end, song.duration), offset);
+    prepareDrumPattern(pattern, code);
+    scheduleDrumPatternWindow(pattern, code, Math.max(offset, ev.time), ev.time, Math.min(end, song.duration), offset);
   }
 }
 
-function scheduleDrumPatternWindow(pattern, fromTime, anchorTime, endTime, offset) {
+function scheduleDrumPatternWindow(pattern, drumCode, fromTime, anchorTime, endTime, offset) {
   const beat = beatMs();
   const barBeats = patternBeats(pattern);
   const barSec = barBeats * beat / 1000;
@@ -2278,7 +2297,7 @@ function scheduleDrumPatternWindow(pattern, fromTime, anchorTime, endTime, offse
       const t = barStart + Number(n.beat || 0) * beat / 1000;
       if (t < fromTime - 0.02 || t >= endTime - 0.001 || t > song.duration + 0.5) continue;
       const delay = Math.max(0, (t - offset) * 1000);
-      timers.push(setTimeout(() => playDrumPatternNote(n), delay));
+      timers.push(setTimeout(() => playDrumPatternNote(n, drumCode || pattern.code), delay));
     }
   }
 }
@@ -2521,6 +2540,19 @@ async function prepareStartAssets() {
   await withTimeout(warmHarmonyTones(false), 2500, 'harmony warmup').catch(err => {
     console.warn('Harmony warmup continues in background:', err.message);
   });
+  if (drumMode !== 'off') {
+    setLoadingStatus('加载鼓机采样…');
+    const selections = [];
+    const current = currentDrumPattern();
+    if (current) selections.push([current, currentDrumCode || current.code]);
+    const firstDrumEvent = song?.drumEvents?.find(event => event.switchType === 1);
+    const firstCode = resolveDrumPatternCode(firstDrumEvent?.drumCodes);
+    const firstPattern = firstCode ? patterns.byCode.get(firstCode) : null;
+    if (firstPattern && !selections.some(([, code]) => code === firstCode)) selections.push([firstPattern, firstCode]);
+    await withTimeout(Promise.all(selections.map(([pattern, code]) => prepareDrumPattern(pattern, code))), 2500, 'drum warmup').catch(err => {
+      console.warn('Drum warmup continues in background:', err.message);
+    });
+  }
   if (micEnabled) {
     setLoadingStatus('打开麦克风…');
     await ensureMic();
@@ -2960,6 +2992,7 @@ function setupStartScreen() {
   $('menuMicGainUp')?.addEventListener('click', () => adjustMicGain(0));
   $('menuMelodyVolRange')?.addEventListener('input', (ev) => { melodyGain = Math.max(0.25, Math.min(2, Number(ev.target.value) / 100)); updateVolumeButtons(); });
   $('menuHarmonyVolRange')?.addEventListener('input', (ev) => { harmonyGain = Math.max(0.25, Math.min(2, Number(ev.target.value) / 100)); updateVolumeButtons(); });
+  $('menuDrumVolRange')?.addEventListener('input', (ev) => { drumGain = Math.max(0.25, Math.min(2, Number(ev.target.value) / 100)); updateVolumeButtons(); });
   $('menuMicGainRange')?.addEventListener('input', () => adjustMicGain(0));
   updateVolumeButtons();
   updateMicMenu();
