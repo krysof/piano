@@ -57,9 +57,24 @@
 
 #manualKeyboard .chord-cue .chord-symbol,
 #manualKeyboard .chord-due .chord-symbol,
-#manualKeyboard .chord-press .chord-symbol {
+#manualKeyboard .chord-press .chord-symbol,
+#manualKeyboard .countdown-cue-preview .chord-symbol {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+#manualKeyboard .countdown-cue-preview {
+  border-color: color-mix(in srgb, var(--note-color) 72%, #fff);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--note-color) 28%, transparent), inset 0 0 0 2px color-mix(in srgb, var(--note-color) 35%, transparent);
+}
+
+#manualKeyboard .countdown-cue-preview .chord-symbol {
+  animation: countdownCueBreathe 1.2s ease-in-out infinite;
+}
+
+@keyframes countdownCueBreathe {
+  0%, 100% { filter: brightness(.9); transform: translateX(-50%) translateY(0) scale(.96); }
+  50% { filter: brightness(1.15); transform: translateX(-50%) translateY(0) scale(1.05); }
 }
 
 #manualKeyboard .chord-symbol:empty { display: none; }

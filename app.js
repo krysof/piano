@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-20';
+const ASSET_VERSION = 'reset-20260710-21';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -1189,14 +1189,16 @@ function isManualMode() { return playMode === 'manual'; }
 function updateGamePickControls(time = currentPlayTime()) {
   const enabled = isAutoChordMode();
   const activeSlot = song ? chordPatternSlotAtTime(time) : Math.max(0, harmonyToneMode - 1);
-  [$('pickABtn'), $('pickBBtn')].forEach((button, slot) => {
-    if (!button) return;
-    button.disabled = !enabled;
-    button.classList.toggle('selected', enabled && slot === activeSlot);
-    button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
-    button.setAttribute('aria-pressed', enabled && slot === activeSlot ? 'true' : 'false');
-    button.title = enabled ? `全自动拨片 ${slot ? 'B' : 'A'}` : '仅全自动模式可用';
-  });
+  const button = $('pickToneBtn');
+  if (!button) return;
+  const label = activeSlot > 0 ? 'B' : 'A';
+  button.textContent = `拨${label}`;
+  button.dataset.pickSlot = label;
+  button.disabled = !enabled;
+  button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+  button.setAttribute('aria-pressed', activeSlot > 0 ? 'true' : 'false');
+  button.setAttribute('aria-label', `切换拨片音色，当前 ${label}`);
+  button.title = enabled ? `点击切换到拨片 ${activeSlot > 0 ? 'A' : 'B'}` : '仅全自动模式可用';
 }
 
 function selectGamePickSlot(slot) {
@@ -2273,11 +2275,37 @@ function updateCueRuntime() {
 function clearCountdown() {
   clearTimeout(countdownTimer);
   countdownTimer = null;
+  clearCountdownCuePreview();
   const el = $('countdownOverlay');
   if (el) {
-    el.classList.remove('show');
+    el.classList.remove('show', 'pop');
     el.textContent = '';
   }
+}
+
+function clearCountdownCuePreview() {
+  document.querySelectorAll('#manualKeyboard .countdown-cue-preview').forEach(key => {
+    key.classList.remove('countdown-cue-preview');
+    const symbol = key.querySelector('.chord-symbol[data-countdown-preview="1"]');
+    if (symbol) {
+      symbol.textContent = '';
+      delete symbol.dataset.countdownPreview;
+    }
+  });
+}
+
+function showCountdownCuePreview() {
+  clearCountdownCuePreview();
+  const cue = (song?.chordCues || []).find(item => item?.root && NATURAL_TO_MIDI[item.root]);
+  if (!cue) return;
+  const midi = NATURAL_TO_MIDI[cue.root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    const symbol = key.querySelector('.chord-symbol');
+    if (!symbol) return;
+    symbol.textContent = shiftedRootLabel(cue.root);
+    symbol.dataset.countdownPreview = '1';
+    key.classList.add('countdown-cue-preview');
+  });
 }
 
 function enterPlaybackAfterCountdown() {
@@ -2376,13 +2404,11 @@ function startCountdownThenPlay() {
   const el = $('countdownOverlay');
   const steps = ['3', '2', '1'];
   let i = 0;
+  showCountdownCuePreview();
   const tick = () => {
     if (!el) return playPlayback();
     el.textContent = steps[i];
-    el.classList.remove('pop');
     el.classList.add('show');
-    void el.offsetWidth;
-    el.classList.add('pop');
     i++;
     if (i < steps.length) {
       countdownTimer = setTimeout(tick, 760);
@@ -2919,8 +2945,10 @@ $('savePrompt')?.addEventListener('click', (ev) => { if (ev.target?.id === 'save
 $('toneBtn').onclick = () => {
   selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
 };
-$('pickABtn').onclick = () => selectGamePickSlot(0);
-$('pickBBtn').onclick = () => selectGamePickSlot(1);
+$('pickToneBtn').onclick = () => {
+  const currentSlot = song ? chordPatternSlotAtTime(currentPlayTime()) : Math.max(0, harmonyToneMode - 1);
+  selectGamePickSlot(currentSlot > 0 ? 0 : 1);
+};
 $('melodyToggle').onclick = () => {
   melodyEnabled = !melodyEnabled;
   if (melodyEnabled) guideMode = false;

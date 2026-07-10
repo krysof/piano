@@ -94,7 +94,7 @@ body.game-started .game {
 
 .game-controls {
   display: grid;
-  grid-template-columns: repeat(10, minmax(40px, 1fr));
+  grid-template-columns: repeat(9, minmax(42px, 1fr));
   gap: 6px;
   min-width: 0;
 }
@@ -135,12 +135,6 @@ body.game-started .game {
   box-shadow: 0 8px 18px rgba(72, 42, 150, .3), inset 0 1px 0 rgba(255,255,255,.18);
 }
 .btn.accent { color: #c9b7ff; border-color: rgba(142,100,245,.28); background: rgba(109,74,255,.12); }
-.btn.pick-select.selected {
-  color: #fff;
-  border-color: rgba(79, 209, 197, .55);
-  background: linear-gradient(135deg, rgba(79, 209, 197, .32), rgba(109, 74, 255, .42));
-  box-shadow: 0 7px 16px rgba(48, 121, 130, .18), inset 0 1px 0 rgba(255,255,255,.12);
-}
 .btn.save { color: #e8ecf6; }
 
 /* Lyrics workstation */
@@ -519,7 +513,7 @@ body.game-started .game {
   }
   .hud { display: block; min-height: 0; padding: 6px; border-radius: 15px; }
   .game-brand { display: none; }
-  .game-controls { grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
+  .game-controls { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 3px; }
   .btn { min-height: 38px; padding: 0 1px; border-radius: 8px; font-size: 10px; }
   .karaoke { padding: 44px 4px 8px; border-radius: 17px; }
   .karaoke-panel-title { top: 9px; left: 12px; }
