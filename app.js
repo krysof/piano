@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-12';
+const ASSET_VERSION = 'reset-20260710-13';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -244,6 +244,90 @@ function ensureAudio() {
   }
   if (audio.ctx.state === 'suspended') audio.ctx.resume();
   connectToneToRecorder();
+}
+
+function playLaunchTone(frequency, delay = 0, duration = 0.09, level = 0.055, type = 'sine') {
+  ensureAudio();
+  const ctx = audio.ctx;
+  if (!ctx || !audio.master) return;
+  const start = ctx.currentTime + Math.max(0, delay);
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(Math.max(60, frequency), start);
+  oscillator.frequency.exponentialRampToValueAtTime(Math.max(60, frequency * 1.025), start + duration);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(level, start + Math.min(0.012, duration * 0.28));
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  oscillator.connect(gain).connect(audio.master);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function playLaunchUiSound(kind = 'select', value = 0.5) {
+  try {
+    const position = Math.max(0, Math.min(1, Number(value) || 0));
+    if (kind === 'brand') {
+      playLaunchTone(392, 0, 0.12, 0.052, 'triangle');
+      playLaunchTone(523.25, 0.055, 0.14, 0.047, 'sine');
+      playLaunchTone(783.99, 0.12, 0.18, 0.038, 'sine');
+    } else if (kind === 'panel') {
+      playLaunchTone(493.88, 0, 0.075, 0.037, 'triangle');
+      playLaunchTone(659.25, 0.045, 0.095, 0.032, 'sine');
+    } else if (kind === 'start') {
+      playLaunchTone(392, 0, 0.11, 0.05, 'triangle');
+      playLaunchTone(523.25, 0.045, 0.14, 0.048, 'triangle');
+      playLaunchTone(659.25, 0.09, 0.18, 0.044, 'sine');
+    } else if (kind === 'toggle') {
+      playLaunchTone(330, 0, 0.055, 0.034, 'square');
+      playLaunchTone(494, 0.032, 0.07, 0.027, 'sine');
+    } else if (kind === 'slider') {
+      playLaunchTone(360 + position * 520, 0, 0.036, 0.022, 'sine');
+    } else {
+      playLaunchTone(440, 0, 0.06, 0.034, 'triangle');
+      playLaunchTone(587.33, 0.028, 0.075, 0.026, 'sine');
+    }
+  } catch (err) {
+    console.warn('Launch UI sound unavailable:', err);
+  }
+}
+
+function setupLaunchUiSounds(screen) {
+  let lastSliderSoundAt = 0;
+  const soundKindFor = (target) => {
+    if (target?.dataset?.uiSound) return target.dataset.uiSound;
+    if (target?.id === 'startGameBtn') return 'start';
+    if (target?.closest?.('.launch-switch')) return 'toggle';
+    return 'select';
+  };
+  screen.addEventListener('pointerdown', (event) => {
+    const target = event.target.closest('button, [data-ui-sound]');
+    if (target && screen.contains(target)) playLaunchUiSound(soundKindFor(target));
+  });
+  screen.addEventListener('click', (event) => {
+    if (event.detail !== 0) return;
+    const target = event.target.closest('button, [data-ui-sound]');
+    if (target && screen.contains(target)) playLaunchUiSound(soundKindFor(target));
+  });
+  screen.querySelectorAll('[data-ui-sound]').forEach(target => {
+    target.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        playLaunchUiSound(soundKindFor(target));
+      }
+    });
+  });
+  screen.querySelectorAll('.launch-range').forEach(range => {
+    range.addEventListener('input', () => {
+      if (range.id === 'menuKeyRange') return; // Key 已播放实际变调试听音。
+      const now = performance.now();
+      if (now - lastSliderSoundAt < 42) return;
+      lastSliderSoundAt = now;
+      const min = Number(range.min) || 0;
+      const max = Number(range.max) || 1;
+      playLaunchUiSound('slider', (Number(range.value) - min) / Math.max(1, max - min));
+    });
+  });
 }
 
 function connectToneToRecorder() {
@@ -2651,6 +2735,7 @@ $('drumToggle').onclick = () => {
 function setupStartScreen() {
   const screen = $('startScreen');
   if (!screen) return;
+  setupLaunchUiSounds(screen);
   // 默认必须关麦克风；只有用户主动点“开”才申请权限。
   micEnabled = false;
   stopMic();

@@ -134,6 +134,8 @@ body.game-started #startScreen {
   border-radius: 17px;
   background: linear-gradient(145deg, rgba(151, 105, 255, 0.95), rgba(82, 52, 174, 0.96));
   box-shadow: 0 12px 30px rgba(109, 74, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: transform 150ms ease, filter 150ms ease;
 }
 
 .launch-logo svg {
@@ -141,6 +143,17 @@ body.game-started #startScreen {
   height: 46px;
   overflow: visible;
   filter: drop-shadow(0 4px 8px rgba(22, 12, 48, 0.42));
+}
+
+.launch-logo:active,
+.launch-heading-icon:active {
+  transform: scale(0.94);
+}
+
+.launch-logo:focus-visible,
+.launch-heading-icon:focus-visible {
+  outline: 2px solid rgba(174, 145, 255, 0.9);
+  outline-offset: 3px;
 }
 
 .launch-eyebrow,
@@ -256,6 +269,8 @@ body.game-started #startScreen {
   color: #bda9ff;
   background: rgba(139, 92, 246, 0.09);
   font-size: 22px;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
 }
 
 .launch-level-icon {
@@ -692,15 +707,17 @@ body.game-started #startScreen {
   }
 
   .launch-shell {
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    min-height: min(650px, calc(100dvh - 16px));
+    min-height: calc(100dvh - 16px);
     padding: 13px;
     border-radius: 23px;
   }
 
   .launch-header {
-    min-height: 50px;
-    margin-bottom: 10px;
+    min-height: 56px;
+    margin-bottom: 11px;
   }
 
   .launch-logo {
@@ -714,33 +731,41 @@ body.game-started #startScreen {
     height: 39px;
   }
 
-  .launch-eyebrow { font-size: 7px; }
-  .launch-brand h1 { font-size: 21px; }
+  .launch-eyebrow { font-size: 8px; }
+  .launch-brand h1 { font-size: 23px; }
 
   .launch-status {
     padding: 7px 9px;
     border-radius: 12px;
-    font-size: 9px;
+    font-size: 10px;
   }
 
-  .launch-status b { font-size: 7px; }
+  .launch-status b { font-size: 8px; }
 
   .launch-dashboard {
+    flex: 1 1 auto;
     grid-template-columns: 1fr;
     grid-template-areas:
       "performance"
       "mixer"
       "switches";
-    gap: 8px;
+    grid-template-rows: minmax(0, 1.42fr) minmax(0, .92fr) minmax(0, .52fr);
+    gap: 9px;
   }
 
   .launch-performance,
   .launch-mixer {
-    padding: 11px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 12px;
   }
 
   .launch-switches {
-    padding: 9px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 10px 11px 11px;
   }
 
   .launch-panel {
@@ -748,16 +773,17 @@ body.game-started #startScreen {
   }
 
   .launch-panel-heading {
-    min-height: 29px;
-    margin-bottom: 7px;
+    flex: 0 0 auto;
+    min-height: 31px;
+    margin-bottom: 8px;
   }
 
   .launch-panel-heading h2 {
     margin-top: 3px;
-    font-size: 13px;
+    font-size: 15px;
   }
 
-  .launch-kicker { font-size: 7px; }
+  .launch-kicker { font-size: 8px; }
 
   .launch-heading-icon {
     width: 29px;
@@ -766,91 +792,114 @@ body.game-started #startScreen {
     font-size: 18px;
   }
 
-  .launch-performance-grid { gap: 7px; }
+  .launch-performance-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 8px;
+  }
+  .launch-control-group {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
   .launch-control-label { margin-bottom: 5px; }
-  .launch-control-label span { font-size: 10px; }
-  .launch-control-label small { font-size: 7px; }
-  .launch-choice-stack { gap: 4px; }
+  .launch-control-label span { font-size: 11px; }
+  .launch-control-label small { font-size: 9px; }
+  .launch-choice-stack {
+    flex: 1 1 auto;
+    grid-template-rows: repeat(3, 1fr);
+    min-height: 0;
+    gap: 5px;
+  }
 
   .launch-choice {
-    grid-template-columns: 36px 1fr;
-    min-height: 32px;
-    padding: 4px 7px;
+    grid-template-columns: 40px 1fr;
+    min-height: 36px;
+    padding: 5px 8px;
     border-radius: 9px;
   }
 
-  .launch-choice b { font-size: 9px; }
-  .launch-choice span { font-size: 8px; }
+  .launch-choice b { font-size: 11px; }
+  .launch-choice span { font-size: 10px; }
 
   .launch-pick-row {
     margin-top: 7px;
-    padding: 6px 7px 6px 9px;
+    min-height: 39px;
+    padding: 7px 8px 7px 10px;
     border-radius: 11px;
   }
 
-  .launch-pick-row > div:first-child > span { font-size: 9px; }
-  .launch-pick-row small { font-size: 7px; }
-  .launch-segment { width: 96px; }
+  .launch-pick-row > div:first-child > span { font-size: 11px; }
+  .launch-pick-row small { font-size: 9px; }
+  .launch-segment { width: 104px; }
 
   .launch-segment-btn,
   .launch-switch button {
-    min-height: 24px;
-    font-size: 8px;
+    min-height: 27px;
+    font-size: 10px;
   }
 
   .launch-mixer-rows {
+    flex: 1 1 auto;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(2, 1fr);
+    min-height: 0;
     gap: 6px;
   }
 
   .launch-fader-row {
     grid-template-columns: 38px minmax(42px, 1fr) 48px;
     gap: 6px;
-    min-height: 39px;
-    padding: 5px 7px;
+    min-height: 45px;
+    padding: 6px 7px;
     border-radius: 10px;
   }
 
-  .launch-fader-name { font-size: 9px; }
+  .launch-fader-name { font-size: 11px; }
   .launch-readout {
     min-width: 48px;
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .launch-panel-heading-compact {
     display: none;
   }
 
-  .launch-toggle-grid { gap: 5px; }
+  .launch-toggle-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    gap: 6px;
+  }
 
   .launch-toggle-item {
     grid-template-columns: 1fr;
     gap: 5px;
-    min-height: 59px;
-    padding: 6px;
+    min-height: 67px;
+    padding: 7px;
     text-align: center;
   }
 
   .launch-toggle-item > div:first-child { gap: 0; }
-  .launch-toggle-item b { font-size: 9px; }
-  .launch-toggle-item small { font-size: 7px; }
+  .launch-toggle-item b { font-size: 11px; }
+  .launch-toggle-item small { font-size: 9px; }
   .launch-switch { width: 100%; }
-  .launch-switch button { min-height: 21px; }
+  .launch-switch button { min-height: 25px; }
 
   .launch-footer {
-    margin-top: 9px;
+    flex: 0 0 auto;
+    margin-top: 10px;
   }
 
   .launch-footnote {
-    font-size: 8px;
+    font-size: 10px;
   }
 
   .launch-start-btn {
     min-width: 170px;
-    min-height: 44px;
+    min-height: 48px;
     padding: 5px 6px 5px 16px;
     border-radius: 13px;
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .launch-start-btn i {
