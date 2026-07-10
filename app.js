@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-13';
+const ASSET_VERSION = 'reset-20260710-14';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -1070,15 +1070,24 @@ function updatePlaybackToggles() {
   }
 }
 
+function syncMelodyGuideMenu(screen = $('startScreen')) {
+  if (!screen) return;
+  screen.querySelectorAll('[data-melody]').forEach(button => {
+    button.classList.toggle('selected', (button.dataset.melody === 'on') === melodyEnabled);
+  });
+  screen.querySelectorAll('[data-guide]').forEach(button => {
+    button.classList.toggle('selected', (button.dataset.guide === 'on') === guideMode);
+  });
+}
+
 function firstRealLyricStart() {
   const line = lyricLines.find(l => !l.prelude && String(l.text || '').trim());
   return Number.isFinite(line?.start) ? line.start : Infinity;
 }
 
 function shouldAutoPlayMelodyAt(time) {
-  if (!melodyEnabled || playMode === 'manual') return false;
   if (guideMode) return time < firstRealLyricStart() - 0.001;
-  return true;
+  return melodyEnabled && playMode !== 'manual';
 }
 
 function isAutoChordMode() { return playMode === 'auto'; }
@@ -1860,12 +1869,10 @@ function scheduleFrom(offset = 0, preserveInteractive = false) {
   updatePlayButton();
   playOffset = offset;
   playStartedAt = performance.now();
-  if (melodyEnabled && playMode !== 'manual') {
-    const notes = song.melodyTrack.notes.filter(e => e.time >= offset && shouldAutoPlayMelodyAt(e.time));
-    for (const e of notes) {
-      const delay = Math.max(0, (e.time - offset) * 1000);
-      timers.push(setTimeout(() => playVisualNote(shiftedMidi(e.note), e.velocity, 'playback'), delay));
-    }
+  const notes = song.melodyTrack.notes.filter(e => e.time >= offset && shouldAutoPlayMelodyAt(e.time));
+  for (const e of notes) {
+    const delay = Math.max(0, (e.time - offset) * 1000);
+    timers.push(setTimeout(() => playVisualNote(shiftedMidi(e.note), e.velocity, 'playback'), delay));
   }
   scheduleDrumsFrom(offset);
   if (isAutoChordMode()) scheduleAutoHarmonyFrom(offset);
@@ -2144,6 +2151,10 @@ function clearCountdown() {
 
 function enterPlaybackAfterCountdown() {
   if (isManualMode()) {
+    if (guideMode) {
+      playManualGuideIntro();
+      return;
+    }
     playing = false;
     clearTimers();
     ensureManualClock();
@@ -2153,6 +2164,42 @@ function enterPlaybackAfterCountdown() {
   } else {
     playPlayback();
   }
+}
+
+function playManualGuideIntro() {
+  const introEnd = Math.min(song?.duration || 0, firstRealLyricStart());
+  if (!Number.isFinite(introEnd) || introEnd <= 0.001) {
+    playing = false;
+    playOffset = 0;
+    ensureManualClock();
+    scheduleChordCues(0);
+    updateClock();
+    updateLyrics();
+    return;
+  }
+  clearTimers();
+  playing = true;
+  playOffset = 0;
+  playStartedAt = performance.now();
+  updatePlayButton();
+  startRecording();
+  for (const note of song.melodyTrack.notes.filter(note => note.time < introEnd - 0.001)) {
+    const delay = Math.max(0, note.time * 1000);
+    timers.push(setTimeout(() => playVisualNote(shiftedMidi(note.note), note.velocity, 'playback'), delay));
+  }
+  clockTimer = setInterval(() => { updateClock(); updateLyrics(); }, 33);
+  timers.push(setTimeout(() => {
+    clearTimers();
+    playing = false;
+    playOffset = introEnd;
+    const nextIndex = song.melodyTrack.notes.findIndex(note => note.time >= introEnd - 0.001);
+    nextManualMelodyIndex = nextIndex < 0 ? song.melodyTrack.notes.length : nextIndex;
+    ensureManualClock();
+    scheduleChordCues(introEnd);
+    updatePlayButton();
+    updateClock();
+    updateLyrics();
+  }, introEnd * 1000));
 }
 
 function setLoadingStatus(text) {
@@ -2566,10 +2613,10 @@ function pendingInteractiveEvents(phrase, nowSong, nowPerf) {
       .map(event => ({ type: 'melody', event, remaining: Math.max(0, (event.dueAt - nowPerf) / 1000) })));
   }
   const boundary = Number(phrase?.segmentEnd || nowSong);
-  const melody = melodyEnabled ? (song?.melodyTrack?.notes || [])
+  const melody = (song?.melodyTrack?.notes || [])
     .map((note, idx) => ({ note, idx }))
     .filter(({ note }) => note.time > nowSong + 0.008 && note.time < boundary - 0.001 && shouldAutoPlayMelodyAt(note.time))
-    .map(({ note, idx }) => ({ type: 'melody', event: { note, idx }, remaining: note.time - nowSong })) : [];
+    .map(({ note, idx }) => ({ type: 'melody', event: { note, idx }, remaining: note.time - nowSong }));
   return harmony.concat(melody);
 }
 
@@ -2722,6 +2769,8 @@ $('toneBtn').onclick = () => {
 };
 $('melodyToggle').onclick = () => {
   melodyEnabled = !melodyEnabled;
+  if (melodyEnabled) guideMode = false;
+  syncMelodyGuideMenu();
   updatePlaybackToggles();
   if (playing) scheduleFrom(currentPlayTime());
 };
@@ -2763,8 +2812,10 @@ function setupStartScreen() {
     melodyCard.addEventListener('click', () => {
       melodyUserTouched = true;
       melodyEnabled = !melodyEnabled;
+      if (melodyEnabled) guideMode = false;
       melodyCard.querySelector('[data-melody="on"]')?.classList.toggle('selected', melodyEnabled);
       melodyCard.classList.toggle('is-off', !melodyEnabled);
+      syncMelodyGuideMenu(screen);
       updatePlaybackToggles();
     });
   } else {
@@ -2772,7 +2823,8 @@ function setupStartScreen() {
       btn.addEventListener('click', () => {
         melodyUserTouched = true;
         melodyEnabled = btn.dataset.melody !== 'off';
-        screen.querySelectorAll('[data-melody]').forEach(b => b.classList.toggle('selected', b === btn));
+        if (melodyEnabled) guideMode = false;
+        syncMelodyGuideMenu(screen);
         updatePlaybackToggles();
       });
     });
@@ -2820,10 +2872,16 @@ function setupStartScreen() {
   $('menuMicGainRange')?.addEventListener('input', () => adjustMicGain(0));
   updateVolumeButtons();
   updateMicMenu();
+  syncMelodyGuideMenu(screen);
   screen.querySelectorAll('[data-guide]').forEach(btn => {
     btn.addEventListener('click', () => {
       guideMode = btn.dataset.guide === 'on';
-      screen.querySelectorAll('[data-guide]').forEach(b => b.classList.toggle('selected', b === btn));
+      if (guideMode) {
+        melodyEnabled = false;
+        melodyUserTouched = true;
+      }
+      syncMelodyGuideMenu(screen);
+      updatePlaybackToggles();
     });
   });
   $('startGameBtn')?.addEventListener('click', startGameFromMenu);
@@ -2847,7 +2905,7 @@ async function startGameFromMenu() {
   screen?.classList.remove('loading');
   document.body.classList.add('game-started');
   // 默认半自动必须有主旋律；只有用户在开始页明确点了“主旋律关”才关闭。
-  if (!melodyUserTouched && playMode === 'semi') melodyEnabled = true;
+  if (!melodyUserTouched && playMode === 'semi' && !guideMode) melodyEnabled = true;
   drumsEnabled = drumMode !== 'off';
   updatePlaybackToggles();
   playOffset = 0;
