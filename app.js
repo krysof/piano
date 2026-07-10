@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-33';
+const ASSET_VERSION = 'reset-20260710-34';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -76,6 +76,8 @@ const NOTE_PC = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 
 const PC_NOTE_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const cueState = new Map();
 const harmonyRepeat = new Map();
+const TIMING_GRADES = ['SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E', 'F', 'MISS'];
+const timingRatingCounts = new Map(TIMING_GRADES.map(grade => [grade, 0]));
 
 function setPill(id, text, type = '') {
   const el = $(id);
@@ -603,14 +605,65 @@ function timingGrade(progress, correctKey = true) {
   return 'MISS';
 }
 
-function showTimingRating(key, grade) {
+function resetTimingRatings() {
+  TIMING_GRADES.forEach(grade => timingRatingCounts.set(grade, 0));
+}
+
+function recordTimingGrade(grade) {
+  const normalized = TIMING_GRADES.includes(grade) ? grade : 'MISS';
+  timingRatingCounts.set(normalized, (timingRatingCounts.get(normalized) || 0) + 1);
+  return normalized;
+}
+
+function showTimingRating(key, grade, count = true) {
   if (!key) return;
+  const normalized = count ? recordTimingGrade(grade) : grade;
   key.querySelectorAll('.timing-rating').forEach(el => el.remove());
   const rating = document.createElement('span');
-  rating.className = `timing-rating grade-${String(grade).toLowerCase()}`;
-  rating.textContent = grade;
+  rating.className = `timing-rating grade-${String(normalized).toLowerCase()}`;
+  rating.textContent = normalized;
   key.appendChild(rating);
   rating.addEventListener('animationend', () => rating.remove(), { once: true });
+}
+
+function showPerformanceResults() {
+  const modal = $('resultPrompt');
+  const grid = $('resultGradeGrid');
+  if (!modal || !grid) return;
+  grid.innerHTML = TIMING_GRADES.map(grade => `
+    <div class="result-grade grade-${grade.toLowerCase()}">
+      <dt>${grade}</dt><dd>${timingRatingCounts.get(grade) || 0}</dd>
+    </div>`).join('');
+  const total = TIMING_GRADES.reduce((sum, grade) => sum + (timingRatingCounts.get(grade) || 0), 0);
+  const totalEl = $('resultTotal');
+  if (totalEl) totalEl.textContent = `总判定 ${total}`;
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePerformanceResults() {
+  const modal = $('resultPrompt');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden', 'true');
+}
+
+function returnToStartScreen() {
+  closePerformanceResults();
+  closeSavePrompt();
+  playing = false;
+  playOffset = 0;
+  nextManualMelodyIndex = 0;
+  startRequested = false;
+  clearTimers();
+  resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
+  document.body.classList.remove('game-started');
+  $('startScreen')?.classList.remove('loading');
+  updatePlayButton();
+  updateClock();
+  updateLyrics();
+  releaseWakeLock();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function playVisualNote(midi, velocity, source) {
   playNote(midi, 0.65, velocity);
@@ -2628,8 +2681,9 @@ function autoPressCue(active) {
   active.pressed = true;
   const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
   const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
+  recordTimingGrade('SSS');
   keys.forEach(key => {
-    showTimingRating(key, 'SSS');
+    showTimingRating(key, 'SSS', false);
     showPickZoneFeedback(key, chordPatternSlotAtTime(active.cue.time));
     key.classList.remove('chord-due', 'miss', 'chord-release');
     key.classList.add('chord-press');
@@ -2758,8 +2812,9 @@ function finishPlayback() {
   updateLyrics();
   document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
   $('nowPlaying').textContent = '播放完成';
+  showPerformanceResults();
 }
-function restartPlayback() { stopPlayback(); playPlayback(); }
+function restartPlayback() { resetTimingRatings(); stopPlayback(); playPlayback(); }
 
 function rangeForMelody() {
   const melodyNotes = song?.melodyTrack?.notes?.map(n => shiftedMidi(n.note)) || [];
@@ -2832,9 +2887,10 @@ function playNextManualMelodyNote(timeScale = 1) {
   const startIndex = nextManualMelodyIndex;
   const startTime = notes[startIndex].time;
   const nextCue = (song?.chordCues || []).find(c => c.time > startTime + 0.08);
-  const chunkEnd = Math.min(song?.duration || Infinity, nextCue?.time ?? (startTime + 1.8));
+  // 最后一个和弦必须把剩余主旋律完整播完，不能只截取固定 1.8 秒后永远到不了结算。
+  const chunkEnd = Math.min(song?.duration || Infinity, nextCue?.time ?? (song?.duration || startTime + 1.8));
   let endIndex = notes.findIndex((n, i) => i > startIndex && n.time >= chunkEnd - 0.001);
-  if (endIndex < 0) endIndex = Math.min(notes.length, startIndex + 8);
+  if (endIndex < 0) endIndex = nextCue ? Math.min(notes.length, startIndex + 8) : notes.length;
   endIndex = Math.max(endIndex, startIndex + 1);
 
   const chunk = notes.slice(startIndex, endIndex);
@@ -2912,6 +2968,17 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     melodyEvents: melody?.events || [],
     harmonyEvents: harmony?.events || [],
   };
+  if (isManualMode() && !nextCueAfter(interactivePhrase.cue)) {
+    const finalPhrase = interactivePhrase;
+    const finalDueAt = [
+      ...finalPhrase.melodyEvents.map(event => event.dueAt + Number(event.note?.duration || 0.45) * 1000),
+      ...finalPhrase.harmonyEvents.map(event => event.dueAt + Number(event.duration || 0.45) * 1000),
+    ].reduce((latest, dueAt) => Math.max(latest, dueAt), performance.now());
+    const completionTimer = setTimeout(() => {
+      if (interactivePhrase === finalPhrase && !interactiveTransitioning) finishPlayback();
+    }, Math.max(0, finalDueAt - performance.now()) + 500);
+    manualMelodyTimers.push(completionTimer);
+  }
 }
 
 function beginInteractivePhrase(root, cue, timing = {}) {
@@ -3126,6 +3193,7 @@ $('saveRecBtn').onclick = () => downloadRecording();
 $('savePromptDownload')?.addEventListener('click', () => { closeSavePrompt(); downloadRecording(); });
 $('savePromptCancel')?.addEventListener('click', closeSavePrompt);
 $('savePrompt')?.addEventListener('click', (ev) => { if (ev.target?.id === 'savePrompt') closeSavePrompt(); });
+$('resultHomeBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToStartScreen(); });
 $('toneBtn').onclick = () => {
   selectGameDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
 };
@@ -3273,6 +3341,7 @@ async function startGameFromMenu() {
   updatePlaybackToggles();
   playOffset = 0;
   nextManualMelodyIndex = 0;
+  resetTimingRatings();
   resetInteractiveSequencer();
   resetHarmonyHalfSequence();
   clearManualMelodyTimers();

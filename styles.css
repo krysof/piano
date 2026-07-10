@@ -129,6 +129,65 @@ body.game-started .game {
 }
 .save-btn.primary { border-color: transparent; background: linear-gradient(135deg, #8e64f5, #6744d9); }
 
+.result-prompt {
+  position: fixed;
+  z-index: 20000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  background: rgba(5, 7, 15, .78);
+  opacity: 0;
+  visibility: hidden;
+  backdrop-filter: blur(20px);
+  transition: opacity 200ms ease, visibility 200ms ease;
+}
+
+.result-prompt.show { opacity: 1; visibility: visible; }
+
+.result-card {
+  width: min(520px, 100%);
+  max-height: min(760px, 94dvh);
+  overflow: auto;
+  padding: clamp(22px, 5vw, 34px);
+  border: 1px solid rgba(159, 123, 255, .34);
+  border-radius: 28px;
+  text-align: center;
+  background: linear-gradient(155deg, rgba(28, 25, 48, .98), rgba(11, 14, 26, .98));
+  box-shadow: 0 30px 90px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.09), 0 0 46px rgba(126,83,255,.14);
+}
+
+.result-eyebrow { color: #a98bff; font-size: 11px; font-weight: 850; letter-spacing: .24em; }
+.result-card h2 { margin: 7px 0 3px; color: #f7f4ff; font-size: clamp(26px, 7vw, 38px); }
+.result-total { margin-bottom: 20px; color: rgba(232,227,249,.62); font-size: 13px; }
+.result-grade-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 0; }
+.result-grade {
+  min-width: 0;
+  padding: 12px 4px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+.result-grade dt { overflow: hidden; font-size: clamp(12px, 3.6vw, 18px); font-weight: 950; text-overflow: ellipsis; }
+.result-grade dd { margin: 5px 0 0; color: #fff; font-size: clamp(20px, 5vw, 28px); font-weight: 850; }
+.result-grade.grade-sss dt, .result-grade.grade-ss dt { color: #fff2a3; }
+.result-grade.grade-s dt, .result-grade.grade-a dt { color: #a9ffd8; }
+.result-grade.grade-b dt, .result-grade.grade-c dt { color: #a9d8ff; }
+.result-grade.grade-d dt, .result-grade.grade-e dt { color: #e5b7ff; }
+.result-grade.grade-f dt, .result-grade.grade-miss dt { color: #ffaaa4; }
+.result-home-btn {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 850;
+  background: linear-gradient(135deg, #9567ff, #6744d9);
+  box-shadow: 0 14px 32px rgba(109,74,255,.3);
+}
+
 .lyric-particle {
   position: fixed;
   z-index: 12000;
