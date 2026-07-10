@@ -436,7 +436,7 @@ body.game-started .game {
 }
 .key-label {
   position: absolute;
-  z-index: 6;
+  z-index: 12;
   top: 57%;
   left: 50%;
   color: #f8f8fc;

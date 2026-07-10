@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-24';
+const ASSET_VERSION = 'reset-20260710-25';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -688,6 +688,24 @@ function selectDrumPatternSlot(slot, reschedule = true, forceMode = true) {
   const pattern = currentDrumPattern();
   if (pattern) prepareDrumPattern(pattern, currentDrumCode);
   if (reschedule && playing) scheduleFrom(currentPlayTime());
+}
+
+function selectGameDrumPatternSlot(slot) {
+  const wasPowered = drumMode !== 'off';
+  // 鼓 A/B 只选择“开机后用哪套鼓组”，绝不能顺手打开处于关闭状态的鼓机。
+  selectDrumPatternSlot(slot, false, false);
+  if (wasPowered) {
+    // 鼓机本来就在响：手动选 A/B 后保持电源开启，并切到所选 pattern。
+    drumMode = 'on';
+    drumModeBeforeOff = 'on';
+    drumsEnabled = true;
+  } else {
+    // 鼓机关闭时只记住所选 pattern；下一次点“鼓”才真正开启。
+    drumModeBeforeOff = 'on';
+    drumsEnabled = false;
+  }
+  updatePlaybackToggles();
+  if (playing && wasPowered) scheduleFrom(currentPlayTime());
 }
 
 function percentLabel(v) {
@@ -2237,6 +2255,15 @@ function failActiveCue() {
   activeCue = null;
 }
 
+function rejectEarlyChordPress(key) {
+  if (!key) return;
+  key.classList.remove('chord-early-reject');
+  void key.offsetWidth;
+  key.classList.add('chord-early-reject');
+  setTimeout(() => key.classList.remove('chord-early-reject'), 460);
+  if (navigator.vibrate) navigator.vibrate(35);
+}
+
 function startCueRuntimeLoop() {
   cancelAnimationFrame(cueRuntimeRaf);
   const loop = () => {
@@ -2863,6 +2890,7 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
 
 function beginInteractivePhrase(root, cue, timing = {}) {
   const scheduleTiming = timingForInteractivePhrase(cue, timing);
+  if (scheduleTiming.earlyRejected) return;
   if (scheduleTiming.waitMs > 24) {
     const request = { root, cue, timing: { ...timing, progress: 100, dueAt: performance.now() + scheduleTiming.waitMs } };
     const waiting = { root, cue, waiting: true, waitingUntil: performance.now() + scheduleTiming.waitMs, waitingTimer: null };
@@ -3008,13 +3036,25 @@ function renderManualKeyboard() {
       const pickSlot = explicitZone
         ? Number(explicitZone.dataset.pickSlot || 0)
         : (normalizedY >= pickBoundary ? 0 : 1);
+      const pressProgress = cueProgressForKey(key);
+      const pressCueState = cueState.get(label);
+      if (isSemiAutoMode() || isManualMode()) {
+        const timing = timingForInteractivePhrase(pressedCue, {
+          progress: pressProgress,
+          dueAt: pressCueState?.due,
+        });
+        if (timing.earlyRejected) {
+          rejectEarlyChordPress(key);
+          return;
+        }
+      }
       harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, pickSlot + 1));
-      const pickTime = Math.max(currentPlayTime(), Number(pressedCue?.time) || 0);
+      // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
+      // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
+      const pickTime = currentPlayTime();
       insertUserPickEvent(pickSlot, pickTime);
       showPickZoneFeedback(key, pickSlot);
       warmHarmonyTones(false);
-      const pressProgress = cueProgressForKey(key);
-      const pressCueState = cueState.get(label);
       // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
       if (isGoodTiming(key) && activeCue && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id)) {
         activeCue.hit = true;
@@ -3053,7 +3093,7 @@ $('savePromptDownload')?.addEventListener('click', () => { closeSavePrompt(); do
 $('savePromptCancel')?.addEventListener('click', closeSavePrompt);
 $('savePrompt')?.addEventListener('click', (ev) => { if (ev.target?.id === 'savePrompt') closeSavePrompt(); });
 $('toneBtn').onclick = () => {
-  selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
+  selectGameDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
 };
 $('pickToneBtn').onclick = () => {
   const currentSlot = song ? chordPatternSlotAtTime(currentPlayTime()) : Math.max(0, harmonyToneMode - 1);

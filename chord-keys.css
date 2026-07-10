@@ -33,7 +33,7 @@
 
 #manualKeyboard .chord-symbol {
   position: absolute;
-  z-index: 7;
+  z-index: 20;
   top: 5%;
   left: 50%;
   min-width: 1.35em;
@@ -105,7 +105,7 @@
 
 #manualKeyboard .chord-shard {
   position: absolute;
-  z-index: 9;
+  z-index: 21;
   top: 10%;
   left: 50%;
   width: var(--s, 5px);
@@ -126,11 +126,18 @@
 #manualKeyboard .key.chord-press { transform: translateY(2px); filter: brightness(1.08) saturate(1.12); }
 #manualKeyboard .key.chord-release { transform: translateY(0); filter: none; transition-duration: 240ms; }
 #manualKeyboard .key.chord-miss { animation: chordKeyMissShake .78s ease-out both; }
+#manualKeyboard .key.chord-early-reject { animation: chordKeyEarlyReject .42s cubic-bezier(.36,.07,.19,.97) both; }
 
 @keyframes chordKeyMissShake {
   0%, 100% { transform: translateX(0); }
   20%, 60% { transform: translateX(-3px); }
   40%, 80% { transform: translateX(3px); }
+}
+
+@keyframes chordKeyEarlyReject {
+  0%, 100% { transform: translateX(0); filter: none; }
+  18%, 54% { transform: translateX(-5px); filter: brightness(.92) saturate(.72); }
+  36%, 72% { transform: translateX(5px); filter: brightness(.92) saturate(.72); }
 }
 
 .chord-float-shatter,
