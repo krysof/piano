@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-10';
+const ASSET_VERSION = 'reset-20260710-11';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -162,6 +162,21 @@ async function parseMidiWithWasm(buffer) {
   if (parsed.error) throw new Error(parsed.error);
   parsed.parsedBy = 'wasm';
   return parsed;
+}
+
+function runWasmCommand(command) {
+  const wasm = wasmParser.exports;
+  if (!wasm?.memory || !wasm.input_ptr || !wasm.input_capacity || !wasm.process_command) {
+    throw new Error('WASM playback core unavailable');
+  }
+  const bytes = new TextEncoder().encode(JSON.stringify(command));
+  if (bytes.length > wasm.input_capacity()) throw new Error('WASM command exceeds input capacity');
+  new Uint8Array(wasm.memory.buffer, wasm.input_ptr(), bytes.length).set(bytes);
+  const len = wasm.process_command(bytes.length);
+  const json = new TextDecoder().decode(new Uint8Array(wasm.memory.buffer, wasm.output_ptr(), len));
+  const result = JSON.parse(json);
+  if (result.error) throw new Error(result.error);
+  return result;
 }
 
 async function requestWakeLock() {
@@ -516,50 +531,6 @@ function chordHalfForCue(cue) {
     if (r === root) run++; else break;
   }
   return run % 2 === 0 ? 0 : 1;
-}
-
-// 取一个和弦【完整整段】的分解和弦音符，纯按 pattern beat 顺序排列。
-// 不做任何“按慢丢音/按早对齐”的时间处理（那些交给 layoutHalfInBar），
-// 独立于旧的 patternPhraseForCue，避免旧逻辑砍掉音符导致整段不足。
-function fullChordPhrase(pattern) {
-  if (!pattern?.notes?.length) return [];
-  return pattern.notes
-    .map(n => ({ note: n, beat: Number(n.beat || 0) }))
-    .sort((a, b) => a.beat - b.beat)
-    .map(e => e.note);
-}
-
-// 把整段音符切成前半/后半：half=0 取前半，half=1 取后半。返回 note 数组。
-function sliceHarmonyHalf(notes, half) {
-  if (!notes || notes.length <= 1) return notes || [];
-  const mid = Math.ceil(notes.length / 2);
-  return half === 0 ? notes.slice(0, mid) : notes.slice(mid);
-}
-
-// 播放半段：pattern 的 beat/duration 只当【百分比/比例】用，不是绝对拍数。
-// 段的真实总时长由主旋律 BPM 决定：一整段 pattern = 一个小节（patternBeats 拍），
-// 前半占前半个小节、后半占后半个小节，即每半段 = patternBeats/2 拍。
-// 把每个音的 beat 归一化成本段内的 0~1 百分比，再 × 段总时长，铺出真实时间。
-// 这样 GS_1 等分比例→均匀，GS_3 扫弦成簇比例→保持簇，且整段严格贴主旋律 BPM。
-function layoutHalfByBeat(notes, half, pattern) {
-  const n = notes.length;
-  if (!n) return [];
-  const beatSec = beatMs() / 1000;
-  const halfBeats = Math.max(0.001, patternBeats(pattern) / 2); // 半段占的拍数
-  const spanBeats = halfBeats;                                   // 归一化分母
-  // 本段起点 beat（后半段从它自己第一个音归零）。
-  const baseBeat = Math.min(...notes.map(nn => Number(nn.beat || 0)));
-  // 段总时长 = 半段拍数 × 主旋律 beatSec（严格跟 BPM）。
-  const segSec = halfBeats * beatSec;
-  return notes.map(nn => {
-    const ratio = Math.max(0, (Number(nn.beat || 0) - baseBeat) / spanBeats);   // 0~1 百分比
-    const durRatio = Math.max(0.03, Number(nn.duration || 0.5) / halfBeats);    // 时值也按比例
-    return {
-      note: nn,
-      delay: ratio * segSec,
-      duration: Math.max(0.05, durRatio * segSec),
-    };
-  });
 }
 
 function updateToneButton() {
@@ -1135,44 +1106,10 @@ function rootFromChord(text) {
   return m ? m[1].toUpperCase() : null;
 }
 
-function parseChordInfo(chordName) {
-  const clean = String(chordName || '').trim();
-  const m = clean.match(/^([A-G])([#b]?)(.*?)(?:\/([A-G][#b]?))?$/);
-  if (!m) {
-    return {
-      rootName: 'C',
-      rootPc: 0,
-      bassPc: 0,
-      intervals: [0, 4, 7],
-      chordPcs: [0, 4, 7],
-    };
-  }
-  const rootName = m[1] + (m[2] || '');
-  const rootPc = NOTE_PC[rootName] ?? 0;
-  const q = (m[3] || '').toLowerCase();
-  let intervals = q.includes('dim') ? [0, 3, 6] : q.includes('aug') ? [0, 4, 8] : q.startsWith('m') && !q.startsWith('maj') ? [0, 3, 7] : [0, 4, 7];
-  if (q.includes('sus2')) intervals = [0, 2, 7];
-  if (q.includes('sus4') || q.includes('sus')) intervals = [0, 5, 7];
-  if (q.includes('6')) intervals.push(9);
-  if (q.includes('maj7')) intervals.push(11);
-  else if (q.includes('7')) intervals.push(10);
-  if (q.includes('9')) intervals.push(14);
-  const bassPc = m[4] && NOTE_PC[m[4]] !== undefined ? NOTE_PC[m[4]] : rootPc;
-  const chordPcs = intervals.map(i => (rootPc + i) % 12);
-  return { rootName, rootPc, bassPc, intervals, chordPcs };
-}
+
 
 function parseChordNotes(chordName) {
-  const info = parseChordInfo(chordName);
-  const { rootPc, bassPc, intervals } = info;
-  const rootBase = 48 + rootPc; // C3-ish
-  const notes = intervals.map(i => rootBase + i);
-  if (bassPc !== rootPc) notes.unshift(36 + bassPc);
-  return [...new Set(notes)].map(n => {
-    while (n < 45) n += 12;
-    while (n > 76) n -= 12;
-    return n;
-  });
+  return runWasmCommand({ op: 'chordNotes', chord: chordName }).notes || [];
 }
 
 
@@ -1228,59 +1165,12 @@ function warmHarmonyTones(all = false) {
 }
 
 function patternPitchToChordMidi(pitch, chordName) {
-  // LiberLive chord pattern pitch is a template index, not an absolute MIDI note.
-  // Guitar templates commonly use 24/26/31..36; piano templates use C-major
-  // reference notes 48/52/55/60/64/67/72. Map those template degrees to the
-  // current chord symbol while preserving octave/register and slash bass.
-  const info = parseChordInfo(chordName);
-  const rootLow = nearestMidiForPc(info.rootPc, 48);
-  const rootMid = nearestMidiForPc(info.rootPc, 60);
-  const bassLow = nearestMidiForPc(info.bassPc, 40);
-  const thirdPc = info.chordPcs[1] ?? info.rootPc;
-  const fifthPc = info.chordPcs[2] ?? info.rootPc;
-  const seventhPc = info.chordPcs[3] ?? info.rootPc;
-  const degree = (pc, around) => clampHarmonyMidi(nearestMidiForPc(pc, around));
-  const p = Math.round(Number(pitch) || 0);
-  const guitarMap = {
-    24: degree(info.bassPc, 40),       // slash bass / low bass
-    26: degree(fifthPc, 43),           // alternate bass, often fifth
-    31: degree(info.rootPc, 48),       // root
-    32: degree(thirdPc, rootLow + 4),  // 3rd / sus tone
-    33: degree(fifthPc, rootLow + 7),  // 5th
-    34: degree(info.rootPc, 60),       // upper root
-    35: degree(thirdPc, rootMid + 4),  // upper 3rd
-    36: degree(fifthPc, rootMid + 7),  // upper 5th
-  };
-  if (guitarMap[p] !== undefined) return guitarMap[p];
-  const cMajorTemplate = {
-    43: degree(fifthPc, 43),
-    48: degree(info.rootPc, 48),
-    52: degree(thirdPc, 52),
-    55: degree(fifthPc, 55),
-    60: degree(info.rootPc, 60),
-    64: degree(thirdPc, 64),
-    67: degree(fifthPc, 67),
-    72: degree(info.rootPc, 72),
-  };
-  if (cMajorTemplate[p] !== undefined) return cMajorTemplate[p];
-  if (p === 7) return bassLow;
-  if (p === 8) return degree(fifthPc, 43);
-  if (p === 9) return degree(seventhPc, 46);
-  return parseChordNotes(chordName)[Math.abs(p) % parseChordNotes(chordName).length] || rootMid;
+  return Number(runWasmCommand({ op: 'mapPatternPitch', pitch, chord: chordName }).midi);
 }
 
-function nearestMidiForPc(pc, around) {
-  let best = pc + 12 * Math.round((around - pc) / 12);
-  while (best < 40) best += 12;
-  while (best > 84) best -= 12;
-  return best;
-}
 
-function clampHarmonyMidi(n) {
-  while (n < 40) n += 12;
-  while (n > 76) n -= 12;
-  return n;
-}
+
+
 
 function chordAtTime(time) {
   const cues = song?.chordCues || [];
@@ -1293,55 +1183,11 @@ function chordAtTime(time) {
   return current;
 }
 
-function extractStyleInfo(noteTracks) {
-  const styleText = noteTracks.flatMap(t => t.texts || []).find(e => String(e.text).startsWith('LLSTYLE:'))?.text;
-  if (!styleText) return null;
-  try { return JSON.parse(styleText.slice('LLSTYLE:'.length)); }
-  catch (err) { console.warn('Invalid LLSTYLE', err); return null; }
-}
 
-function extractDrumEvents(noteTracks) {
-  return noteTracks.flatMap(t => t.texts || [])
-    .filter(e => String(e.text || '').startsWith('LLDRUM:'))
-    .map(e => {
-      try {
-        const data = JSON.parse(String(e.text).slice('LLDRUM:'.length));
-        return {
-          time: e.time,
-          switchType: Number(data.switchType || 0),
-          drumCodes: data.drumCodes || [],
-          raw: data,
-        };
-      } catch (err) {
-        console.warn('Invalid LLDRUM', err);
-        return null;
-      }
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.time - b.time);
-}
 
-function extractPickEvents(noteTracks) {
-  return noteTracks.flatMap(t => t.texts || [])
-    .filter(e => String(e.text || '').startsWith('LLEXT:'))
-    .map(e => {
-      try {
-        const data = JSON.parse(String(e.text).slice('LLEXT:'.length));
-        if (String(data.type) !== '7') return null;
-        return {
-          time: e.time,
-          pickType: Number(data.pickType ?? data.pick ?? 0),
-          pickAction: Number(data.pickAction ?? data.action ?? 1),
-          raw: data,
-        };
-      } catch (err) {
-        console.warn('Invalid LLEXT type=7', err);
-        return null;
-      }
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.time - b.time);
-}
+
+
+
 
 function chordPatternCodes() {
   const style = song?.styleInfo || {};
@@ -1412,64 +1258,11 @@ function nextPickEventTimeAfter(time) {
   return next?.time ?? Infinity;
 }
 
-function patternWindowNotes(pattern, fromTime, endTime) {
-  if (!pattern?.notes?.length) return [];
-  const beat = beatMs() / 1000;
-  const barBeats = patternBeats(pattern);
-  const barSec = Math.max(0.001, barBeats * beat);
-  const out = [];
-  const firstBar = Math.floor(fromTime / barSec) - 1;
-  const lastBar = Math.ceil(endTime / barSec) + 1;
-  for (let bar = firstBar; bar <= lastBar; bar++) {
-    const barStart = bar * barSec;
-    for (const n of pattern.notes) {
-      const t = barStart + Number(n.beat || 0) * beat;
-      if (t < fromTime - 0.012 || t >= endTime - 0.001) continue;
-      out.push({ note: n, time: t });
-    }
-  }
-  return out.sort((a, b) => a.time - b.time);
-}
 
-function patternPhraseForCue(pattern, cueTime, now) {
-  if (!pattern?.notes?.length) return [];
-  const beat = beatMs() / 1000;
-  const elapsed = Math.max(0, now - cueTime);
-  const events = pattern.notes
-    .map(n => ({
-      note: n,
-      phase: Math.max(0, Number(n.beat || 0) * beat),
-    }))
-    .sort((a, b) => a.phase - b.phase);
-  if (!events.length) return [];
 
-  // 分解和弦以当前 chord cue 为起点：自动到点时 beat0 立刻响。
-  // 如果玩家按慢了，已经过去的 pattern 音不慢慢补，
-  // 从下一颗/当前颗剩余音开始并把第一颗对齐到按下瞬间，后面仍保留 pattern 的 beat 间距。
-  let remaining = events.filter(e => {
-    const dur = Math.max(0.05, Number(e.note.duration || 0.35) * beat);
-    return e.phase + dur >= elapsed - 0.018;
-  });
-  if (!remaining.length) remaining = events;
-  const basePhase = Math.max(elapsed, remaining[0].phase);
-  return remaining.map(e => ({
-    note: e.note,
-    offset: Math.max(0, e.phase - basePhase),
-  }));
-}
 
-function fitPhraseToNextCue(events, beatSec, cueTime, now, baseScale = 1) {
-  if (!events?.length) return baseScale;
-  const nextTime = nextChordCueTimeAfter(cueTime);
-  if (!Number.isFinite(nextTime) || nextTime <= now + 0.08) return baseScale;
-  const naturalEnd = events.reduce((max, { note: n, offset }) => {
-    const dur = Math.max(0.05, Number(n.duration || 0.35) * beatSec);
-    return Math.max(max, Number(offset || 0) + dur);
-  }, 0.001);
-  const available = Math.max(0.12, nextTime - now - 0.018);
-  // 只在按慢/剩余时间不足时加速追赶；不拉长，避免声音变慢变散。
-  return naturalEnd > available ? Math.max(0.35, Math.min(baseScale, available / naturalEnd)) : baseScale;
-}
+
+
 
 function currentStyleCode() {
   return song?.styleInfo?.configPack?.chords?.find(c => c.pickType === 1)?.code
@@ -1512,136 +1305,11 @@ function track2SliceForCue(cue) {
     .slice(0, 32);
 }
 
-class Reader {
-  constructor(buf) { this.dv = new DataView(buf); this.u8 = new Uint8Array(buf); this.p = 0; }
-  str(n) { let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(this.u8[this.p++]); return s; }
-  u16() { const v = this.dv.getUint16(this.p); this.p += 2; return v; }
-  u32() { const v = this.dv.getUint32(this.p); this.p += 4; return v; }
-  u8v() { return this.u8[this.p++]; }
-  bytes(n) { const b = this.u8.slice(this.p, this.p + n); this.p += n; return b; }
-  vlq() { let v = 0, b; do { b = this.u8v(); v = (v << 7) | (b & 0x7f); } while (b & 0x80); return v; }
-}
-function findChunk(u8, start, marker) {
-  const codes = [...marker].map(c => c.charCodeAt(0));
-  for (let i = Math.max(0, start); i <= u8.length - codes.length; i++) {
-    let ok = true;
-    for (let j = 0; j < codes.length; j++) {
-      if (u8[i + j] !== codes[j]) { ok = false; break; }
-    }
-    if (ok) return i;
-  }
-  return -1;
-}
-function parseMidi(arrayBuffer) {
-  const r = new Reader(arrayBuffer);
-  if (r.str(4) !== 'MThd') throw new Error('不是标准 MIDI 文件');
-  const headerLen = r.u32();
-  const format = r.u16();
-  const trackCount = r.u16();
-  const division = r.u16();
-  if (headerLen > 6) r.bytes(headerLen - 6);
-  const ppq = division & 0x8000 ? 480 : division;
-  const tempoEvents = [{ tick: 0, usPerQuarter: 500000 }];
-  const tracks = [];
 
-  for (let t = 0; t < trackCount; t++) {
-    const marker = r.str(4);
-    if (marker !== 'MTrk') {
-      const found = findChunk(r.u8, r.p - 4, 'MTrk');
-      if (found < 0) throw new Error(`第 ${t + 1} 轨缺少 MTrk`);
-      r.p = found + 4;
-    }
-    const end = r.p + r.u32();
-    let tick = 0, running = 0;
-    const events = [];
-    const texts = [];
-    while (r.p < end) {
-      tick += r.vlq();
-      let status = r.u8v();
-      if (status < 0x80) { r.p--; status = running; } else if (status < 0xf0) { running = status; }
-      if (status === 0xff) {
-        const type = r.u8v(); const len = r.vlq(); const data = r.bytes(len);
-        if (type === 0x51 && len === 3) tempoEvents.push({ tick, usPerQuarter: (data[0] << 16) | (data[1] << 8) | data[2] });
-        if (type === 0x01 || type === 0x03 || type === 0x05 || type === 0x06) {
-          texts.push({ tick, type, text: decodeText(data) });
-        }
-        if (type === 0x2f) break;
-      } else if (status === 0xf0 || status === 0xf7) {
-        r.bytes(r.vlq());
-      } else {
-        const cmd = status & 0xf0, channel = status & 0x0f;
-        const a = r.u8v();
-        const b = (cmd === 0xc0 || cmd === 0xd0) ? 0 : r.u8v();
-        if (cmd === 0x90 && b > 0) events.push({ tick, type: 'on', note: a, velocity: b / 127, channel, track: t });
-        else if (cmd === 0x80 || (cmd === 0x90 && b === 0)) events.push({ tick, type: 'off', note: a, velocity: 0, channel, track: t });
-      }
-    }
-    r.p = end;
-    tracks.push({ events, texts });
-  }
-  tempoEvents.sort((a,b) => a.tick - b.tick);
-  function tickToSec(tick) {
-    let sec = 0, lastTick = 0, tempo = 500000;
-    for (const te of tempoEvents) {
-      if (te.tick > tick) break;
-      sec += (te.tick - lastTick) * tempo / ppq / 1_000_000;
-      lastTick = te.tick; tempo = te.usPerQuarter;
-    }
-    sec += (tick - lastTick) * tempo / ppq / 1_000_000;
-    return sec;
-  }
-  function notesWithDurations(events) {
-    const timed = events.map(e => ({ ...e, time: tickToSec(e.tick) }));
-    const open = new Map();
-    const notes = [];
-    for (const e of timed) {
-      const key = `${e.channel}:${e.note}`;
-      if (e.type === 'on') {
-        if (!open.has(key)) open.set(key, []);
-        open.get(key).push(e);
-      } else if (e.type === 'off') {
-        const stack = open.get(key);
-        const on = stack?.shift();
-        if (on) notes.push({ ...on, duration: Math.max(0.08, e.time - on.time) });
-      }
-    }
-    for (const stack of open.values()) {
-      for (const on of stack) notes.push({ ...on, duration: 0.45 });
-    }
-    return notes.sort((a, b) => a.time - b.time || a.note - b.note);
-  }
-  const noteTracks = tracks.map((track, i) => ({
-    number: i,
-    notes: notesWithDurations(track.events),
-    texts: track.texts.map(e => ({ ...e, time: tickToSec(e.tick) })),
-  }));
-  const trackName = (t) => (t.texts || []).find(e => e.type === 0x03)?.text || '';
-  const byName = (name) => noteTracks.find(t => trackName(t).toLowerCase() === name.toLowerCase());
-  // 不依赖固定 Track 编号：先按轨道名找，名字缺失时按事件内容推断（docs/MIDI_FORMAT.md §1）。
-  const melodyTrack = byName('Lead')
-    || noteTracks.find(t => t.notes.length)
-    || { number: 0, notes: [] };
-  const accompanimentTrack = byName('Accompaniment')
-    || noteTracks.find(t => t !== melodyTrack && t.notes.length)
-    || { number: 0, notes: [] };
-  const chordTrack = byName('Chord Names')
-    || noteTracks.find(t => (t.texts || []).some(e => e.type === 0x01 && /^[A-G][#b]?(m|maj|dim|aug|sus|add|\/|\d|$)/i.test(String(e.text || '').trim())))
-    || { number: 0, notes: [], texts: [] };
-  const chordCues = chordTrack.texts
-    .filter(e => e.type === 0x01)
-    .map(e => ({ time: e.time, chord: e.text, root: rootFromChord(e.text) }))
-    .filter(e => e.root && NATURAL_TO_MIDI[e.root]);
-  const styleInfo = extractStyleInfo(noteTracks);
-  const drumEvents = extractDrumEvents(noteTracks);
-  const pickEvents = extractPickEvents(noteTracks);
-  const duration = melodyTrack.notes.at(-1)?.time || 0;
-  return { format, trackCount, ppq, noteTracks, melodyTrack, accompanimentTrack, chordCues, styleInfo, drumEvents, pickEvents, duration };
-}
 
-function decodeText(bytes) {
-  try { return new TextDecoder('utf-8').decode(bytes); }
-  catch { return Array.from(bytes).map(b => String.fromCharCode(b)).join(''); }
-}
+
+
+
 
 function cleanLyricText(text) {
   return String(text || '')
@@ -1765,26 +1433,20 @@ function alignLineEventsToText(line, rawEvents) {
 
 function buildLyricLines() {
   const beatSec = beatMs() / 1000;
-  const explicitLines = (song?.noteTracks || []).flatMap(t => t.texts || [])
-    .filter(e => String(e.text || '').startsWith('LLLYRIC_LINE:'))
+  const explicitLines = (song?.lyricLineEvents || [])
     .map(e => {
-      try {
-        const data = JSON.parse(String(e.text).slice('LLLYRIC_LINE:'.length));
-        const startBeat = Number(data.time);
-        const endBeat = Number(data.endTime);
-        const start = Number.isFinite(startBeat) ? startBeat * beatSec : e.time;
-        const end = Number.isFinite(endBeat) ? endBeat * beatSec : start + 2;
-        return {
-          start,
-          end,
-          text: String(data.text || ''),
-          events: [],
-          paragraphType: data.paragraphType,
-        };
-      } catch (err) {
-        console.warn('Invalid LLLYRIC_LINE', err);
-        return null;
-      }
+      const data = e.data || {};
+      const startBeat = Number(data.time);
+      const endBeat = Number(data.endTime);
+      const start = Number.isFinite(startBeat) ? startBeat * beatSec : e.time;
+      const end = Number.isFinite(endBeat) ? endBeat * beatSec : start + 2;
+      return {
+        start,
+        end,
+        text: String(data.text || ''),
+        events: [],
+        paragraphType: data.paragraphType,
+      };
     })
     .filter(line => line && line.text)
     .sort((a, b) => a.start - b.start);
@@ -1857,65 +1519,31 @@ function buildLyricLines() {
   }));
 }
 
-function lyricEventStart(e) {
-  return Number.isFinite(e?.cueStartTime) ? e.cueStartTime : e?.time;
+
+
+
+
+function lyricProgressState(line, now) {
+  return runWasmCommand({
+    op: 'lyricProgress',
+    now,
+    lineEnd: Number.isFinite(Number(line?.end)) ? Number(line.end) : null,
+    events: (line?.events || []).map(event => ({
+      time: Number(event.time) || 0,
+      text: String(event.text || ''),
+      cueStartTime: Number.isFinite(Number(event.cueStartTime)) ? Number(event.cueStartTime) : null,
+      cueEndTime: Number.isFinite(Number(event.cueEndTime)) ? Number(event.cueEndTime) : null,
+    })),
+  });
 }
 
-function lyricEventEnd(e, fallback) {
-  return Number.isFinite(e?.cueEndTime) ? e.cueEndTime : fallback;
-}
-
-function lineProgressAt(line, now) {
-  const events = line?.events || [];
-  const eventCharCount = (e) => Math.max(1, [...(e?.text || '')].length);
-  const totalChars = Math.max(1, events.reduce((sum, e) => sum + eventCharCount(e), 0));
-  const eventStart = lyricEventStart;
-  const eventEnd = lyricEventEnd;
-  if (!events.length || now < eventStart(events[0])) return 0;
-  for (let i = 0; i < events.length; i++) {
-    const cur = events[i];
-    const next = events[i + 1];
-    const curStart = eventStart(cur);
-    const nextStart = next ? eventStart(next) : null;
-    const charsBefore = events.slice(0, i).reduce((sum, e) => sum + eventCharCount(e), 0);
-    const curChars = eventCharCount(cur);
-    const prevStart = i > 0 ? eventStart(events[i - 1]) : curStart - 0.42;
-    const prevGap = Math.max(0.16, curStart - prevStart);
-    // 绑定到和弦 cue 的字：65% 进入时开始扫到这个字，75% 后扫完。
-    // 普通字：仍按歌词相邻时间点扫。
-    const naturalEnd = nextStart ?? (curStart + Math.min(0.72, Math.max(0.26, prevGap)));
-    const end = Math.min(line.end ?? naturalEnd, eventEnd(cur, naturalEnd));
-    if (!next || now < nextStart) {
-      const frac = Math.max(0, Math.min(1, (now - curStart) / Math.max(0.08, end - curStart)));
-      return Math.min(100, ((charsBefore + curChars * frac) / totalChars) * 100);
-    }
-  }
-  return 100;
-}
-
-function syncActiveKaraokeProgress(el, line, now) {
+function syncActiveKaraokeProgress(el, line, state) {
   const tokens = tokensForLine(line);
-  const events = tokens;
   const base = el?.querySelector('.lyric-base');
   const wrap = el?.querySelector('.lyric-wrap');
-  if (!base || !wrap || !tokens.length || !events.length) return;
-  let currentIndex = -1;
-  let frac = 0;
-  for (let i = 0; i < events.length; i++) {
-    const cur = events[i];
-    const next = events[i + 1];
-    const curStart = lyricEventStart(cur);
-    const nextStart = next ? lyricEventStart(next) : null;
-    const prevStart = i > 0 ? lyricEventStart(events[i - 1]) : curStart - 0.42;
-    const prevGap = Math.max(0.16, curStart - prevStart);
-    const naturalEnd = nextStart ?? (curStart + Math.min(0.72, Math.max(0.26, prevGap)));
-    const end = Math.min(line.end ?? naturalEnd, lyricEventEnd(cur, naturalEnd));
-    if (!next || now < nextStart) {
-      currentIndex = i;
-      frac = Math.max(0, Math.min(1, (now - curStart) / Math.max(0.08, end - curStart)));
-      break;
-    }
-  }
+  if (!base || !wrap || !tokens.length) return;
+  const currentIndex = Number(state?.currentIndex ?? -1);
+  const frac = Number(state?.fraction ?? 0);
   if (currentIndex < 0) return;
   const node = base.querySelector(`[data-kidx="${currentIndex}"]`);
   if (!node) return;
@@ -2069,7 +1697,8 @@ function updateLyrics() {
       setTimeout(() => box.classList.remove('roll'), 360);
     }
   }
-  const progress = lineProgressAt(cur, now);
+  const progressState = lyricProgressState(cur, now);
+  const progress = Number(progressState.progress || 0);
   const activeSlot = Math.min(lines.length - 1, Math.max(0, Math.floor(lines.length * 0.62)));
   const startIdx = Math.max(0, Math.min(idx - activeSlot, Math.max(0, lyricLines.length - lines.length)));
   let activeEl = l1;
@@ -2079,7 +1708,7 @@ function updateLyrics() {
     if (active) activeEl = lines[i];
     setKaraokeLine(lines[i], lyricLines[lineIndex] || '', active ? progress : 0, active);
   }
-  syncActiveKaraokeProgress(activeEl, cur, now);
+  syncActiveKaraokeProgress(activeEl, cur, progressState);
   if (playing) emitLyricParticles(activeEl, progress);
 }
 
@@ -2118,15 +1747,7 @@ async function loadDefaultMidi() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = await res.arrayBuffer();
     song = await parseMidiWithWasm(buffer);
-    const textParsed = parseMidi(buffer);
-    song.noteTracks.forEach((track, i) => {
-      if (textParsed.noteTracks[i]?.texts?.length) track.texts = textParsed.noteTracks[i].texts;
-    });
-    song.chordCues = textParsed.chordCues;
-    // 文本事件轨是 LLSTYLE / LLDRUM / LLEXT / LLLYRIC_LINE 的权威来源，不能被 WASM 解析结果里的空字段覆盖。
-    song.styleInfo = textParsed.styleInfo || song.styleInfo;
-    song.drumEvents = extractDrumEvents(song.noteTracks);
-    song.pickEvents = extractPickEvents(song.noteTracks);
+    // MIDI、歌词、和弦与全部 LiberLive 私有事件只有 WASM 一个权威解析器。
     userPickEvents = [];
     if (initialPickSlot !== null) insertUserPickEvent(initialPickSlot, 0);
     const summary = song.noteTracks.map(t => `Track ${t.number}:${t.notes.length}`).join(' / ');
@@ -2216,18 +1837,18 @@ function scheduleAutomatedDrumsFrom(offset = 0) {
 }
 
 function scheduleDrumPatternWindow(pattern, drumCode, fromTime, anchorTime, endTime, offset) {
-  const beat = beatMs();
-  const barBeats = patternBeats(pattern);
-  const barSec = barBeats * beat / 1000;
-  const firstBar = Math.max(0, Math.floor((fromTime - anchorTime) / barSec) - 1);
-  for (let bar = firstBar; anchorTime + bar * barSec <= endTime + barSec; bar++) {
-    const barStart = anchorTime + bar * barSec;
-    for (const n of pattern.notes) {
-      const t = barStart + Number(n.beat || 0) * beat / 1000;
-      if (t < fromTime - 0.02 || t >= endTime - 0.001 || t > song.duration + 0.5) continue;
-      const delay = Math.max(0, (t - offset) * 1000);
-      timers.push(setTimeout(() => playDrumPatternNote(n, drumCode || pattern.code), delay));
-    }
+  const plan = runWasmCommand({
+    op: 'patternWindow',
+    notes: pattern.notes,
+    beatSec: beatMs() / 1000,
+    barBeats: patternBeats(pattern),
+    fromTime,
+    anchorTime,
+    endTime: Math.min(endTime, (song?.duration || endTime) + 0.5),
+  });
+  for (const event of plan.events || []) {
+    const delay = Math.max(0, (Number(event.time) - offset) * 1000);
+    timers.push(setTimeout(() => playDrumPatternNote(event.note, drumCode || pattern.code), delay));
   }
 }
 function clearTimers() {
@@ -2591,20 +2212,22 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1) {
   warmHarmonyTones(false);
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
-    // 演奏模式（全自动/半自动/手动）只决定谁触发、按后是否推进，不影响伴奏内容。
-    // 取完整整段（新函数，不受旧 patternPhraseForCue 的按慢丢音逻辑影响），再切半段。
-    const fullPhrase = fullChordPhrase(pattern);
     const half = chordHalfForCue(cue);
-    const notes = sliceHarmonyHalf(fullPhrase, half);
-    // pattern 的 beat 只当百分比，段总时长按主旋律 BPM 分配（半段 = 半个小节的拍数×beatSec）。
-    const laidOut = layoutHalfByBeat(notes, half, pattern);
-    for (const { note: n, delay, duration } of laidOut) {
-      const midi = patternPitchToChordMidi(n.pitch, chordName);
-      const velocity = normalizedHarmonyVelocity(n.velocity);
+    // 和弦结构、pattern 前后半切分、音高映射和 BPM 布局统一由 WASM 计算。
+    const plan = runWasmCommand({
+      op: 'harmonyPlan',
+      chord: chordName,
+      half,
+      bpm: Number(song?.styleInfo?.tempo) || 75,
+      barBeats: patternBeats(pattern),
+      notes: pattern.notes,
+    });
+    for (const event of plan.events || []) {
+      const velocity = normalizedHarmonyVelocity(event.velocity);
       scheduled.push(playHarmonyVisualNote(
-        midi,
-        delay * timeScale * 1000,
-        Math.max(0.045, duration * timeScale),
+        Number(event.midi),
+        Number(event.delay) * timeScale * 1000,
+        Math.max(0.045, Number(event.duration) * timeScale),
         velocity,
         slot + 1,
       ));
@@ -2796,24 +2419,18 @@ function cueForInteractivePress(root) {
 function timingForInteractivePhrase(cue, timing = {}) {
   const nowSong = currentPlayTime();
   const nowPerf = performance.now();
-  const progress = Number(timing.progress);
   const cueTime = Number.isFinite(Number(cue?.time)) ? Number(cue.time) : nowSong;
   const nextTime = nextChordCueTimeAfter(cueTime);
-  const boundary = Number.isFinite(nextTime) && nextTime > cueTime ? nextTime : Math.min(song?.duration || cueTime + 1.8, cueTime + 1.8);
-  let waitMs = 0;
-  if (Number.isFinite(progress) && progress < 90) {
-    waitMs = Math.max(0, Number(timing.dueAt || nowPerf) - nowPerf);
-  } else if (!Number.isFinite(progress) && cueTime > nowSong + 0.08) {
-    waitMs = (cueTime - nowSong) * 1000;
-  }
-  const naturalSpan = Math.max(0.12, boundary - cueTime);
-  const lateSeconds = Number.isFinite(progress) && progress > 100
-    ? (progress - 100) / 100
-    : Math.max(0, nowSong - cueTime);
-  const timeScale = lateSeconds > 0.1
-    ? Math.max(0.25, Math.min(1, (naturalSpan - lateSeconds) / naturalSpan))
-    : 1;
-  return { waitMs, timeScale, boundary };
+  return runWasmCommand({
+    op: 'interactiveTiming',
+    nowSong,
+    nowPerf,
+    cueTime,
+    nextTime,
+    songDuration: song?.duration || cueTime + 1.8,
+    progress: Number.isFinite(Number(timing.progress)) ? Number(timing.progress) : null,
+    dueAt: Number(timing.dueAt || nowPerf),
+  });
 }
 
 function startInteractivePhraseNow(root, cue, timing = {}) {
@@ -2904,16 +2521,16 @@ function accelerateInteractivePhrase() {
   const pending = pendingInteractiveEvents(interactivePhrase, nowSong, nowPerf);
   if (!pending.length) return finishInteractiveTransition(mode, boundary);
 
-  const maxRemaining = Math.max(0.001, ...pending.map(item => item.remaining));
-  const catchupDuration = Math.max(0.16, Math.min(0.5, maxRemaining * 0.28));
-  const scale = catchupDuration / maxRemaining;
+  const catchup = runWasmCommand({ op: 'catchup', remaining: pending.map(item => item.remaining) });
+  const catchupDuration = Number(catchup.duration);
+  const scale = Number(catchup.scale);
   interactiveTransitioning = true;
   clearTimers();
   playing = false;
   interactivePhrase = null;
 
-  for (const item of pending) {
-    const delay = Math.max(0, item.remaining * scale * 1000);
+  for (const [index, item] of pending.entries()) {
+    const delay = Math.max(0, Number(catchup.delays?.[index] ?? item.remaining * scale) * 1000);
     if (item.type === 'harmony') {
       const event = item.event;
       playHarmonyVisualNote(event.midi, delay, Math.max(0.045, event.duration * scale), event.velocity, event.toneMode);
