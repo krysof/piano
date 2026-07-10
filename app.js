@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-08';
+const ASSET_VERSION = 'reset-20260710-09';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -48,8 +48,9 @@ let playMode = 'semi';
 let guideMode = false;
 let nextManualMelodyIndex = 0;
 let manualMelodyTimers = [];
-let manualLastPressAt = 0;
-let manualSpeedScale = 1;
+let interactivePhrase = null;
+let interactiveTransitioning = false;
+let interactivePressQueue = [];
 let midiReady = false;
 let midiReadyPromise = null;
 let sampleReadyPromise = Promise.resolve(false);
@@ -476,11 +477,20 @@ function playVisualNote(midi, velocity, source) {
 }
 
 function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42, toneMode = harmonyToneMode) {
+  const event = {
+    midi, duration, velocity, toneMode,
+    dueAt: performance.now() + Math.max(0, delay),
+    fired: false,
+    timer: null,
+  };
   const timer = setTimeout(() => {
+    event.fired = true;
     playHarmonyToneNote(midi, duration, velocity, toneMode);
     flash('playbackKeyboard', midi, Math.max(360, duration * 720), 'harmony');
   }, delay);
+  event.timer = timer;
   harmonyTimers.push(timer);
+  return event;
 }
 
 function clearHarmonyTimers() {
@@ -2137,8 +2147,9 @@ async function loadDefaultMidi() {
     throw err;
   }
 }
-function scheduleFrom(offset = 0) {
+function scheduleFrom(offset = 0, preserveInteractive = false) {
   if (!song || !song.melodyTrack.notes.length) return;
+  if (!preserveInteractive) resetInteractiveSequencer();
   clearTimers();
   playing = true;
   updatePlayButton();
@@ -2569,11 +2580,14 @@ function normalizedHarmonyVelocity(rawVelocity) {
   return Math.max(0.42, Math.min(0.92, raw * 1.32));
 }
 
-function playStyledHarmony(root, forcedCue = null) {
+function playStyledHarmony(root, forcedCue = null, timeScale = 1) {
   clearHarmonyTimers();
   const now = currentPlayTime();
   const cue = forcedCue || chordAtTime(now) || { chord: root, root };
   const chordName = chordNameForPerformedRoot(root, cue);
+  const scheduled = [];
+  let segmentEnd = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
+  if (!Number.isFinite(segmentEnd) || segmentEnd <= now + 0.02) segmentEnd = Math.min(song?.duration || now + 1.8, now + 1.8);
   warmHarmonyTones(false);
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
@@ -2587,9 +2601,15 @@ function playStyledHarmony(root, forcedCue = null) {
     for (const { note: n, delay, duration } of laidOut) {
       const midi = patternPitchToChordMidi(n.pitch, chordName);
       const velocity = normalizedHarmonyVelocity(n.velocity);
-      playHarmonyVisualNote(midi, delay * 1000, Math.max(0.045, duration), velocity, slot + 1);
+      scheduled.push(playHarmonyVisualNote(
+        midi,
+        delay * timeScale * 1000,
+        Math.max(0.045, duration * timeScale),
+        velocity,
+        slot + 1,
+      ));
     }
-    return;
+    return { root, cue, segmentEnd, events: scheduled };
   }
 
   // fallback MIDI 和弦轨：只在 LiberLive pattern 资源缺失时使用。
@@ -2601,17 +2621,17 @@ function playStyledHarmony(root, forcedCue = null) {
     let nextTime = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
     if (nextTime <= now + 0.08) nextTime = nextChordCueTimeAfter(now);
     const targetEnd = Math.max(0.12, nextTime - now - 0.018);
-    const baseSpeed = isManualMode() ? manualSpeedScale : 1;
-    const speed = Math.max(0.25, Math.min(1.12, Math.min(baseSpeed, targetEnd / naturalEnd)));
+    const speed = Math.max(0.25, Math.min(1.12, timeScale, targetEnd / naturalEnd));
     for (const n of fallbackNotes) {
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
-      playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), harmonyToneMode);
+      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), harmonyToneMode));
     }
     console.warn('No LiberLive chord pattern loaded; using Track 2 fallback chord notes for', code || currentHarmonyPreset()?.code);
-    return;
+    return { root, cue, segmentEnd, events: scheduled };
   }
 
   console.warn('No LiberLive chord pattern or Track 2 fallback loaded for', code || currentHarmonyPreset()?.code);
+  return { root, cue, segmentEnd, events: scheduled };
 }
 function pausePlayback() {
   if (!playing) return;
@@ -2619,6 +2639,7 @@ function pausePlayback() {
   playing = false;
   updatePlayButton();
   clearTimers();
+  resetInteractiveSequencer();
   releaseWakeLock();
   updateClock();
   updateLyrics();
@@ -2630,6 +2651,7 @@ function stopPlayback() {
   playOffset = 0;
   nextManualMelodyIndex = 0;
   clearTimers();
+  resetInteractiveSequencer();
   stopRecording(false);
   releaseWakeLock();
   updateClock();
@@ -2643,6 +2665,7 @@ function finishPlayback() {
   playOffset = song?.duration || 0;
   nextManualMelodyIndex = 0;
   clearTimers();
+  resetInteractiveSequencer();
   stopRecording(true);
   releaseWakeLock();
   updateClock();
@@ -2715,13 +2738,11 @@ function ensureManualClock() {
   clockTimer = setInterval(() => { updateClock(); updateLyrics(); }, 33);
 }
 
-function playNextManualMelodyNote() {
+function playNextManualMelodyNote(timeScale = 1) {
   const notes = song?.melodyTrack?.notes || [];
-  if (!notes.length || nextManualMelodyIndex >= notes.length) return;
-  clearManualMelodyTimers();
+  if (!notes.length || nextManualMelodyIndex >= notes.length) return { events: [], segmentEnd: playOffset };
   ensureManualClock();
 
-  const pressAt = performance.now();
   const startIndex = nextManualMelodyIndex;
   const startTime = notes[startIndex].time;
   const nextCue = (song?.chordCues || []).find(c => c.time > startTime + 0.08);
@@ -2731,27 +2752,205 @@ function playNextManualMelodyNote() {
   endIndex = Math.max(endIndex, startIndex + 1);
 
   const chunk = notes.slice(startIndex, endIndex);
-  const originalSpan = Math.max(0.001, chunk.at(-1).time - startTime);
-  const pressGap = manualLastPressAt ? (pressAt - manualLastPressAt) / 1000 : 0;
-  const targetSpan = pressGap && pressGap < originalSpan
-    ? Math.max(0.16, pressGap * 0.86)
-    : originalSpan;
-  const scale = Math.min(1, targetSpan / originalSpan);
-  manualSpeedScale = scale;
-  manualLastPressAt = pressAt;
   playing = false;
 
-  chunk.forEach((note, localIndex) => {
+  const events = chunk.map((note, localIndex) => {
     const idx = startIndex + localIndex;
-    const delay = Math.max(0, (note.time - startTime) * scale * 1000);
-    manualMelodyTimers.push(setTimeout(() => {
+    const delay = Math.max(0, (note.time - startTime) * timeScale * 1000);
+    const event = { note, idx, dueAt: performance.now() + delay, fired: false, timer: null };
+    event.timer = setTimeout(() => {
+      event.fired = true;
       playOffset = note.time;
       playVisualNote(shiftedMidi(note.note), note.velocity || 0.65, 'playback');
       if (nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
       updateClock();
       updateLyrics();
-    }, delay));
+    }, delay);
+    manualMelodyTimers.push(event.timer);
+    return event;
   });
+  return { events, segmentEnd: chunkEnd, endIndex, startTime };
+}
+
+function resetInteractiveSequencer() {
+  interactivePhrase = null;
+  interactiveTransitioning = false;
+  interactivePressQueue = [];
+}
+
+function nextCueAfter(cue) {
+  const cues = song?.chordCues || [];
+  const index = cue ? cues.indexOf(cue) : -1;
+  return index >= 0 ? (cues[index + 1] || null) : null;
+}
+
+function cueForInteractivePress(root) {
+  let cue = activeCue?.cue || chordAtTime(currentPlayTime()) || null;
+  if (interactivePhrase?.cue && cue === interactivePhrase.cue) {
+    const next = nextCueAfter(interactivePhrase.cue);
+    if (next && (!root || next.root === root || rootFromChord(next.chord) === root)) cue = next;
+  }
+  return cue || { chord: root, root, time: currentPlayTime() };
+}
+
+function timingForInteractivePhrase(cue, timing = {}) {
+  const nowSong = currentPlayTime();
+  const nowPerf = performance.now();
+  const progress = Number(timing.progress);
+  const cueTime = Number.isFinite(Number(cue?.time)) ? Number(cue.time) : nowSong;
+  const nextTime = nextChordCueTimeAfter(cueTime);
+  const boundary = Number.isFinite(nextTime) && nextTime > cueTime ? nextTime : Math.min(song?.duration || cueTime + 1.8, cueTime + 1.8);
+  let waitMs = 0;
+  if (Number.isFinite(progress) && progress < 90) {
+    waitMs = Math.max(0, Number(timing.dueAt || nowPerf) - nowPerf);
+  } else if (!Number.isFinite(progress) && cueTime > nowSong + 0.08) {
+    waitMs = (cueTime - nowSong) * 1000;
+  }
+  const naturalSpan = Math.max(0.12, boundary - cueTime);
+  const lateSeconds = Number.isFinite(progress) && progress > 100
+    ? (progress - 100) / 100
+    : Math.max(0, nowSong - cueTime);
+  const timeScale = lateSeconds > 0.1
+    ? Math.max(0.25, Math.min(1, (naturalSpan - lateSeconds) / naturalSpan))
+    : 1;
+  return { waitMs, timeScale, boundary };
+}
+
+function startInteractivePhraseNow(root, cue, timing = {}) {
+  clearHarmonyTimers();
+  const scheduleTiming = timingForInteractivePhrase(cue, timing);
+  let melody = { events: [], segmentEnd: scheduleTiming.boundary };
+  if (isManualMode()) {
+    clearManualMelodyTimers();
+    melody = playNextManualMelodyNote(scheduleTiming.timeScale);
+  }
+  const harmony = playStyledHarmony(root, cue, scheduleTiming.timeScale);
+  interactivePhrase = {
+    root,
+    cue: harmony?.cue || cue,
+    segmentEnd: Math.max(Number(melody?.segmentEnd || 0), Number(harmony?.segmentEnd || 0)),
+    melodyEvents: melody?.events || [],
+    harmonyEvents: harmony?.events || [],
+  };
+}
+
+function beginInteractivePhrase(root, cue, timing = {}) {
+  const scheduleTiming = timingForInteractivePhrase(cue, timing);
+  if (scheduleTiming.waitMs > 24) {
+    const request = { root, cue, timing: { ...timing, progress: 100, dueAt: performance.now() + scheduleTiming.waitMs } };
+    const waiting = { root, cue, waiting: true, waitingUntil: performance.now() + scheduleTiming.waitMs, waitingTimer: null };
+    waiting.waitingTimer = setTimeout(() => {
+      if (interactivePhrase !== waiting) return;
+      interactivePhrase = null;
+      startInteractivePhraseNow(request.root, request.cue, request.timing);
+      if (interactivePressQueue.length) {
+        const next = interactivePressQueue.shift();
+        setTimeout(() => requestInteractivePhrase(next.root, next.cue, next.timing), 0);
+      }
+    }, scheduleTiming.waitMs);
+    manualMelodyTimers.push(waiting.waitingTimer);
+    interactivePhrase = waiting;
+    return;
+  }
+  startInteractivePhraseNow(root, cue, timing);
+}
+
+function pendingInteractiveEvents(phrase, nowSong, nowPerf) {
+  const harmony = (phrase?.harmonyEvents || [])
+    .filter(event => !event.fired)
+    .map(event => ({ type: 'harmony', event, remaining: Math.max(0, (event.dueAt - nowPerf) / 1000) }));
+  if (isManualMode()) {
+    return harmony.concat((phrase?.melodyEvents || [])
+      .filter(event => !event.fired)
+      .map(event => ({ type: 'melody', event, remaining: Math.max(0, (event.dueAt - nowPerf) / 1000) })));
+  }
+  const boundary = Number(phrase?.segmentEnd || nowSong);
+  const melody = melodyEnabled ? (song?.melodyTrack?.notes || [])
+    .map((note, idx) => ({ note, idx }))
+    .filter(({ note }) => note.time > nowSong + 0.008 && note.time < boundary - 0.001 && shouldAutoPlayMelodyAt(note.time))
+    .map(({ note, idx }) => ({ type: 'melody', event: { note, idx }, remaining: note.time - nowSong })) : [];
+  return harmony.concat(melody);
+}
+
+function finishInteractiveTransition(mode, boundary) {
+  playOffset = Math.max(playOffset, Math.min(song?.duration || boundary, boundary));
+  interactiveTransitioning = false;
+  interactivePhrase = null;
+  if (mode === 'semi') {
+    scheduleFrom(playOffset, true);
+  } else {
+    const notes = song?.melodyTrack?.notes || [];
+    const boundaryIndex = notes.findIndex(note => note.time >= playOffset - 0.001);
+    if (boundaryIndex >= 0) nextManualMelodyIndex = Math.max(nextManualMelodyIndex, boundaryIndex);
+    ensureManualClock();
+    scheduleChordCues(playOffset);
+    updateClock();
+    updateLyrics();
+  }
+  const next = interactivePressQueue.shift();
+  if (next) beginInteractivePhrase(next.root, next.cue, next.timing);
+  if (interactivePressQueue.length) {
+    const following = interactivePressQueue.shift();
+    setTimeout(() => requestInteractivePhrase(following.root, following.cue, following.timing), 0);
+  }
+}
+
+function accelerateInteractivePhrase() {
+  if (!interactivePhrase || interactiveTransitioning) return;
+  const mode = isManualMode() ? 'manual' : 'semi';
+  const nowSong = currentPlayTime();
+  const nowPerf = performance.now();
+  const boundary = Math.max(nowSong, Math.min(song?.duration || Infinity, Number(interactivePhrase.segmentEnd || nowSong)));
+  const pending = pendingInteractiveEvents(interactivePhrase, nowSong, nowPerf);
+  if (!pending.length) return finishInteractiveTransition(mode, boundary);
+
+  const maxRemaining = Math.max(0.001, ...pending.map(item => item.remaining));
+  const catchupDuration = Math.max(0.16, Math.min(0.5, maxRemaining * 0.28));
+  const scale = catchupDuration / maxRemaining;
+  interactiveTransitioning = true;
+  clearTimers();
+  playing = false;
+  interactivePhrase = null;
+
+  for (const item of pending) {
+    const delay = Math.max(0, item.remaining * scale * 1000);
+    if (item.type === 'harmony') {
+      const event = item.event;
+      playHarmonyVisualNote(event.midi, delay, Math.max(0.045, event.duration * scale), event.velocity, event.toneMode);
+    } else {
+      const { note, idx } = item.event;
+      const timer = setTimeout(() => {
+        playOffset = note.time;
+        playVisualNote(shiftedMidi(note.note), note.velocity || 0.65, 'playback');
+        if (isManualMode() && nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
+        updateClock();
+        updateLyrics();
+      }, delay);
+      manualMelodyTimers.push(timer);
+    }
+  }
+  const done = setTimeout(() => finishInteractiveTransition(mode, boundary), catchupDuration * 1000 + 45);
+  manualMelodyTimers.push(done);
+}
+
+function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timing = {}) {
+  const request = { root, cue, timing };
+  if (interactiveTransitioning) {
+    interactivePressQueue.push(request);
+    return;
+  }
+  if (interactivePhrase?.waiting) {
+    interactivePressQueue.push(request);
+    return;
+  }
+  const nowSong = currentPlayTime();
+  const pending = interactivePhrase && pendingInteractiveEvents(interactivePhrase, nowSong, performance.now()).length;
+  if (pending) {
+    interactivePressQueue.push(request);
+    accelerateInteractivePhrase();
+    return;
+  }
+  beginInteractivePhrase(root, cue, timing);
 }
 
 
@@ -2774,7 +2973,9 @@ function renderManualKeyboard() {
       ev.preventDefault();
       requestWakeLock();
       warmHarmonyTones(false);
-      if (isManualMode()) playNextManualMelodyNote();
+      const pressedCue = cueForInteractivePress(label);
+      const pressProgress = cueProgressForKey(key);
+      const pressCueState = cueState.get(label);
       // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
       if (isGoodTiming(key) && activeCue && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id)) {
         activeCue.hit = true;
@@ -2788,7 +2989,10 @@ function renderManualKeyboard() {
       }
       key.classList.remove('chord-due', 'miss', 'chord-release');
       key.classList.add('chord-press');
-      playStyledHarmony(label);
+      if (isSemiAutoMode() || isManualMode()) {
+        requestInteractivePhrase(label, pressedCue, { progress: pressProgress, dueAt: pressCueState?.due });
+      }
+      else playStyledHarmony(label, pressedCue);
         setTimeout(() => {
         key.classList.remove('chord-press');
         key.classList.add('chord-release');
@@ -2946,8 +3150,7 @@ async function startGameFromMenu() {
   updatePlaybackToggles();
   playOffset = 0;
   nextManualMelodyIndex = 0;
-  manualLastPressAt = 0;
-  manualSpeedScale = 1;
+  resetInteractiveSequencer();
   clearManualMelodyTimers();
   startCountdownThenPlay();
 }
@@ -3017,4 +3220,3 @@ setupStartScreen();
 setupMicWave();
 initSamplePiano();
 midiReadyPromise = loadDefaultMidi();
-
