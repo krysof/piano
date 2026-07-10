@@ -117,6 +117,8 @@ body.game-started #startScreen {
   padding: 0 2px;
 }
 
+.launch-header > .launch-status:only-child { margin-left: auto; }
+
 .launch-brand {
   display: flex;
   align-items: center;

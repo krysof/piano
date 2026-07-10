@@ -45,25 +45,26 @@ body:not(.song-selected) #startScreen { display: none; }
   gap: 18px;
 }
 
-.song-brand { display: flex; align-items: center; gap: 13px; }
-.song-brand > span:last-child { display: grid; }
-.song-brand small { color: #ae92ff; font-size: 9px; font-weight: 850; letter-spacing: .24em; }
-.song-brand b { margin-top: 3px; font-size: clamp(21px, 5vw, 30px); }
-.song-brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  width: 48px;
-  height: 48px;
-  border-radius: 16px;
-  background: linear-gradient(145deg, #9a70ff, #613bd7);
-  box-shadow: 0 14px 30px rgba(105,67,219,.33), inset 0 1px 0 rgba(255,255,255,.3);
+.song-freeza-brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.song-freeza-logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(151,105,255,.96), rgba(82,52,174,.97));
+  box-shadow: 0 14px 32px rgba(105,67,219,.34), inset 0 1px 0 rgba(255,255,255,.3);
+  cursor: pointer;
+  transition: transform 160ms ease, filter 160ms ease;
 }
-.song-brand-mark i { width: 4px; height: 12px; border-radius: 9px; background: rgba(255,255,255,.88); }
-.song-brand-mark i:nth-child(2) { height: 24px; }
-.song-brand-mark i:nth-child(3) { height: 18px; }
-.song-brand-mark i:nth-child(4) { height: 8px; }
+.song-freeza-logo svg { width: 48px; height: 48px; overflow: visible; filter: drop-shadow(0 4px 8px rgba(22,12,48,.42)); }
+.song-freeza-logo:active { transform: scale(.94); }
+.song-freeza-logo:focus-visible { outline: 2px solid rgba(174,145,255,.9); outline-offset: 3px; }
+.song-freeza-eyebrow { color: #ae92ff; font-size: 9px; font-weight: 850; letter-spacing: .24em; }
+.song-freeza-brand h1 { margin: 4px 0 0; font-size: clamp(23px,5vw,30px); line-height: 1; letter-spacing: -.035em; }
+.song-freeza-brand h1 em { color: #a78bfa; font-style: normal; }
 
 .song-library-count {
   display: grid;
@@ -171,6 +172,9 @@ body:not(.song-selected) #startScreen { display: none; }
   .song-art { min-height: 148px; border-radius: 15px; }
   .song-tags { margin-top: 10px; }
   .song-card-action { padding-top: 9px; }
+  .song-freeza-logo { width: 46px; height: 46px; border-radius: 15px; }
+  .song-freeza-logo svg { width: 41px; height: 41px; }
+  .song-freeza-eyebrow { font-size: 8px; }
 }
 
 @media (max-width: 370px) {

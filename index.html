@@ -7,20 +7,52 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260711-03" />
-  <link rel="stylesheet" href="song-screen.css?v=reset-20260711-03" />
-  <link rel="stylesheet" href="start-screen.css?v=reset-20260711-03" />
-  <link rel="stylesheet" href="game-screen.css?v=reset-20260711-03" />
-  <link rel="stylesheet" href="chord-keys.css?v=reset-20260711-03" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260711-04" />
+  <link rel="stylesheet" href="song-screen.css?v=reset-20260711-04" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260711-04" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260711-04" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260711-04" />
 </head>
 <body>
 
   <section id="songScreen" class="song-screen" aria-label="选择歌曲" aria-hidden="false">
     <div class="song-shell">
       <header class="song-header">
-        <div class="song-brand">
-          <span class="song-brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-          <span><small>FREEZA LIVE LIBRARY</small><b>选择歌曲</b></span>
+        <div class="song-freeza-brand">
+          <div class="song-freeza-logo" role="button" tabindex="0" data-ui-sound="brand" aria-label="播放 Freeza Live 标志音效">
+            <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+              <defs>
+                <linearGradient id="launchFace" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#ffffff"/>
+                  <stop offset="1" stop-color="#cbd4e7"/>
+                </linearGradient>
+                <linearGradient id="launchCrest" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#d9bbff"/>
+                  <stop offset="0.45" stop-color="#9e66ff"/>
+                  <stop offset="1" stop-color="#6232c7"/>
+                </linearGradient>
+              </defs>
+              <path d="M17 24C10 20 5 13 3 7c8 2 15 6 20 12Z" fill="#171927" stroke="#aca0d4" stroke-width="1.5"/>
+              <path d="M47 24c7-4 12-11 14-17-8 2-15 6-20 12Z" fill="#171927" stroke="#aca0d4" stroke-width="1.5"/>
+              <path d="M16 23c0-10 7-17 16-17s16 7 16 17v21c0 10-7 16-16 16S16 54 16 44Z" fill="url(#launchFace)" stroke="#242638" stroke-width="2"/>
+              <path d="M21 25c-5 1-8 5-8 10 0 4 2 7 6 8Z" fill="#dce3ef" stroke="#242638" stroke-width="1.5"/>
+              <path d="M43 25c5 1 8 5 8 10 0 4-2 7-6 8Z" fill="#dce3ef" stroke="#242638" stroke-width="1.5"/>
+              <path d="M22 18C23 10 27 6 32 6s9 4 10 12c-2 4-5 7-10 7s-8-3-10-7Z" fill="url(#launchCrest)" stroke="#2b2345" stroke-width="2"/>
+              <path d="M20 31c4-4 8-5 12-2-3 1-6 4-10 5Z" fill="#2a2c3c"/>
+              <path d="M44 31c-4-4-8-5-12-2 3 1 6 4 10 5Z" fill="#2a2c3c"/>
+              <path d="M21 34c4-2 8-2 11 0-3 4-7 5-11 2Z" fill="#ffe876" stroke="#242638" stroke-width="1.2"/>
+              <path d="M43 34c-4-2-8-2-11 0 3 4 7 5 11 2Z" fill="#ffe876" stroke="#242638" stroke-width="1.2"/>
+              <circle cx="27" cy="35" r="1.4" fill="#171927"/>
+              <circle cx="37" cy="35" r="1.4" fill="#171927"/>
+              <path d="M32 37v7" stroke="#727b91" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M26 49c4 2 8 2 12 0" fill="none" stroke="#242638" stroke-width="2" stroke-linecap="round"/>
+              <path d="M23 56c5 5 13 5 18 0" fill="#9e66ff" opacity=".9"/>
+            </svg>
+          </div>
+          <div>
+            <div class="song-freeza-eyebrow">LIVE PERFORMANCE</div>
+            <h1>Freeza <em>Live</em></h1>
+          </div>
         </div>
         <div class="song-library-count"><strong>02</strong><span>TRACKS</span></div>
       </header>
@@ -67,46 +99,10 @@
     <div class="launch-glow launch-glow-b" aria-hidden="true"></div>
     <div class="launch-shell">
       <header class="launch-header">
-        <div class="launch-brand">
-          <div class="launch-logo" role="button" tabindex="0" data-ui-sound="brand" aria-label="播放 Freeza Live 标志音效">
-            <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
-              <defs>
-                <linearGradient id="launchFace" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#ffffff"/>
-                  <stop offset="1" stop-color="#cbd4e7"/>
-                </linearGradient>
-                <linearGradient id="launchCrest" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stop-color="#d9bbff"/>
-                  <stop offset="0.45" stop-color="#9e66ff"/>
-                  <stop offset="1" stop-color="#6232c7"/>
-                </linearGradient>
-              </defs>
-              <path d="M17 24C10 20 5 13 3 7c8 2 15 6 20 12Z" fill="#171927" stroke="#aca0d4" stroke-width="1.5"/>
-              <path d="M47 24c7-4 12-11 14-17-8 2-15 6-20 12Z" fill="#171927" stroke="#aca0d4" stroke-width="1.5"/>
-              <path d="M16 23c0-10 7-17 16-17s16 7 16 17v21c0 10-7 16-16 16S16 54 16 44Z" fill="url(#launchFace)" stroke="#242638" stroke-width="2"/>
-              <path d="M21 25c-5 1-8 5-8 10 0 4 2 7 6 8Z" fill="#dce3ef" stroke="#242638" stroke-width="1.5"/>
-              <path d="M43 25c5 1 8 5 8 10 0 4-2 7-6 8Z" fill="#dce3ef" stroke="#242638" stroke-width="1.5"/>
-              <path d="M22 18C23 10 27 6 32 6s9 4 10 12c-2 4-5 7-10 7s-8-3-10-7Z" fill="url(#launchCrest)" stroke="#2b2345" stroke-width="2"/>
-              <path d="M20 31c4-4 8-5 12-2-3 1-6 4-10 5Z" fill="#2a2c3c"/>
-              <path d="M44 31c-4-4-8-5-12-2 3 1 6 4 10 5Z" fill="#2a2c3c"/>
-              <path d="M21 34c4-2 8-2 11 0-3 4-7 5-11 2Z" fill="#ffe876" stroke="#242638" stroke-width="1.2"/>
-              <path d="M43 34c-4-2-8-2-11 0 3 4 7 5 11 2Z" fill="#ffe876" stroke="#242638" stroke-width="1.2"/>
-              <circle cx="27" cy="35" r="1.4" fill="#171927"/>
-              <circle cx="37" cy="35" r="1.4" fill="#171927"/>
-              <path d="M32 37v7" stroke="#727b91" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M26 49c4 2 8 2 12 0" fill="none" stroke="#242638" stroke-width="2" stroke-linecap="round"/>
-              <path d="M23 56c5 5 13 5 18 0" fill="#9e66ff" opacity=".9"/>
-            </svg>
-          </div>
-          <div>
-            <div class="launch-eyebrow">LIVE PERFORMANCE</div>
-            <h1>Freeza <em>Live</em></h1>
-          </div>
-        </div>
         <button id="changeSongBtn" class="launch-status" type="button" aria-label="返回选歌">
           <span class="launch-status-dot"></span>
           <span id="selectedSongStatus">当前歌曲</span>
-          <b id="startVersion">v20260711.03</b>
+          <b id="startVersion">v20260711.04</b>
         </button>
       </header>
 
@@ -362,9 +358,9 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="guitar-manifests.js?v=reset-20260711-03"></script>
-  <script src="guitar-sampler.js?v=reset-20260711-03"></script>
-  <script src="drum-kits.js?v=reset-20260711-03"></script>
-<script src="app.js?v=reset-20260711-03"></script>
+  <script src="guitar-manifests.js?v=reset-20260711-04"></script>
+  <script src="guitar-sampler.js?v=reset-20260711-04"></script>
+  <script src="drum-kits.js?v=reset-20260711-04"></script>
+<script src="app.js?v=reset-20260711-04"></script>
 </body>
 </html>

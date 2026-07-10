@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-03';
+const ASSET_VERSION = 'reset-20260711-04';
 const SONG_CATALOG = Object.freeze([
   {
     id: 'later',
@@ -88,6 +88,8 @@ let initialPickSlot = null;
 let userKeyShift = 0;
 let playbackNeedsFocusResync = false;
 let focusResyncing = false;
+let focusResumePosition = null;
+let focusResyncRetryTimer = null;
 let HARMONY_TONES = [
   { label: 'A', code: 'GS_3', name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: 0.78 },
   { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: 0.42 },
@@ -270,7 +272,11 @@ function ensureAudio() {
     audio.gameRecordGain.gain.value = 1;
     audio.master.connect(audio.gameRecordGain).connect(audio.recordDest);
   }
-  if (audio.ctx.state === 'suspended') audio.ctx.resume();
+  // iOS Safari 从后台回来时可能把 Context 标记为 suspended 或
+  // interrupted。两种状态都要主动恢复，不能只处理 suspended。
+  if (audio.ctx.state !== 'running' && audio.ctx.state !== 'closed') {
+    audio.ctx.resume().catch(() => {});
+  }
   connectToneToRecorder();
 }
 
@@ -776,39 +782,28 @@ function syncStartDrumToneMenu(screen = $('startScreen')) {
   });
 }
 
-function selectDrumPatternSlot(slot, reschedule = true, forceMode = true) {
+function selectDrumPatternSlot(slot, reschedule = true) {
   const codes = availableDrumCodes();
   const requestedSlot = Number(slot) > 0 ? 1 : 0;
   // MIDI 尚未载入时保留首页选择；载入后若歌曲只有一套鼓组才回落到 A。
   drumPatternSlot = codes.length === 1 ? 0 : requestedSlot;
   currentDrumCode = codes[drumPatternSlot] || codes[0] || currentDrumCode;
-  if (forceMode) {
-    drumMode = 'on';
-    drumModeBeforeOff = 'on';
-    drumsEnabled = true;
-  }
   updateToneButton();
   syncStartDrumToneMenu();
   updatePlaybackToggles();
   const pattern = currentDrumPattern();
   if (pattern) prepareDrumPattern(pattern, currentDrumCode);
-  if (reschedule && playing) scheduleFrom(currentPlayTime());
+  if (reschedule && playing && drumsEnabled) scheduleFrom(currentPlayTime());
 }
 
 function selectGameDrumPatternSlot(slot) {
-  const wasPowered = drumMode !== 'off';
-  // 鼓 A/B 只选择“开机后用哪套鼓组”，绝不能顺手打开处于关闭状态的鼓机。
-  selectDrumPatternSlot(slot, false, false);
-  if (wasPowered) {
-    // 鼓机本来就在响：手动选 A/B 后保持电源开启，并切到所选 pattern。
-    drumMode = 'on';
-    drumModeBeforeOff = 'on';
-    drumsEnabled = true;
-  } else {
-    // 鼓机关闭时只记住所选 pattern；下一次点“鼓”才真正开启。
-    drumModeBeforeOff = 'on';
-    drumsEnabled = false;
-  }
+  const wasPowered = drumsEnabled;
+  // 鼓 A/B 是纯 pattern 选择器。它可以把“智能”改为玩家指定的 A/B，
+  // 但绝不能改变独立鼓机电源；关闭状态下选择后仍保持静音。
+  selectDrumPatternSlot(slot, false);
+  drumMode = 'on';
+  drumModeBeforeOff = 'on';
+  drumsEnabled = wasPowered;
   updatePlaybackToggles();
   if (playing && wasPowered) scheduleFrom(currentPlayTime());
 }
@@ -1264,9 +1259,9 @@ function updatePlaybackToggles() {
     melodyBtn.setAttribute('aria-pressed', melodyEnabled ? 'true' : 'false');
   }
   if (drumBtn) {
-    drumBtn.classList.toggle('active-toggle', drumMode !== 'off');
-    drumBtn.setAttribute('aria-pressed', drumMode !== 'off' ? 'true' : 'false');
-    drumBtn.title = `鼓机：${drumMode === 'auto' ? '自动' : drumMode === 'on' ? '开' : '关'}`;
+    drumBtn.classList.toggle('active-toggle', drumsEnabled);
+    drumBtn.setAttribute('aria-pressed', drumsEnabled ? 'true' : 'false');
+    drumBtn.title = `鼓机电源：${drumsEnabled ? '开' : '关'} · ${drumMode === 'auto' ? '智能节奏' : `鼓组 ${drumPatternSlot > 0 ? 'B' : 'A'}`}`;
   }
   updateToneButton();
   updateGamePickControls();
@@ -2182,9 +2177,9 @@ async function selectSong(songId) {
 function setupSongScreen() {
   const screen = $('songScreen');
   if (!screen) return;
+  setupLaunchUiSounds(screen);
   screen.querySelectorAll('[data-song-id]').forEach(card => {
     card.addEventListener('click', () => {
-      playLaunchUiSound('select');
       selectSong(card.dataset.songId);
     });
   });
@@ -2214,7 +2209,7 @@ function scheduleFrom(offset = 0, preserveInteractive = false, skipChordCueAtOff
 }
 
 function scheduleDrumsFrom(offset = 0) {
-  if (drumMode === 'off') return;
+  if (!drumsEnabled || drumMode === 'off') return;
   if (drumMode === 'auto') {
     if (song?.drumEvents?.length) return scheduleAutomatedDrumsFrom(offset);
     return;
@@ -3300,13 +3295,10 @@ $('melodyToggle').onclick = () => {
   if (playing) scheduleFrom(currentPlayTime());
 };
 $('drumToggle').onclick = () => {
-  if (drumMode === 'off') {
-    drumMode = drumModeBeforeOff || 'auto';
-  } else {
-    drumModeBeforeOff = drumMode;
-    drumMode = 'off';
-  }
-  drumsEnabled = drumMode !== 'off';
+  // “鼓”是唯一电源。鼓 A/B 永远不能走到这里或顺带改变此状态。
+  drumsEnabled = !drumsEnabled;
+  if (drumsEnabled && drumMode === 'off') drumMode = drumModeBeforeOff || 'auto';
+  if (!drumsEnabled && drumMode !== 'off') drumModeBeforeOff = drumMode;
   updatePlaybackToggles();
   if (playing) scheduleFrom(currentPlayTime());
 };
@@ -3381,7 +3373,7 @@ function setupStartScreen() {
     btn.addEventListener('click', () => {
       if (btn.disabled) return;
       // 与拨片一致，点当前已选项也切换到另一套鼓机音色。
-      selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1, false, false);
+      selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1, false);
     });
   });
   $('menuMelodyVolDown')?.addEventListener('click', () => adjustMelodyGain(-0.05));
@@ -3473,6 +3465,13 @@ document.addEventListener('selectionchange', () => {
 });
 function markPlaybackForFocusResync() {
   if (!playing) return;
+  if (!playbackNeedsFocusResync) {
+    // 后台暂停歌曲时间轴。回到前台从离开点继续，而不是把后台经过的
+    // 时间当作已演奏，亦不会一次性补触发积压事件。
+    focusResumePosition = Math.min(song?.duration || Infinity, currentPlayTime());
+    playOffset = focusResumePosition;
+    playStartedAt = performance.now();
+  }
   playbackNeedsFocusResync = true;
   // 离开前台时立刻撤销尚未触发的 timer/rAF，避免浏览器回到前台后
   // 把后台积压的和弦回调一次性全部执行。
@@ -3480,20 +3479,36 @@ function markPlaybackForFocusResync() {
 }
 
 async function resyncPlaybackAfterFocus() {
-  if (!playbackNeedsFocusResync || focusResyncing || !playing || !song || document.hidden) return;
+  if (!playbackNeedsFocusResync || focusResyncing || document.hidden) return;
+  if (!playing || !song) {
+    playbackNeedsFocusResync = false;
+    focusResumePosition = null;
+    return;
+  }
   focusResyncing = true;
-  playbackNeedsFocusResync = false;
-  // 先取得当前歌曲时间，再清除后台期间积压的旧 timer/cue。
-  // scheduleFrom() 只安排 resumeAt 之后的事件，因此不会补弹或连发错过的和弦。
-  const resumeAt = Math.min(song.duration, currentPlayTime());
+  clearTimeout(focusResyncRetryTimer);
+  focusResyncRetryTimer = null;
+  const resumeAt = Math.min(song.duration, focusResumePosition ?? playOffset);
   try {
     ensureAudio();
-    await Promise.allSettled([
-      audio.ctx?.resume?.(),
-      window.Tone ? Tone.start() : Promise.resolve(),
+    // Safari 可能在 visibilitychange 后短暂保持 interrupted。给本次恢复
+    // 一个有限等待，未成功则稍后重试；不能提前清掉待恢复标记。
+    await Promise.race([
+      Promise.allSettled([
+        audio.ctx?.resume?.(),
+        window.Tone ? Tone.start() : Promise.resolve(),
+        window.Tone?.getContext?.()?.resume?.(),
+      ]),
+      new Promise(resolve => setTimeout(resolve, 700)),
     ]);
-    if (playing) scheduleFrom(resumeAt);
-    requestWakeLock();
+    if (audio.ctx?.state === 'running') {
+      playbackNeedsFocusResync = false;
+      focusResumePosition = null;
+      if (playing) scheduleFrom(resumeAt);
+      requestWakeLock();
+    } else if (!document.hidden && playing) {
+      focusResyncRetryTimer = setTimeout(resyncPlaybackAfterFocus, 350);
+    }
   } finally {
     focusResyncing = false;
   }
@@ -3509,6 +3524,15 @@ window.addEventListener('pageshow', event => {
   if (event.persisted) playbackNeedsFocusResync = playing;
   resyncPlaybackAfterFocus();
 });
+// 若 iOS 要求下一次用户手势才能恢复 AudioContext，这个捕获阶段会先于
+// 琴键/控制按钮执行恢复，然后继续此前挂起的演奏调度。
+document.addEventListener('pointerdown', () => {
+  if (audio.ctx?.state !== 'running') {
+    audio.ctx?.resume?.().catch(() => {});
+    window.Tone?.start?.().catch?.(() => {});
+  }
+  if (playbackNeedsFocusResync) resyncPlaybackAfterFocus();
+}, { capture: true, passive: true });
 
 renderKeyboard('playbackKeyboard', 48, 72, 'playback');
 renderManualKeyboard();
