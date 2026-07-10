@@ -385,12 +385,18 @@ body.game-started #startScreen {
   transform: scale(0.975);
 }
 
+.launch-tone-stack {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
 .launch-pick-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 0;
   padding: 9px 9px 9px 11px;
   border: 1px solid rgba(255, 255, 255, 0.065);
   border-radius: 13px;
@@ -880,10 +886,15 @@ body.game-started #startScreen {
   .launch-choice span { font-size: 10px; }
 
   .launch-pick-row {
-    margin-top: 7px;
+    margin-top: 0;
     min-height: 39px;
     padding: 7px 8px 7px 10px;
     border-radius: 11px;
+  }
+
+  .launch-tone-stack {
+    gap: 5px;
+    margin-top: 7px;
   }
 
   .launch-pick-row > div:first-child > span { font-size: 11px; }

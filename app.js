@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-19';
+const ASSET_VERSION = 'reset-20260710-20';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -99,10 +99,11 @@ function updatePlayButton() {
 }
 
 function updateClock() {
-  if (!song) { setPill('timeStatus', '00:00 - 00:00'); updatePlayButton(); return; }
+  if (!song) { setPill('timeStatus', '00:00 - 00:00'); updatePlayButton(); updateGamePickControls(); return; }
   const now = playing ? playOffset + (performance.now() - playStartedAt) / 1000 : playOffset;
   setPill('timeStatus', `${fmt(Math.min(now, song.duration))} - ${fmt(song.duration)}`);
   updatePlayButton();
+  updateGamePickControls(now);
 }
 
 async function loadPatternManifest() {
@@ -653,14 +654,35 @@ function availableDrumCodes() {
   ].filter(Boolean))];
 }
 
-function selectDrumPatternSlot(slot, reschedule = true) {
+function syncStartDrumToneMenu(screen = $('startScreen')) {
+  if (!screen) return;
   const codes = availableDrumCodes();
-  drumPatternSlot = codes.length > 1 ? Math.max(0, Math.min(1, Number(slot) || 0)) : 0;
+  const hasLoadedChoice = Boolean(song);
+  screen.querySelectorAll('[data-drum-tone]').forEach(button => {
+    const slot = button.dataset.drumTone === 'B' ? 1 : 0;
+    const unavailable = hasLoadedChoice && slot > 0 && codes.length < 2;
+    button.disabled = unavailable;
+    button.classList.toggle('selected', !unavailable && slot === drumPatternSlot);
+    button.setAttribute('aria-pressed', !unavailable && slot === drumPatternSlot ? 'true' : 'false');
+    button.title = unavailable
+      ? '当前歌曲只提供一套鼓机音色'
+      : `鼓机音色 ${button.dataset.drumTone}${codes[slot] ? ` · ${codes[slot]}` : ''}`;
+  });
+}
+
+function selectDrumPatternSlot(slot, reschedule = true, forceMode = true) {
+  const codes = availableDrumCodes();
+  const requestedSlot = Number(slot) > 0 ? 1 : 0;
+  // MIDI 尚未载入时保留首页选择；载入后若歌曲只有一套鼓组才回落到 A。
+  drumPatternSlot = codes.length === 1 ? 0 : requestedSlot;
   currentDrumCode = codes[drumPatternSlot] || codes[0] || currentDrumCode;
-  drumMode = 'on';
-  drumModeBeforeOff = 'on';
-  drumsEnabled = true;
+  if (forceMode) {
+    drumMode = 'on';
+    drumModeBeforeOff = 'on';
+    drumsEnabled = true;
+  }
   updateToneButton();
+  syncStartDrumToneMenu();
   updatePlaybackToggles();
   const pattern = currentDrumPattern();
   if (pattern) prepareDrumPattern(pattern, currentDrumCode);
@@ -1123,6 +1145,7 @@ function updatePlaybackToggles() {
     drumBtn.title = `鼓机：${drumMode === 'auto' ? '自动' : drumMode === 'on' ? '开' : '关'}`;
   }
   updateToneButton();
+  updateGamePickControls();
 }
 
 function syncMelodyGuideMenu(screen = $('startScreen')) {
@@ -1162,6 +1185,30 @@ function shouldAutoPlayMelodyAt(time) {
 function isAutoChordMode() { return playMode === 'auto'; }
 function isSemiAutoMode() { return playMode === 'semi'; }
 function isManualMode() { return playMode === 'manual'; }
+
+function updateGamePickControls(time = currentPlayTime()) {
+  const enabled = isAutoChordMode();
+  const activeSlot = song ? chordPatternSlotAtTime(time) : Math.max(0, harmonyToneMode - 1);
+  [$('pickABtn'), $('pickBBtn')].forEach((button, slot) => {
+    if (!button) return;
+    button.disabled = !enabled;
+    button.classList.toggle('selected', enabled && slot === activeSlot);
+    button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+    button.setAttribute('aria-pressed', enabled && slot === activeSlot ? 'true' : 'false');
+    button.title = enabled ? `全自动拨片 ${slot ? 'B' : 'A'}` : '仅全自动模式可用';
+  });
+}
+
+function selectGamePickSlot(slot) {
+  if (!isAutoChordMode()) return;
+  const normalized = Number(slot) > 0 ? 1 : 0;
+  harmonyToneMode = normalized + 1;
+  initialPickSlot = normalized;
+  insertUserPickEvent(normalized, currentPlayTime());
+  updateGamePickControls();
+  warmHarmonyTones(false);
+  if (playing) scheduleFrom(currentPlayTime());
+}
 
 function currentHarmonyPreset() {
   return HARMONY_TONES[(harmonyToneMode - 1 + HARMONY_TONES.length) % HARMONY_TONES.length] || HARMONY_TONES[0];
@@ -1259,8 +1306,10 @@ function refreshHarmonyTonesFromStyle(styleInfo) {
     updateToneButton();
   }
   const drumCodes = availableDrumCodes();
+  if (drumCodes.length === 1) drumPatternSlot = 0;
   currentDrumCode = drumCodes[drumPatternSlot] || drumCodes[0] || null;
   updateToneButton();
+  syncStartDrumToneMenu();
 }
 
 function rootFromChord(text) {
@@ -2870,6 +2919,8 @@ $('savePrompt')?.addEventListener('click', (ev) => { if (ev.target?.id === 'save
 $('toneBtn').onclick = () => {
   selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
 };
+$('pickABtn').onclick = () => selectGamePickSlot(0);
+$('pickBBtn').onclick = () => selectGamePickSlot(1);
 $('melodyToggle').onclick = () => {
   melodyEnabled = !melodyEnabled;
   if (melodyEnabled) guideMode = false;
@@ -2903,6 +2954,7 @@ function setupStartScreen() {
     btn.addEventListener('click', () => {
       playMode = btn.dataset.mode || 'semi';
       screen.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('selected', b === btn));
+      updateGamePickControls();
     });
   });
   screen.querySelectorAll('[data-drum]').forEach(btn => {
@@ -2953,6 +3005,12 @@ function setupStartScreen() {
       warmHarmonyTones(false);
     });
   });
+  screen.querySelectorAll('[data-drum-tone]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      selectDrumPatternSlot(btn.dataset.drumTone === 'B' ? 1 : 0, false, false);
+    });
+  });
   $('menuMelodyVolDown')?.addEventListener('click', () => adjustMelodyGain(-0.05));
   $('menuMelodyVolUp')?.addEventListener('click', () => adjustMelodyGain(0.05));
   $('menuHarmonyVolDown')?.addEventListener('click', () => adjustHarmonyGain(-0.05));
@@ -2966,6 +3024,8 @@ function setupStartScreen() {
   updateVolumeButtons();
   updateMicMenu();
   syncMelodyGuideMenu(screen);
+  syncStartDrumToneMenu(screen);
+  updateGamePickControls();
   screen.querySelector('[data-group="guide"]')?.addEventListener('click', () => {
     guideMode = !guideMode;
     syncMelodyGuideMenu(screen);
