@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-17';
+const ASSET_VERSION = 'reset-20260710-18';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -730,6 +730,17 @@ function updateKeyButtons() {
     // Key 和音量条同款：--pct 只表示滑块位置，不做中线特殊填充。
     menuRange.style.setProperty('--pct', `${((userKeyShift + 14) / 28) * 100}%`);
   }
+  updateCurrentKeyStatus();
+}
+
+function updateCurrentKeyStatus() {
+  const status = $('keyStatus');
+  if (!status) return;
+  const pitchClass = ((songTransposeSemitones() + userKeyShift) % 12 + 12) % 12;
+  const keyName = PC_NOTE_SHARP[pitchClass].replace('#', '♯');
+  const value = status.querySelector('b');
+  if (value) value.textContent = keyName;
+  status.title = `当前 Key：${keyName}（升降 ${userKeyShift >= 0 ? '+' : ''}${userKeyShift}）`;
 }
 
 function previewKeyShift(delta) {
@@ -1799,7 +1810,7 @@ function spawnLyricGhost(box, lines) {
   // v74: 不再叠加旧字幕层，避免旧层盖住第一行；整组新字幕统一滚动。
 }
 
-function ensureKaraokeLines(maxLines = 12) {
+function ensureKaraokeLines(maxLines = 20) {
   const box = document.querySelector('.karaoke');
   if (!box) return [];
   const status = box.querySelector('.karaoke-status');
@@ -1818,12 +1829,12 @@ function visibleLyricLineCount() {
   const box = document.querySelector('.karaoke');
   const h = box?.clientHeight || 280;
   const w = window.innerWidth || 390;
-  const rowH = Math.max(30, Math.min(42, w * 0.090));
-  return Math.max(7, Math.min(12, Math.floor((h - 18) / rowH)));
+  const rowH = Math.max(24, Math.min(34, w * 0.07));
+  return Math.max(10, Math.min(20, Math.floor((h - 18) / rowH)));
 }
 
 function updateLyrics() {
-  const allLines = ensureKaraokeLines(12);
+  const allLines = ensureKaraokeLines(20);
   const box = document.querySelector('.karaoke');
   const count = visibleLyricLineCount();
   const lines = allLines.slice(0, count);
@@ -1905,6 +1916,7 @@ async function loadDefaultMidi() {
     setPill('midiStatus', `✅ MIDI 已加载：${song.trackCount} 轨 · WASM`, 'ok');
     setPill('trackStatus', `只播放 Track 1 主旋律 · ${song.melodyTrack.notes.length} 音 · ${summary}`, song.melodyTrack.notes.length ? 'ok' : 'warn');
     refreshHarmonyTonesFromStyle(song.styleInfo);
+    updateCurrentKeyStatus();
     buildLyricLines();
     bindChordCuesToLyrics();
     renderPlaybackForMelody();
@@ -2787,7 +2799,7 @@ function renderManualKeyboard() {
     key.dataset.root = label;
     key.dataset.display = displayLabel;
     key.innerHTML = `<span class="pick-regions" aria-hidden="true"><span class="pick-zone pick-zone-a" data-pick-slot="0">A</span><span class="pick-zone pick-zone-b" data-pick-slot="1">B</span></span><span class="chord-fill"></span><span class="chord-line"></span><span class="chord-symbol"></span><span class="key-label">${displayLabel}</span>`;
-    key.title = `${displayLabel} (${label})`;
+    key.title = `${displayLabel} (${label}) · 左半拨片 A / 右半拨片 B`;
     key.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
       requestWakeLock();
