@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-07';
+const ASSET_VERSION = 'reset-20260710-08';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -12,11 +12,6 @@ const audio = {
   toneRecorderAttempted: false,
 };
 const sampled = { piano: null, ready: false };
-const freepatsGuitar = {
-  base: 'samples/freepats_spanish_guitar/SpanishClassicalGuitar-SFZ-20190618/',
-  regions: [],
-  buffers: new Map(),
-};
 const wasmParser = { promise: null, exports: null };
 const patterns = { manifest: null, byCode: new Map(), promise: null };
 let song = null;
@@ -68,7 +63,7 @@ let userKeyShift = 0;
 let playbackNeedsFocusResync = false;
 let focusResyncing = false;
 let HARMONY_TONES = [
-  { label: 'A', code: 'GS_3', name: 'acoustic_guitar_steel', gain: 0.78 },
+  { label: 'A', code: 'GS_3', name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: 0.78 },
   { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: 0.42 },
 ];
 const soundfont = { instruments: new Map(), promises: new Map(), ready: false };
@@ -250,103 +245,33 @@ function connectToneToRecorder() {
 }
 function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
-function initFreepatsRegions() {
-  if (freepatsGuitar.regions.length) return;
-  const direct = [
-    [32,'G#1.wav'], [33,'A1.wav'], [34,'A#1.wav'], [35,'B1.wav'], [36,'C2.wav'], [37,'C#2.wav'],
-    [38,'D2.wav'], [39,'D#2.wav'], [40,'E2.wav'], [41,'F2.wav'], [48,'C3.wav'], [53,'F3.wav'],
-    [54,'F#3.wav'], [55,'G3.wav'], [56,'G#3.wav'], [57,'A3.wav'], [58,'A#3.wav'], [59,'B3.wav'],
-    [60,'C4.wav'], [61,'C#4.wav'], [62,'D4.wav'], [63,'D#4.wav'], [64,'E4.wav'], [65,'F4.wav'],
-    [66,'F#4.wav'], [67,'G4.wav'], [70,'A#4.wav'], [71,'B4.wav'], [72,'C5.wav'], [73,'C#5.wav'],
-    [74,'D5.wav'], [75,'D#5.wav'], [76,'E5.wav'], [77,'F5.wav'], [78,'F#5.wav'], [79,'G5.wav'],
-    [80,'G#5.wav'], [81,'A5.wav'], [82,'A#5.wav'], [83,'B5.wav'],
-  ];
-  freepatsGuitar.regions = [
-    { lo: 29, hi: 31, center: 31, sample: 'G1.wav' },
-    ...direct.map(([key, sample]) => ({ lo: key, hi: key, center: key, sample })),
-    { lo: 42, hi: 43, center: 43, sample: 'G2.wav' },
-    { lo: 44, hi: 45, center: 45, sample: 'A2.wav' },
-    { lo: 46, hi: 47, center: 47, sample: 'B2.wav' },
-    { lo: 49, hi: 50, center: 50, sample: 'D3.wav' },
-    { lo: 51, hi: 52, center: 52, sample: 'E3.wav' },
-    { lo: 68, hi: 69, center: 69, sample: 'A4.wav' },
-    { lo: 84, hi: 88, center: 84, sample: 'C6.wav' },
-  ].sort((a, b) => a.lo - b.lo);
-}
-
-function freepatsRegionFor(midi) {
-  initFreepatsRegions();
-  const clipped = Math.max(29, Math.min(88, Math.round(midi)));
-  return freepatsGuitar.regions.find(r => clipped >= r.lo && clipped <= r.hi)
-    || freepatsGuitar.regions.reduce((best, r) =>
-      Math.abs(r.center - clipped) < Math.abs(best.center - clipped) ? r : best, freepatsGuitar.regions[0]);
-}
-
-async function getFreepatsBuffer(region) {
-  ensureAudio();
-  if (freepatsGuitar.buffers.has(region.sample)) return freepatsGuitar.buffers.get(region.sample);
-  const url = `${freepatsGuitar.base}samples/${encodeURIComponent(region.sample)}`;
-  const promise = fetch(url, { cache: 'force-cache' })
-    .then(res => {
-      if (!res.ok) throw new Error(`FreePats sample HTTP ${res.status}`);
-      return res.arrayBuffer();
-    })
-    .then(buf => audio.ctx.decodeAudioData(buf));
-  freepatsGuitar.buffers.set(region.sample, promise);
-  return promise;
-}
-
-function playFreepatsGuitarNote(midi, duration = 0.75, velocity = 0.5, gainScale = 0.78) {
-  ensureAudio();
-  const region = freepatsRegionFor(midi);
-  withTimeout(getFreepatsBuffer(region), 1400, `FreePats ${region.sample}`).then(buffer => {
-    const ctx = audio.ctx;
-    const now = ctx.currentTime;
-    const src = ctx.createBufferSource();
-    const gain = ctx.createGain();
-    src.buffer = buffer;
-    src.playbackRate.value = Math.pow(2, (midi - region.center) / 12);
-    const peak = Math.max(0.025, Math.min(0.9, velocity * gainScale));
-    const hold = Math.max(0.06, Math.min(2.2, duration));
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(peak, now + 0.006);
-    gain.gain.setTargetAtTime(peak * 0.72, now + 0.035, 0.22);
-    gain.gain.setTargetAtTime(0.0001, now + hold, 0.42);
-    src.connect(gain).connect(audio.master);
-    src.start(now);
-    src.stop(now + hold + 1.6);
-  }).catch(err => {
-    console.warn('FreePats guitar failed:', err);
-    fallbackSoftNote(midi, duration, velocity);
-  });
-}
-
 function localSoundfontUrl(name, soundfont, format) {
   const fmt = format === 'ogg' ? 'ogg' : 'mp3';
   return `soundfonts/FluidR3_GM/${name}-${fmt}.js`;
 }
 
 function getSoundfontInstrument(preset) {
-  if (preset.localPiano || preset.freepatsGuitar) return Promise.resolve(null);
+  if (preset.localPiano) return Promise.resolve(null);
   if (!window.Soundfont || !audio.ctx) return Promise.resolve(null);
-  if (soundfont.instruments.has(preset.name)) return Promise.resolve(soundfont.instruments.get(preset.name));
-  if (!soundfont.promises.has(preset.name)) {
-    const p = Soundfont.instrument(audio.ctx, preset.name, {
+  const soundfontName = preset.fallbackName || preset.name;
+  if (soundfont.instruments.has(soundfontName)) return Promise.resolve(soundfont.instruments.get(soundfontName));
+  if (!soundfont.promises.has(soundfontName)) {
+    const p = Soundfont.instrument(audio.ctx, soundfontName, {
       soundfont: 'FluidR3_GM',
       format: 'mp3',
       nameToUrl: localSoundfontUrl,
       destination: audio.master,
       gain: preset.gain || 0.65,
     }).then(inst => {
-      soundfont.instruments.set(preset.name, inst);
+      soundfont.instruments.set(soundfontName, inst);
       return inst;
     }).catch(err => {
-      console.warn('SoundFont load failed:', preset.name, err);
+      console.warn('SoundFont load failed:', soundfontName, err);
       return null;
     });
-    soundfont.promises.set(preset.name, p);
+    soundfont.promises.set(soundfontName, p);
   }
-  return soundfont.promises.get(preset.name);
+  return soundfont.promises.get(soundfontName);
 }
 
 function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5) {
@@ -372,10 +297,9 @@ function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5) {
 function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = harmonyToneMode) {
   const preset = HARMONY_TONES[(toneMode - 1 + HARMONY_TONES.length) % HARMONY_TONES.length];
   ensureAudio();
-  if (preset.freepatsGuitar) {
-    playFreepatsGuitarNote(midi, duration, velocity, (preset.gain || 0.78) * harmonyGain);
-    return;
-  }
+  if (preset.guitarLibrary && window.FreezaGuitarSampler?.play(
+    audio.ctx, audio.master, preset.code, midi, duration, velocity, (preset.gain || 0.78) * harmonyGain,
+  )) return;
   if (preset.localPiano && sampled.ready && sampled.piano && window.Tone) {
     Tone.start();
     sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, undefined, Math.max(0.035, velocity * (preset.gain || 0.42) * harmonyGain));
@@ -1169,11 +1093,12 @@ function transposeChordName(chordName, semis = songPlaybackTransposeSemitones())
 function presetForStyleCode(code, label) {
   const c = String(code || '').trim();
   if (/^PianoStudio/i.test(c)) return { label, code: c, name: 'Salamander Grand Piano', localPiano: true, gain: 0.42 };
-  if (/^GS_3$/i.test(c)) return { label, code: c, name: 'acoustic_guitar_steel', gain: 0.78 };
-  if (/^GS_1$/i.test(c)) return { label, code: c, name: 'FreePats Spanish Classical Guitar', freepatsGuitar: true, gain: 0.9 };
-  if (/electric|eg|ged|gec/i.test(c)) return { label, code: c, name: 'electric_guitar_clean', gain: 0.64 };
+  if (/^GS_1$/i.test(c)) return { label, code: c, name: 'FreePats Spanish Classical Guitar', fallbackName: 'acoustic_guitar_nylon', guitarLibrary: true, gain: 0.9 };
+  if (/^GEC2/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Jazz', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: 0.64 };
+  if (/^GED/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Distorted', fallbackName: 'distortion_guitar', guitarLibrary: true, gain: 0.58 };
+  if (/^GEC|electric|eg/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Clean', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: 0.64 };
   if (/drum|chap/i.test(c)) return { label, code: c, name: 'synth_drum', gain: 0.74, drum: true };
-  return { label, code: c || label, name: 'acoustic_guitar_steel', gain: 0.70 };
+  return { label, code: c || label, name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: 0.70 };
 }
 
 function refreshHarmonyTonesFromStyle(styleInfo) {
@@ -1260,17 +1185,6 @@ function warmHarmonyMidiSet(maxCues = 96) {
   return [...set];
 }
 
-function warmFreepatsForSong(maxSamples = 8) {
-  ensureAudio();
-  const regions = new Map();
-  warmHarmonyMidiSet().forEach(midi => {
-    if (regions.size >= maxSamples) return;
-    const region = freepatsRegionFor(midi);
-    regions.set(region.sample, region);
-  });
-  return Promise.allSettled([...regions.values()].map(region => getFreepatsBuffer(region)));
-}
-
 function warmSoundfontPreset(preset) {
   ensureAudio();
   // 只加载 SoundFont，不发任何试音。之前 0.0001 gain 在部分移动浏览器仍可能听见，
@@ -1281,7 +1195,11 @@ function warmSoundfontPreset(preset) {
 function warmHarmonyPreset(preset) {
   if (!preset) return Promise.resolve();
   ensureAudio();
-  if (preset.freepatsGuitar) return warmFreepatsForSong();
+  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+    const priority = window.FreezaGuitarSampler.preload(audio.ctx, preset.code, warmHarmonyMidiSet());
+    priority.finally(() => window.FreezaGuitarSampler.preloadAll(audio.ctx, preset.code));
+    return priority;
+  }
   if (preset.localPiano) {
     if (window.Tone) Promise.resolve(Tone.start()).catch(() => {});
     return Promise.resolve();
@@ -3099,3 +3017,4 @@ setupStartScreen();
 setupMicWave();
 initSamplePiano();
 midiReadyPromise = loadDefaultMidi();
+
