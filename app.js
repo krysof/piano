@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-14';
+const ASSET_VERSION = 'reset-20260710-15';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -755,6 +755,7 @@ async function ensureMic() {
 
 function updateMicMenu() {
   document.querySelectorAll('[data-mic]').forEach(b => b.classList.toggle('selected', (b.dataset.mic === 'on') === micEnabled));
+  syncLaunchSwitch('mic', micEnabled);
   const meter = $('micMeter');
   if (meter) meter.classList.toggle('off', !micEnabled);
 }
@@ -1077,6 +1078,20 @@ function syncMelodyGuideMenu(screen = $('startScreen')) {
   });
   screen.querySelectorAll('[data-guide]').forEach(button => {
     button.classList.toggle('selected', (button.dataset.guide === 'on') === guideMode);
+  });
+  syncLaunchSwitch('melody', melodyEnabled, guideMode, screen);
+  syncLaunchSwitch('guide', guideMode, false, screen);
+}
+
+function syncLaunchSwitch(group, enabled, locked = false, root = document) {
+  const control = root?.querySelector?.(`[data-group="${group}"]`);
+  if (!control?.classList.contains('launch-switch')) return;
+  control.classList.toggle('state-off', !enabled);
+  control.classList.toggle('is-locked', locked);
+  control.setAttribute('aria-disabled', locked ? 'true' : 'false');
+  control.closest('.launch-toggle-item')?.classList.toggle('is-locked', locked);
+  control.querySelectorAll('button').forEach(button => {
+    button.disabled = locked;
   });
 }
 

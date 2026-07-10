@@ -442,6 +442,63 @@ body.game-started #startScreen {
   box-shadow: 0 5px 13px rgba(72, 42, 150, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+.launch-switch {
+  position: relative;
+  overflow: hidden;
+}
+
+.launch-switch::before {
+  position: absolute;
+  z-index: 0;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 7px;
+  background: linear-gradient(135deg, #8e64f5, #6744d9);
+  box-shadow: 0 5px 13px rgba(72, 42, 150, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  content: '';
+  transform: translateX(0);
+  transition: transform 260ms cubic-bezier(0.22, 0.8, 0.22, 1), filter 220ms ease, opacity 220ms ease;
+}
+
+.launch-switch.state-off::before {
+  transform: translateX(100%);
+}
+
+.launch-switch button {
+  position: relative;
+  z-index: 1;
+}
+
+.launch-switch button.selected {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.launch-toggle-item,
+.launch-toggle-item > div:first-child,
+.launch-switch {
+  transition: border-color 220ms ease, background-color 220ms ease, opacity 220ms ease, filter 220ms ease;
+}
+
+.launch-toggle-item.is-locked {
+  border-color: rgba(255, 255, 255, 0.035);
+  background: rgba(5, 7, 12, 0.28);
+}
+
+.launch-toggle-item.is-locked > div:first-child,
+.launch-switch.is-locked {
+  opacity: 0.38;
+  filter: grayscale(0.9);
+}
+
+.launch-switch button:disabled {
+  cursor: not-allowed;
+}
+
 .launch-mixer-rows {
   display: grid;
   gap: 8px;
