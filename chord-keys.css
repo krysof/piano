@@ -108,9 +108,13 @@
   z-index: 24;
   top: 6%;
   left: 50%;
-  min-width: 1.8em;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   color: #fff;
-  font-size: clamp(18px, 5.8cqw, 30px);
+  font-size: clamp(36px, 11.6cqw, 60px);
   font-weight: 950;
   line-height: 1;
   letter-spacing: .02em;
@@ -129,12 +133,12 @@
 #manualKeyboard .timing-rating.grade-d { color: #ffc5f0; text-shadow: 0 0 7px #ff73cf, 0 0 16px #ce3c9c; }
 #manualKeyboard .timing-rating.grade-e { color: #ffc49f; text-shadow: 0 0 7px #ff8b48, 0 0 16px #d75a26; }
 #manualKeyboard .timing-rating.grade-f { color: #ffaaa4; text-shadow: 0 0 7px #ff665c, 0 0 16px #c73535; }
-#manualKeyboard .timing-rating.grade-miss { color: #ff9b9b; text-shadow: 0 0 7px #ff4f5f, 0 0 16px #b91e3b; font-size: clamp(14px, 4.5cqw, 23px); }
+#manualKeyboard .timing-rating.grade-miss { color: #ff9b9b; text-shadow: 0 0 7px #ff4f5f, 0 0 16px #b91e3b; font-size: clamp(28px, 9cqw, 46px); }
 
 @keyframes timingRatingFloat {
   0% { opacity: 0; transform: translate(-50%, 8px) scale(.78); }
-  18% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
-  42% { opacity: 1; transform: translate(-50%, -6px) scale(1); }
+  18% { opacity: .68; transform: translate(-50%, 0) scale(1.08); }
+  42% { opacity: .62; transform: translate(-50%, -6px) scale(1); }
   100% { opacity: 0; transform: translate(-50%, -30px) scale(.9); }
 }
 
