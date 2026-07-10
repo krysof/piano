@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-16';
+const ASSET_VERSION = 'reset-20260710-17';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -44,6 +44,8 @@ const mic = { stream: null, source: null, gain: null, analyser: null, data: null
 const recorder = { media: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, hadMic: false };
 let drumsEnabled = false;
 let drumMode = 'auto';
+let drumModeBeforeOff = 'auto';
+let drumPatternSlot = 0;
 let playMode = 'semi';
 let guideMode = false;
 let nextManualMelodyIndex = 0;
@@ -327,6 +329,20 @@ function setupLaunchUiSounds(screen) {
       const max = Number(range.max) || 1;
       playLaunchUiSound('slider', (Number(range.value) - min) / Math.max(1, max - min));
     });
+  });
+}
+
+function setupGameUiSounds() {
+  const controls = document.querySelector('.game-controls');
+  if (!controls || controls.dataset.soundReady === 'true') return;
+  controls.dataset.soundReady = 'true';
+  controls.addEventListener('pointerdown', event => {
+    const button = event.target.closest('.btn');
+    if (!button) return;
+    const kind = button.id === 'saveRecBtn' ? 'panel'
+      : ['melodyToggle', 'drumToggle', 'toneBtn'].includes(button.id) ? 'toggle'
+      : 'select';
+    playLaunchUiSound(kind);
   });
 }
 
@@ -620,9 +636,35 @@ function chordHalfForCue(cue) {
 function updateToneButton() {
   const btn = $('toneBtn');
   if (!btn) return;
-  btn.textContent = HARMONY_TONES[harmonyToneMode - 1]?.label || 'A';
-  btn.dataset.tone = HARMONY_TONES[harmonyToneMode - 1]?.code || '';
-  btn.setAttribute('aria-pressed', harmonyToneMode > 1 ? 'true' : 'false');
+  const label = drumPatternSlot > 0 ? 'B' : 'A';
+  btn.textContent = `鼓${label}`;
+  btn.dataset.drumSlot = label;
+  btn.setAttribute('aria-label', `切换鼓机节奏，当前 ${label}`);
+  btn.setAttribute('aria-pressed', drumPatternSlot > 0 ? 'true' : 'false');
+}
+
+function availableDrumCodes() {
+  const style = song?.styleInfo;
+  return [...new Set([
+    ...(style?.midiPrograms?.drumCodes || []),
+    style?.topLevel?.rhythmicDrumA,
+    style?.topLevel?.rhythmicDrumB,
+    ...(style?.configPack?.drums || []).map(item => item?.code),
+  ].filter(Boolean))];
+}
+
+function selectDrumPatternSlot(slot, reschedule = true) {
+  const codes = availableDrumCodes();
+  drumPatternSlot = codes.length > 1 ? Math.max(0, Math.min(1, Number(slot) || 0)) : 0;
+  currentDrumCode = codes[drumPatternSlot] || codes[0] || currentDrumCode;
+  drumMode = 'on';
+  drumModeBeforeOff = 'on';
+  drumsEnabled = true;
+  updateToneButton();
+  updatePlaybackToggles();
+  const pattern = currentDrumPattern();
+  if (pattern) prepareDrumPattern(pattern, currentDrumCode);
+  if (reschedule && playing) scheduleFrom(currentPlayTime());
 }
 
 function percentLabel(v) {
@@ -1069,6 +1111,7 @@ function updatePlaybackToggles() {
     drumBtn.setAttribute('aria-pressed', drumMode !== 'off' ? 'true' : 'false');
     drumBtn.title = `鼓机：${drumMode === 'auto' ? '自动' : drumMode === 'on' ? '开' : '关'}`;
   }
+  updateToneButton();
 }
 
 function syncMelodyGuideMenu(screen = $('startScreen')) {
@@ -1204,9 +1247,9 @@ function refreshHarmonyTonesFromStyle(styleInfo) {
     harmonyToneMode = Math.min(Math.max(1, harmonyToneMode), HARMONY_TONES.length);
     updateToneButton();
   }
-  currentDrumCode = styleInfo?.midiPrograms?.drumCodes?.[0]
-    || styleInfo?.configPack?.drums?.[0]?.code
-    || null;
+  const drumCodes = availableDrumCodes();
+  currentDrumCode = drumCodes[drumPatternSlot] || drumCodes[0] || null;
+  updateToneButton();
 }
 
 function rootFromChord(text) {
@@ -2328,6 +2371,7 @@ function autoPressCue(active) {
   const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
   const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
   keys.forEach(key => {
+    showPickZoneFeedback(key, chordPatternSlotAtTime(active.cue.time));
     key.classList.remove('chord-due', 'miss', 'chord-release');
     key.classList.add('chord-press');
     setTimeout(() => {
@@ -2338,6 +2382,18 @@ function autoPressCue(active) {
   });
   playStyledHarmony(root, active.cue);
   cueState.delete(root);
+}
+
+function showPickZoneFeedback(key, slot) {
+  if (!key) return;
+  const normalized = slot > 0 ? 1 : 0;
+  key.dataset.pick = normalized ? 'B' : 'A';
+  const zone = key.querySelector(`.pick-zone[data-pick-slot="${normalized}"]`);
+  if (!zone) return;
+  zone.classList.remove('picked');
+  void zone.offsetWidth;
+  zone.classList.add('picked');
+  setTimeout(() => zone.classList.remove('picked'), 420);
 }
 
 function normalizedHarmonyVelocity(rawVelocity) {
@@ -2730,13 +2786,22 @@ function renderManualKeyboard() {
     key.dataset.midi = midi;
     key.dataset.root = label;
     key.dataset.display = displayLabel;
-    key.innerHTML = `<span class="chord-fill"></span><span class="chord-line"></span><span class="chord-symbol"></span><span class="key-label">${displayLabel}</span>`;
+    key.innerHTML = `<span class="pick-regions" aria-hidden="true"><span class="pick-zone pick-zone-a" data-pick-slot="0">A</span><span class="pick-zone pick-zone-b" data-pick-slot="1">B</span></span><span class="chord-fill"></span><span class="chord-line"></span><span class="chord-symbol"></span><span class="key-label">${displayLabel}</span>`;
     key.title = `${displayLabel} (${label})`;
     key.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
       requestWakeLock();
-      warmHarmonyTones(false);
       const pressedCue = cueForInteractivePress(label);
+      const explicitZone = ev.target.closest?.('.pick-zone');
+      const rect = key.getBoundingClientRect();
+      const pickSlot = explicitZone
+        ? Number(explicitZone.dataset.pickSlot || 0)
+        : (ev.clientX >= rect.left + rect.width / 2 ? 1 : 0);
+      harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, pickSlot + 1));
+      const pickTime = Math.max(currentPlayTime(), Number(pressedCue?.time) || 0);
+      insertUserPickEvent(pickSlot, pickTime);
+      showPickZoneFeedback(key, pickSlot);
+      warmHarmonyTones(false);
       const pressProgress = cueProgressForKey(key);
       const pressCueState = cueState.get(label);
       // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
@@ -2777,10 +2842,7 @@ $('savePromptDownload')?.addEventListener('click', () => { closeSavePrompt(); do
 $('savePromptCancel')?.addEventListener('click', closeSavePrompt);
 $('savePrompt')?.addEventListener('click', (ev) => { if (ev.target?.id === 'savePrompt') closeSavePrompt(); });
 $('toneBtn').onclick = () => {
-  harmonyToneMode = harmonyToneMode % HARMONY_TONES.length + 1;
-  insertUserPickEvent(harmonyToneMode - 1);
-  updateToneButton();
-  warmHarmonyTones(false);
+  selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
 };
 $('melodyToggle').onclick = () => {
   melodyEnabled = !melodyEnabled;
@@ -2790,7 +2852,12 @@ $('melodyToggle').onclick = () => {
   if (playing) scheduleFrom(currentPlayTime());
 };
 $('drumToggle').onclick = () => {
-  drumMode = drumMode === 'off' ? 'auto' : 'off';
+  if (drumMode === 'off') {
+    drumMode = drumModeBeforeOff || 'auto';
+  } else {
+    drumModeBeforeOff = drumMode;
+    drumMode = 'off';
+  }
   drumsEnabled = drumMode !== 'off';
   updatePlaybackToggles();
   if (playing) scheduleFrom(currentPlayTime());
@@ -2816,6 +2883,7 @@ function setupStartScreen() {
     btn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       drumMode = btn.dataset.drum || 'auto';
+      if (drumMode !== 'off') drumModeBeforeOff = drumMode;
       drumsEnabled = drumMode !== 'off';
       screen.querySelectorAll('[data-drum]').forEach(b => b.classList.toggle('selected', b === btn));
       screen.querySelector('[data-group="drum"]')?.classList.toggle('is-off', drumMode === 'off');
@@ -2970,6 +3038,7 @@ updateKeyButtons();
 updateVolumeButtons();
 updatePlaybackToggles();
 setupStartScreen();
+setupGameUiSounds();
 setupMicWave();
 initSamplePiano();
 midiReadyPromise = loadDefaultMidi();
