@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-05';
+const ASSET_VERSION = 'reset-20260710-06';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -71,6 +71,7 @@ let HARMONY_TONES = [
   { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: 0.42 },
 ];
 const soundfont = { instruments: new Map(), promises: new Map(), ready: false };
+const drumKit = { ctx: null, noise: null };
 const NATURAL_TO_MIDI = { C: 60, D: 62, E: 64, F: 65, G: 67, A: 69, B: 71 };
 const NOTE_PC = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
 const PC_NOTE_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -390,23 +391,102 @@ function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = h
 
 function drumPitchToMidi(pitch) {
   const p = Math.round(Number(pitch));
-  if (p === 24) return 36; // kick
-  if (p === 25 || p === 26) return 38; // snare
-  if (p === 30) return 42; // closed hat
-  if (p === 41) return 46; // open hat
+  // C2 drum pattern 使用 GM percussion note - 12 的模板编号。
+  // 不能把 25/26、41 等压成同一种鼓，否则整套 pattern 只剩“咚咚”声。
   return Math.max(35, Math.min(81, p + 12));
 }
 
-function playDrumPatternNote(patternNote) {
+function drumVoiceForMidi(midi) {
+  if (midi === 35 || midi === 36) return 'kick';
+  if (midi === 37) return 'rim';
+  if (midi === 38 || midi === 40) return 'snare';
+  if (midi === 39) return 'clap';
+  if (midi === 42 || midi === 44) return 'closed-hat';
+  if (midi === 46) return 'open-hat';
+  if ([41, 43, 45, 47, 48, 50].includes(midi)) return 'tom';
+  if ([49, 51, 52, 53, 55, 57, 59].includes(midi)) return 'cymbal';
+  return 'percussion';
+}
+
+function drumNoiseBuffer() {
+  const ctx = audio.ctx;
+  if (drumKit.ctx === ctx && drumKit.noise) return drumKit.noise;
+  const length = Math.ceil(ctx.sampleRate * 1.2);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+  drumKit.ctx = ctx;
+  drumKit.noise = buffer;
+  return buffer;
+}
+
+function playDrumNoise(when, duration, peak, filterType, frequency, q = 0.7) {
+  const ctx = audio.ctx;
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  source.buffer = drumNoiseBuffer();
+  filter.type = filterType;
+  filter.frequency.setValueAtTime(frequency, when);
+  filter.Q.value = q;
+  gain.gain.setValueAtTime(Math.max(0.0001, peak), when);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+  source.connect(filter).connect(gain).connect(audio.master);
+  source.start(when, Math.random() * 0.12);
+  source.stop(when + duration + 0.02);
+}
+
+function playDrumOsc(when, duration, peak, type, startFrequency, endFrequency = startFrequency) {
+  const ctx = audio.ctx;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(startFrequency, when);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), when + duration);
+  gain.gain.setValueAtTime(Math.max(0.0001, peak), when);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+  osc.connect(gain).connect(audio.master);
+  osc.start(when);
+  osc.stop(when + duration + 0.02);
+}
+
+function playDrumKitNote(midi, velocity, patternDuration) {
   ensureAudio();
-  const preset = { name: 'synth_drum', gain: 0.58 };
-  getSoundfontInstrument(preset).then(inst => {
-    if (!inst) return;
-    const midi = drumPitchToMidi(patternNote.pitch);
-    inst.play(midi, audio.ctx.currentTime, Math.max(0.05, Number(patternNote.duration || 0.2) * beatMs() / 1000), {
-      gain: Math.max(0.04, Math.min(0.85, Number(patternNote.velocity || 64) / 127)),
+  const now = audio.ctx.currentTime;
+  const level = Math.min(1, 0.035 + Math.max(0, velocity) * 1.05);
+  const voice = drumVoiceForMidi(midi);
+  if (voice === 'kick') {
+    playDrumOsc(now, 0.34, level * 0.95, 'sine', 155, 46);
+  } else if (voice === 'rim') {
+    playDrumNoise(now, 0.055, level * 0.62, 'bandpass', 1850, 5.5);
+    playDrumOsc(now, 0.045, level * 0.28, 'square', 540, 410);
+  } else if (voice === 'snare') {
+    playDrumNoise(now, 0.18, level * 0.78, 'highpass', 1050, 0.8);
+    playDrumOsc(now, 0.13, level * 0.30, 'triangle', 210, 125);
+  } else if (voice === 'clap') {
+    [0, 0.018, 0.038].forEach((delay, i) => {
+      playDrumNoise(now + delay, 0.075, level * (0.50 - i * 0.08), 'bandpass', 1450, 1.1);
     });
-  });
+  } else if (voice === 'closed-hat') {
+    playDrumNoise(now, 0.065, level * 0.42, 'highpass', 7200, 0.7);
+  } else if (voice === 'open-hat') {
+    playDrumNoise(now, Math.max(0.24, Math.min(0.72, patternDuration)), level * 0.46, 'highpass', 6500, 0.6);
+  } else if (voice === 'tom') {
+    const tomFrequency = 82 + (midi - 41) * 13;
+    playDrumOsc(now, 0.28, level * 0.72, 'sine', tomFrequency * 1.45, tomFrequency);
+  } else if (voice === 'cymbal') {
+    playDrumNoise(now, Math.max(0.34, Math.min(1.05, patternDuration)), level * 0.44, 'highpass', midi === 53 ? 4200 : 5200, 1.0);
+    if (midi === 53) playDrumOsc(now, 0.22, level * 0.16, 'square', 860, 790);
+  } else {
+    playDrumNoise(now, 0.13, level * 0.46, 'bandpass', 2100 + (midi - 54) * 85, 2.2);
+  }
+}
+
+function playDrumPatternNote(patternNote) {
+  const midi = drumPitchToMidi(patternNote.pitch);
+  const velocity = Math.max(0, Math.min(1, Number(patternNote.velocity || 0) / 127));
+  const duration = Math.max(0.05, Number(patternNote.duration || 0.2) * beatMs() / 1000);
+  playDrumKitNote(midi, velocity, duration);
 }
 
 function playNote(midi, duration = 0.55, velocity = 0.6) {
