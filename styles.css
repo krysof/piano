@@ -4149,8 +4149,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden !important; }
   line-height: 1.16 !important;
 }
 .karaoke-line.active {
-  width: min(78vw, 640px) !important;
-  max-width: 96% !important;
   font-size: clamp(21px, 4.85vw, 32px) !important;
   line-height: 1.08 !important;
   padding: 8px 0 !important;
@@ -4184,7 +4182,7 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden !important; }
   #restartBtn::after { content: '↻'; font-size: 18px !important; }
   #saveRecBtn { font-size: 12px !important; }
   .karaoke { padding-top: 66px !important; padding-left: 8px !important; padding-right: 8px !important; }
-  .karaoke-line.active { font-size: clamp(22px, 4.9vw, 30px) !important; width: min(82vw, 360px) !important; }
+  .karaoke-line.active { font-size: clamp(22px, 4.9vw, 30px) !important; }
   .karaoke-line.next { font-size: clamp(15px, 3.45vw, 19px) !important; }
 }
 @media (max-height: 760px) and (max-width: 520px) {
@@ -4303,8 +4301,10 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
 }
 .karaoke-line.next { font-size: clamp(15px, 3.55vw, 19px) !important; color: rgba(230,238,255,.64) !important; }
 .karaoke-line.active {
-  width: min(82vw, 368px) !important;
-  max-width: 92vw !important;
+  width: min(92vw, 720px) !important;
+  max-width: min(92vw, 720px) !important;
+  box-sizing: border-box !important;
+  justify-self: center !important;
   padding: 8px 0 !important;
   font-size: clamp(22px, 5vw, 31px) !important;
   line-height: 1.06 !important;
@@ -4355,7 +4355,7 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   .karaoke { padding-top: 72px !important; padding-bottom: 42px !important; row-gap: 6px !important; }
   .karaoke-panel-title { top: 18px !important; left: 18% !important; right: 18% !important; }
   .karaoke-line.next { font-size: clamp(15px, 3.45vw, 18px) !important; }
-  .karaoke-line.active { font-size: clamp(22px, 5vw, 30px) !important; width: min(84vw, 364px) !important; }
+  .karaoke-line.active { font-size: clamp(22px, 5vw, 30px) !important; }
   .top-slot { padding: 5px 10px !important; }
   .bottom-slot { padding: 11px 8px 9px !important; }
 }
