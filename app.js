@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-25';
+const ASSET_VERSION = 'reset-20260710-26';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -2984,7 +2984,8 @@ function accelerateInteractivePhrase() {
       manualMelodyTimers.push(timer);
     }
   }
-  const done = setTimeout(() => finishInteractiveTransition(mode, boundary), catchupDuration * 1000 + 45);
+  const settleMs = catchupDuration <= 0.08 ? 8 : 45;
+  const done = setTimeout(() => finishInteractiveTransition(mode, boundary), catchupDuration * 1000 + settleMs);
   manualMelodyTimers.push(done);
 }
 
@@ -3175,10 +3176,11 @@ function setupStartScreen() {
   });
   screen.querySelectorAll('[data-pick]').forEach(btn => {
     btn.addEventListener('click', () => {
-      harmonyToneMode = btn.dataset.pick === 'B' ? 2 : 1;
+      // A/B 是整组翻转开关：点已选中的 A 也必须切到 B，反之亦然。
+      harmonyToneMode = harmonyToneMode === 1 ? 2 : 1;
       initialPickSlot = harmonyToneMode - 1;
       insertUserPickEvent(initialPickSlot, 0);
-      screen.querySelectorAll('[data-pick]').forEach(b => b.classList.toggle('selected', b === btn));
+      screen.querySelectorAll('[data-pick]').forEach(b => b.classList.toggle('selected', (b.dataset.pick === 'B') === (harmonyToneMode === 2)));
       updateToneButton();
       warmHarmonyTones(false);
     });
@@ -3186,7 +3188,8 @@ function setupStartScreen() {
   screen.querySelectorAll('[data-drum-tone]').forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.disabled) return;
-      selectDrumPatternSlot(btn.dataset.drumTone === 'B' ? 1 : 0, false, false);
+      // 与拨片一致，点当前已选项也切换到另一套鼓机音色。
+      selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1, false, false);
     });
   });
   $('menuMelodyVolDown')?.addEventListener('click', () => adjustMelodyGain(-0.05));
