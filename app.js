@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260711-01';
+const ASSET_VERSION = 'reset-20260711-02';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -624,7 +624,8 @@ function showTimingRating(key, grade, count = true) {
   rating.className = `timing-rating grade-${String(normalized).toLowerCase()}`;
   rating.textContent = normalized;
   rating.style.left = `${rect.left + rect.width / 2}px`;
-  rating.style.top = `${rect.top + rect.height * 0.06}px`;
+  // 出现点比和弦文字再高约 1/3 个现有上移行程（40 / 3 ≈ 13.3px）。
+  rating.style.top = `${rect.top + rect.height * 0.06 - 14}px`;
   document.body.appendChild(rating);
   key._timingRating = rating;
   rating.addEventListener('animationend', () => {
