@@ -1,262 +1,894 @@
-/* ============================================================
-   start-screen.css — 首页「星夜紫金」主题皮肤
-   只负责首页(#startScreen)的配色/边框/字体，布局仍由 styles.css 决定。
-   规则全部挂在 #startScreen 下（ID 特异性压过 styles.css 的类选择器），
-   在 index.html 中于 styles.css 之后加载。
-   ============================================================ */
+/*
+ * Freeza Live launch screen
+ * This file is the sole stylesheet for #startScreen.
+ * All selectors use the launch-* namespace; legacy homepage classes are not used.
+ */
 
-/* ---------- 星空紫夜背景 ---------- */
-#startScreen.start-screen {
+#startScreen,
+#startScreen *,
+#startScreen *::before,
+#startScreen *::after {
+  box-sizing: border-box;
+}
+
+#startScreen {
+  --launch-bg: #080a10;
+  --launch-panel: rgba(18, 21, 31, 0.82);
+  --launch-panel-strong: rgba(24, 27, 39, 0.94);
+  --launch-line: rgba(255, 255, 255, 0.09);
+  --launch-line-bright: rgba(255, 255, 255, 0.15);
+  --launch-text: #f6f7fb;
+  --launch-muted: #8d93a5;
+  --launch-violet: #8b5cf6;
+  --launch-violet-2: #6d4aff;
+  --launch-cyan: #4fd1c5;
+  --launch-gold: #f5bd69;
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  color: var(--launch-text);
   background:
-    /* 星星 */
-    radial-gradient(1.4px 1.4px at 8% 12%, rgba(255,255,255,.95), transparent 100%),
-    radial-gradient(1.1px 1.1px at 22% 32%, rgba(255,244,214,.85), transparent 100%),
-    radial-gradient(1.6px 1.6px at 37% 8%, rgba(255,255,255,.9), transparent 100%),
-    radial-gradient(1px 1px at 52% 22%, rgba(255,255,255,.75), transparent 100%),
-    radial-gradient(1.5px 1.5px at 68% 6%, rgba(255,240,200,.9), transparent 100%),
-    radial-gradient(1.1px 1.1px at 82% 16%, rgba(255,255,255,.8), transparent 100%),
-    radial-gradient(1.7px 1.7px at 93% 30%, rgba(255,248,222,.9), transparent 100%),
-    radial-gradient(1px 1px at 12% 55%, rgba(255,255,255,.7), transparent 100%),
-    radial-gradient(1.4px 1.4px at 30% 72%, rgba(255,255,255,.8), transparent 100%),
-    radial-gradient(1.1px 1.1px at 58% 62%, rgba(255,244,214,.7), transparent 100%),
-    radial-gradient(1.5px 1.5px at 74% 80%, rgba(255,255,255,.85), transparent 100%),
-    radial-gradient(1px 1px at 90% 66%, rgba(255,255,255,.7), transparent 100%),
-    radial-gradient(1.3px 1.3px at 45% 90%, rgba(255,248,222,.8), transparent 100%),
-    radial-gradient(1px 1px at 6% 86%, rgba(255,255,255,.65), transparent 100%),
-    /* 紫色星云 */
-    radial-gradient(circle at 82% 10%, rgba(146,86,255,.38), transparent 38%),
-    radial-gradient(circle at 10% 26%, rgba(98,52,210,.32), transparent 40%),
-    radial-gradient(circle at 88% 62%, rgba(180,84,255,.18), transparent 42%),
-    radial-gradient(circle at 30% 80%, rgba(76,36,160,.26), transparent 45%),
-    /* 深紫夜空底色 */
-    linear-gradient(165deg, #0d0722 0%, #1c0f3e 34%, #251349 58%, #120929 82%, #080415 100%) !important;
+    radial-gradient(circle at 7% 12%, rgba(109, 74, 255, 0.22), transparent 32%),
+    radial-gradient(circle at 92% 86%, rgba(79, 209, 197, 0.12), transparent 34%),
+    linear-gradient(145deg, #07080d 0%, #0b0d15 46%, #090a10 100%);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* ---------- 金框主卡片（双线描金） ---------- */
-#startScreen .start-card-v87 {
-  border: 1.5px solid rgba(228,190,104,.88) !important;
-  border-radius: 26px !important;
-  padding: 14px 12px 16px !important;
-  background: linear-gradient(180deg, rgba(20,12,44,.62), rgba(9,5,24,.55)) !important;
+body.game-started #startScreen {
+  display: none;
+}
+
+#startScreen button,
+#startScreen input,
+#startScreen output {
+  font: inherit;
+}
+
+#startScreen button {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.launch-glow {
+  position: fixed;
+  width: 28rem;
+  height: 28rem;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(90px);
+  opacity: 0.18;
+}
+
+.launch-glow-a {
+  top: -13rem;
+  right: -7rem;
+  background: #7c4dff;
+}
+
+.launch-glow-b {
+  bottom: -17rem;
+  left: -9rem;
+  background: #35d6c2;
+}
+
+.launch-shell {
+  position: relative;
+  width: min(940px, 100%);
+  padding: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 30px;
+  background: linear-gradient(150deg, rgba(20, 23, 34, 0.96), rgba(12, 14, 22, 0.97));
   box-shadow:
-    0 0 0 4px rgba(12,7,28,.85),
-    0 0 0 5px rgba(212,175,85,.55),
-    inset 0 0 0 1px rgba(255,232,168,.16),
-    0 0 34px rgba(140,90,255,.28) !important;
+    0 35px 100px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  isolation: isolate;
 }
 
-/* ---------- 金色衬线标题 + 音符 ---------- */
-#startScreen .start-title {
-  font-family: Georgia, "Palatino Linotype", "Times New Roman", "Songti SC", STSong, serif !important;
-  letter-spacing: 0 !important;
-  background: linear-gradient(180deg, #fff6cf 0%, #f3cd6a 46%, #c08c26 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  color: transparent !important;
-  text-shadow: 0 0 20px rgba(243,205,106,.30) !important;
-}
-#startScreen .start-title::before {
-  content: "♪ ";
-  background: linear-gradient(180deg, #fff6cf, #d8a83c);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 8px rgba(243,205,106,.55));
-}
-#startScreen .start-title .start-version {
-  position: absolute !important;
-  right: 6px !important;
-  bottom: 8px !important;
-  display: block !important;
-  margin: 0 !important;
-  font-size: 11px !important;
-  letter-spacing: .08em !important;
-  vertical-align: baseline !important;
-  color: rgba(238,216,158,.72) !important;
-  text-shadow: 0 0 10px rgba(243,205,106,.25) !important;
+.launch-shell::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 380px;
+  height: 220px;
+  top: -160px;
+  left: 18%;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.2);
+  filter: blur(70px);
 }
 
-/* ---------- ✨演奏设置 ---------- */
-#startScreen .settings-title {
-  color: #f0d48a !important;
-  text-shadow: 0 0 14px rgba(243,205,106,.42) !important;
+.launch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 62px;
+  margin-bottom: 16px;
+  padding: 0 2px;
 }
-#startScreen .settings-title::before {
-  content: "✨";
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  background: none;
+
+.launch-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+}
+
+.launch-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 17px;
+  background: linear-gradient(145deg, #9d72ff, #6542e8);
+  box-shadow: 0 12px 30px rgba(109, 74, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.launch-logo span {
+  width: 3px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.55);
+  animation: launch-eq 1.65s ease-in-out infinite;
+}
+
+.launch-logo span:nth-child(1) { height: 12px; animation-delay: -0.4s; }
+.launch-logo span:nth-child(2) { height: 24px; animation-delay: -0.15s; }
+.launch-logo span:nth-child(3) { height: 32px; animation-delay: -0.65s; }
+.launch-logo span:nth-child(4) { height: 21px; animation-delay: -0.25s; }
+.launch-logo span:nth-child(5) { height: 10px; animation-delay: -0.5s; }
+
+@keyframes launch-eq {
+  0%, 100% { transform: scaleY(0.78); opacity: 0.78; }
+  50% { transform: scaleY(1.08); opacity: 1; }
+}
+
+.launch-eyebrow,
+.launch-kicker {
+  display: block;
+  color: #9f83ff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.2em;
+}
+
+.launch-brand h1 {
+  margin: 4px 0 0;
+  color: #f8f8fc;
+  font-size: 25px;
+  font-weight: 760;
+  line-height: 1;
+  letter-spacing: -0.035em;
+}
+
+.launch-brand h1 em {
+  color: #a78bfa;
+  font-style: normal;
+}
+
+.launch-status {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 2px 7px;
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border: 1px solid var(--launch-line);
+  border-radius: 14px;
+  color: #c8ccda;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.launch-status-dot {
+  grid-row: span 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #55d9a3;
+  box-shadow: 0 0 12px rgba(85, 217, 163, 0.75);
+}
+
+.launch-status b {
+  color: #747b90;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+}
+
+.launch-dashboard {
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  grid-template-areas:
+    "performance mixer"
+    "switches mixer";
+  gap: 12px;
+}
+
+.launch-panel {
+  border: 1px solid var(--launch-line);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(31, 34, 47, 0.76), rgba(18, 20, 30, 0.74));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+.launch-performance {
+  grid-area: performance;
+  padding: 15px;
+}
+
+.launch-mixer {
+  grid-area: mixer;
+  padding: 15px;
+}
+
+.launch-switches {
+  grid-area: switches;
+  padding: 13px 15px 15px;
+}
+
+.launch-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  margin-bottom: 11px;
+}
+
+.launch-panel-heading h2 {
+  margin: 4px 0 0;
+  color: #f5f6fb;
+  font-size: 16px;
+  font-weight: 690;
+  line-height: 1;
+  letter-spacing: -0.015em;
+}
+
+.launch-heading-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(139, 92, 246, 0.24);
+  border-radius: 11px;
+  color: #bda9ff;
+  background: rgba(139, 92, 246, 0.09);
+  font-size: 22px;
+}
+
+.launch-level-icon {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 3px;
+  padding-bottom: 8px;
+}
+
+.launch-level-icon i {
+  width: 3px;
+  border-radius: 3px;
+  background: #ae96ff;
+}
+
+.launch-level-icon i:nth-child(1) { height: 9px; }
+.launch-level-icon i:nth-child(2) { height: 17px; }
+.launch-level-icon i:nth-child(3) { height: 13px; }
+
+.launch-performance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.launch-control-group {
+  min-width: 0;
+}
+
+.launch-control-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  padding: 0 2px;
+}
+
+.launch-control-label span {
+  color: #d8dbe5;
+  font-size: 12px;
+  font-weight: 670;
+}
+
+.launch-control-label small,
+.launch-pick-row small,
+.launch-toggle-item small {
+  color: var(--launch-muted);
+  font-size: 9px;
+  font-weight: 520;
+}
+
+.launch-choice-stack {
+  display: grid;
+  gap: 5px;
+}
+
+.launch-choice {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  min-height: 38px;
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  text-align: left;
+  background: rgba(8, 10, 17, 0.42);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.launch-choice b {
+  color: #d6d9e3;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.launch-choice span {
+  overflow: hidden;
+  color: #777e91;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launch-choice.selected {
+  border-color: rgba(153, 116, 255, 0.58);
+  background: linear-gradient(100deg, rgba(125, 82, 244, 0.3), rgba(104, 71, 210, 0.12));
+  box-shadow: inset 3px 0 0 #936cf8, 0 7px 18px rgba(36, 21, 78, 0.18);
+}
+
+.launch-choice.selected b {
+  color: #fff;
+}
+
+.launch-choice.selected span {
+  color: #b8acd9;
+}
+
+@media (hover: hover) {
+  .launch-choice:hover,
+  .launch-segment-btn:hover,
+  .launch-switch button:hover {
+    border-color: rgba(167, 139, 250, 0.42);
+    background-color: rgba(139, 92, 246, 0.1);
+  }
+}
+
+.launch-choice:active,
+.launch-segment-btn:active,
+.launch-switch button:active,
+.launch-start-btn:active {
+  transform: scale(0.975);
+}
+
+.launch-pick-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 9px 9px 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 13px;
+  background: rgba(8, 10, 17, 0.35);
+}
+
+.launch-pick-row > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.launch-pick-row > div:first-child > span {
+  color: #d8dbe5;
+  font-size: 11px;
+  font-weight: 670;
+}
+
+.launch-segment,
+.launch-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 11px;
+  background: rgba(5, 7, 12, 0.68);
+}
+
+.launch-segment {
+  width: 112px;
+}
+
+.launch-segment-btn,
+.launch-switch button {
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #777e91;
+  background: transparent;
+  font-size: 10px;
+  font-weight: 700;
+  transition: 160ms ease;
+}
+
+.launch-segment-btn.selected,
+.launch-switch button.selected {
+  border-color: rgba(255, 255, 255, 0.11);
+  color: #fff;
+  background: linear-gradient(135deg, #8e64f5, #6744d9);
+  box-shadow: 0 5px 13px rgba(72, 42, 150, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.launch-mixer-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.launch-fader-row {
+  display: grid;
+  grid-template-columns: 48px minmax(80px, 1fr) 45px;
+  align-items: center;
+  gap: 9px;
+  min-height: 51px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 13px;
+  background: rgba(8, 10, 17, 0.36);
+}
+
+.launch-fader-name {
+  color: #d9dce6;
+  font-size: 11px;
+  font-weight: 660;
+}
+
+.launch-readout {
+  display: block;
+  overflow: hidden;
+  color: #afa3d8;
+  font-size: 10px;
+  font-weight: 730;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launch-range {
+  --pct: 50%;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.launch-range::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #9470f8 0 var(--pct), rgba(255, 255, 255, 0.1) var(--pct) 100%);
   box-shadow: none;
-  filter: drop-shadow(0 0 8px rgba(243,205,106,.6));
-}
-#startScreen .settings-title::after {
-  background: linear-gradient(90deg, rgba(228,190,104,.85), transparent) !important;
-  box-shadow: 0 0 8px rgba(228,190,104,.45) !important;
 }
 
-/* ---------- 头像金环 ---------- */
-#startScreen .start-freeza-icon {
-  box-shadow:
-    0 0 0 2px rgba(232,196,110,.92),
-    0 0 0 4px rgba(20,12,44,.9),
-    0 0 0 5px rgba(212,175,85,.5),
-    0 0 22px rgba(243,205,106,.4),
-    inset 0 0 16px rgba(255,255,255,.10) !important;
+.launch-range::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
-/* ---------- 深蓝夜板 + 细金边卡片 ---------- */
-#startScreen .start-section,
-#startScreen .switch-panel {
-  background:
-    linear-gradient(180deg, rgba(26,17,56,.78), rgba(11,7,30,.70)),
-    radial-gradient(circle at 100% 0%, rgba(146,86,255,.14), transparent 55%) !important;
-  border: 1px solid rgba(220,182,96,.60) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,240,196,.08),
-    0 0 0 1px rgba(120,86,26,.22),
-    0 0 18px rgba(110,60,220,.20) !important;
-}
-#startScreen .bottom-settings {
-  background: transparent !important;
-  border: 0 !important;
-  box-shadow: none !important;
-}
-#startScreen .bottom-settings .simple-row,
-#startScreen .switch-panel .simple-row {
-  background: linear-gradient(180deg, rgba(28,18,60,.55), rgba(12,7,32,.48)) !important;
-  border: 1px solid rgba(220,182,96,.34) !important;
-  box-shadow: inset 0 1px 0 rgba(255,240,196,.05) !important;
+.launch-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 99px;
+  background: #9470f8;
 }
 
-/* ---------- 分区标题 / 图标 ---------- */
-#startScreen .section-title {
-  color: #f2ddab !important;
-  text-shadow: 0 0 12px rgba(243,205,106,.30) !important;
-}
-#startScreen .section-icon {
-  color: #f3cd6a !important;
-  filter: drop-shadow(0 0 7px rgba(243,205,106,.55)) !important;
-}
-#startScreen .row-label,
-#startScreen .row-label.with-icon,
-#startScreen .switch-panel .row-label {
-  color: rgba(248,240,220,.94) !important;
+.launch-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  margin-top: -5.5px;
+  border: 3px solid #e9e4fb;
+  border-radius: 50%;
+  background: #8060e6;
+  box-shadow: 0 3px 10px rgba(66, 37, 142, 0.55);
 }
 
-/* ---------- 选项组（金细边容器 + 紫光选中态） ---------- */
-#startScreen .option-group.segmented,
-#startScreen .vertical-options,
-#startScreen .option-group.switch,
-#startScreen .switch-panel .option-group.switch {
-  background: rgba(8,5,22,.60) !important;
-  border: 1px solid rgba(220,182,96,.42) !important;
-  box-shadow: inset 0 0 12px rgba(0,0,0,.35), 0 0 10px rgba(140,90,255,.12) !important;
-}
-#startScreen .option {
-  color: rgba(240,230,206,.78) !important;
-  text-shadow: none !important;
-  border-right-color: rgba(220,182,96,.16) !important;
-}
-/* 未选中态统一为暗夜面板，覆盖历史的浅色胶囊/压暗滤镜 */
-#startScreen .option:not(.selected):not(.key-value):not(.volume-readout) {
-  background: linear-gradient(180deg, rgba(30,20,62,.55), rgba(12,7,32,.60)) !important;
-  color: rgba(240,230,206,.82) !important;
-  border: 1px solid rgba(220,182,96,.22) !important;
-  box-shadow: inset 0 1px 0 rgba(255,240,196,.05) !important;
-  opacity: 1 !important;
-  filter: none !important;
-}
-#startScreen .option.selected,
-#startScreen .vertical-options .option.selected,
-#startScreen .option-group.segmented .option.selected {
-  color: #fff !important;
-  background:
-    radial-gradient(circle at 50% 0%, rgba(212,150,255,.50), transparent 58%),
-    linear-gradient(180deg, rgba(158,92,255,.94), rgba(96,40,214,.90)) !important;
-  box-shadow:
-    0 0 0 1px rgba(228,190,104,.60),
-    0 0 20px rgba(154,84,255,.70),
-    inset 0 1px 0 rgba(255,255,255,.38) !important;
-  text-shadow: 0 0 10px rgba(220,170,255,.55) !important;
+.launch-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 3px solid #e9e4fb;
+  border-radius: 50%;
+  background: #8060e6;
+  box-shadow: 0 3px 10px rgba(66, 37, 142, 0.55);
 }
 
-/* 开关（开/关胶囊）选中态同紫光风格 */
-#startScreen .switch-panel .option-group.switch .option {
-  color: rgba(238,226,198,.62) !important;
-}
-#startScreen .switch-panel .option-group.switch .option.selected {
-  color: #fff !important;
-  background: linear-gradient(180deg, rgba(168,104,255,.96), rgba(100,44,216,.92)) !important;
-  box-shadow:
-    0 0 0 1px rgba(228,190,104,.55),
-    0 0 14px rgba(154,84,255,.65),
-    inset 0 1px 0 rgba(255,255,255,.35) !important;
-  text-shadow: 0 0 8px rgba(220,170,255,.5) !important;
+.launch-panel-heading-compact {
+  min-height: 28px;
+  margin-bottom: 8px;
 }
 
-/* ---------- 音量框：紫色滑轨 + 金色旋钮 ---------- */
-#startScreen .volume-menu.sliders {
-  background: rgba(8,5,22,.42) !important;
-  border: 1px solid rgba(220,182,96,.30) !important;
-}
-#startScreen .volume-label {
-  color: rgba(248,240,220,.94) !important;
-}
-#startScreen .volume-range {
-  accent-color: #9a54ff !important;
-}
-#startScreen .volume-range::-webkit-slider-runnable-track {
-  background: linear-gradient(90deg, #7a3cff 0%, #b46bff var(--pct, 50%), rgba(255,255,255,.12) var(--pct, 50%)) !important;
-  box-shadow: inset 0 0 0 1px rgba(255,240,196,.06), 0 0 12px rgba(146,86,255,.45) !important;
-}
-#startScreen .volume-menu.sliders .key-range,
-#startScreen .volume-range.key-range {
-  background:
-    linear-gradient(90deg,
-      rgba(122,60,255,.95) 0%,
-      rgba(180,107,255,.95) var(--pct, 50%),
-      rgba(255,255,255,.12) var(--pct, 50%),
-      rgba(255,255,255,.12) 100%) !important;
-}
-#startScreen .volume-range::-webkit-slider-thumb {
-  background: radial-gradient(circle at 35% 30%, #fff6cf 0%, #f2c94c 52%, #b07d1c 100%) !important;
-  border: 1px solid rgba(138,100,20,.9) !important;
-  box-shadow:
-    0 0 0 2px rgba(12,7,28,.7),
-    0 0 12px rgba(243,205,106,.75),
-    0 3px 8px rgba(0,0,0,.5) !important;
-}
-#startScreen .volume-readout {
-  color: #f3cd6a !important;
-  background: rgba(8,5,22,.55) !important;
-  border: 1px solid rgba(220,182,96,.48) !important;
-  box-shadow: inset 0 0 8px rgba(0,0,0,.3) !important;
-  text-shadow: 0 0 8px rgba(243,205,106,.35) !important;
+.launch-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
 }
 
-/* ---------- 华丽金框「▶ 开始」 ---------- */
-#startScreen .start-btn {
-  color: #ffedb0 !important;
-  border: 2px solid rgba(232,196,110,.95) !important;
-  background:
-    radial-gradient(circle at 50% 15%, rgba(212,150,255,.30), transparent 62%),
-    linear-gradient(180deg, rgba(126,66,222,.62), rgba(52,20,110,.80)) !important;
-  box-shadow:
-    0 0 0 4px rgba(12,7,28,.9),
-    0 0 0 5px rgba(212,175,85,.65),
-    0 0 26px rgba(243,190,90,.42),
-    0 0 34px rgba(146,86,255,.35),
-    inset 0 1px 0 rgba(255,244,208,.40),
-    inset 0 0 24px rgba(146,86,255,.30) !important;
-  text-shadow: 0 0 12px rgba(255,214,110,.75) !important;
-}
-#startScreen .start-btn::before {
-  color: #fff2c2 !important;
-  filter: drop-shadow(0 0 8px rgba(243,205,106,.8)) !important;
+.launch-toggle-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 7px 7px 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 13px;
+  background: rgba(8, 10, 17, 0.36);
 }
 
-/* ---------- 载入区文字随主题 ---------- */
-#startScreen .loading-text {
-  color: rgba(240,224,184,.88) !important;
+.launch-toggle-item > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.launch-toggle-item b {
+  color: #d9dce6;
+  font-size: 10px;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.launch-toggle-item small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launch-switch {
+  width: 76px;
+  padding: 2px;
+  border-radius: 9px;
+}
+
+.launch-switch button {
+  min-height: 25px;
+  border-radius: 7px;
+  font-size: 9px;
+}
+
+.launch-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.launch-footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #747b8d;
+  font-size: 10px;
+}
+
+.launch-footnote span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #55d9a3;
+  box-shadow: 0 0 10px rgba(85, 217, 163, 0.7);
+}
+
+.launch-start-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 220px;
+  min-height: 50px;
+  padding: 6px 7px 6px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(120deg, #8f64f5, #6744e1);
+  box-shadow: 0 13px 30px rgba(76, 44, 164, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.21);
+  font-size: 13px;
+  font-weight: 730;
+  letter-spacing: 0.02em;
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+}
+
+.launch-start-btn i {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  color: #7350dc;
+  background: #fff;
+  font-size: 20px;
+  font-style: normal;
+  line-height: 1;
+}
+
+@media (hover: hover) {
+  .launch-start-btn:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 16px 36px rgba(76, 44, 164, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+}
+
+.launch-loading {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: none;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  border-radius: inherit;
+  background: rgba(8, 10, 16, 0.84);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+#startScreen.loading .launch-loading {
+  display: grid;
+}
+
+.launch-loader {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 35px;
+}
+
+.launch-loader span {
+  width: 4px;
+  height: 14px;
+  border-radius: 4px;
+  background: #a98cff;
+  animation: launch-load 0.85s ease-in-out infinite;
+}
+
+.launch-loader span:nth-child(2) { animation-delay: 0.1s; }
+.launch-loader span:nth-child(3) { animation-delay: 0.2s; }
+.launch-loader span:nth-child(4) { animation-delay: 0.3s; }
+
+@keyframes launch-load {
+  0%, 100% { height: 11px; opacity: 0.45; }
+  50% { height: 34px; opacity: 1; }
+}
+
+.launch-loading-text {
+  color: #d9d5e8;
+  font-size: 12px;
+  font-weight: 620;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 680px) {
+  #startScreen {
+    display: grid;
+    place-items: center;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .launch-shell {
+    width: 100%;
+    min-height: min(650px, calc(100dvh - 16px));
+    padding: 13px;
+    border-radius: 23px;
+  }
+
+  .launch-header {
+    min-height: 50px;
+    margin-bottom: 10px;
+  }
+
+  .launch-logo {
+    width: 43px;
+    height: 43px;
+    border-radius: 14px;
+  }
+
+  .launch-logo span:nth-child(1) { height: 9px; }
+  .launch-logo span:nth-child(2) { height: 19px; }
+  .launch-logo span:nth-child(3) { height: 25px; }
+  .launch-logo span:nth-child(4) { height: 16px; }
+  .launch-logo span:nth-child(5) { height: 8px; }
+
+  .launch-eyebrow { font-size: 7px; }
+  .launch-brand h1 { font-size: 21px; }
+
+  .launch-status {
+    padding: 7px 9px;
+    border-radius: 12px;
+    font-size: 9px;
+  }
+
+  .launch-status b { font-size: 7px; }
+
+  .launch-dashboard {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "performance"
+      "mixer"
+      "switches";
+    gap: 8px;
+  }
+
+  .launch-performance,
+  .launch-mixer {
+    padding: 11px;
+  }
+
+  .launch-switches {
+    padding: 9px 10px 10px;
+  }
+
+  .launch-panel {
+    border-radius: 16px;
+  }
+
+  .launch-panel-heading {
+    min-height: 29px;
+    margin-bottom: 7px;
+  }
+
+  .launch-panel-heading h2 {
+    margin-top: 3px;
+    font-size: 13px;
+  }
+
+  .launch-kicker { font-size: 7px; }
+
+  .launch-heading-icon {
+    width: 29px;
+    height: 29px;
+    border-radius: 9px;
+    font-size: 18px;
+  }
+
+  .launch-performance-grid { gap: 7px; }
+  .launch-control-label { margin-bottom: 5px; }
+  .launch-control-label span { font-size: 10px; }
+  .launch-control-label small { font-size: 7px; }
+  .launch-choice-stack { gap: 4px; }
+
+  .launch-choice {
+    grid-template-columns: 36px 1fr;
+    min-height: 32px;
+    padding: 4px 7px;
+    border-radius: 9px;
+  }
+
+  .launch-choice b { font-size: 9px; }
+  .launch-choice span { font-size: 8px; }
+
+  .launch-pick-row {
+    margin-top: 7px;
+    padding: 6px 7px 6px 9px;
+    border-radius: 11px;
+  }
+
+  .launch-pick-row > div:first-child > span { font-size: 9px; }
+  .launch-pick-row small { font-size: 7px; }
+  .launch-segment { width: 96px; }
+
+  .launch-segment-btn,
+  .launch-switch button {
+    min-height: 24px;
+    font-size: 8px;
+  }
+
+  .launch-mixer-rows {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .launch-fader-row {
+    grid-template-columns: 40px minmax(50px, 1fr) 38px;
+    gap: 6px;
+    min-height: 39px;
+    padding: 5px 7px;
+    border-radius: 10px;
+  }
+
+  .launch-fader-name { font-size: 9px; }
+  .launch-readout { font-size: 8px; }
+
+  .launch-panel-heading-compact {
+    display: none;
+  }
+
+  .launch-toggle-grid { gap: 5px; }
+
+  .launch-toggle-item {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    min-height: 59px;
+    padding: 6px;
+    text-align: center;
+  }
+
+  .launch-toggle-item > div:first-child { gap: 0; }
+  .launch-toggle-item b { font-size: 9px; }
+  .launch-toggle-item small { font-size: 7px; }
+  .launch-switch { width: 100%; }
+  .launch-switch button { min-height: 21px; }
+
+  .launch-footer {
+    margin-top: 9px;
+  }
+
+  .launch-footnote {
+    font-size: 8px;
+  }
+
+  .launch-start-btn {
+    min-width: 170px;
+    min-height: 44px;
+    padding: 5px 6px 5px 16px;
+    border-radius: 13px;
+    font-size: 11px;
+  }
+
+  .launch-start-btn i {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    font-size: 17px;
+  }
+}
+
+@media (max-width: 370px) {
+  .launch-shell { padding: 10px; }
+  .launch-status > span:not(.launch-status-dot) { display: none; }
+  .launch-status { grid-template-columns: auto auto; }
+  .launch-status-dot { grid-row: auto; }
+  .launch-control-label small,
+  .launch-pick-row small,
+  .launch-toggle-item small,
+  .launch-footnote { display: none; }
+  .launch-footer { justify-content: flex-end; }
+  .launch-start-btn { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-logo span,
+  .launch-loader span {
+    animation: none;
+  }
 }

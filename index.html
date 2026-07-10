@@ -7,105 +7,152 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260710-09" />
-  <link rel="stylesheet" href="start-screen.css?v=reset-20260710-09" />
-  <link rel="stylesheet" href="game-screen.css?v=reset-20260710-09" />
-  <link rel="stylesheet" href="chord-keys.css?v=reset-20260710-09" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260710-10" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260710-10" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260710-10" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260710-10" />
 </head>
 <body>
 
-  <section id="startScreen" class="start-screen" aria-label="start options">
-    <div class="start-card start-card-v87">
-      <div class="start-hero">
-        <div>
-        <div class="start-title">Freeza Live <span id="startVersion" class="start-version">v20260710.09</span></div>
-          <div class="settings-title">演奏设置</div>
+  <section id="startScreen" class="launch-screen" aria-label="演奏设置">
+    <div class="launch-glow launch-glow-a" aria-hidden="true"></div>
+    <div class="launch-glow launch-glow-b" aria-hidden="true"></div>
+    <div class="launch-shell">
+      <header class="launch-header">
+        <div class="launch-brand">
+          <div class="launch-logo" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div>
+            <div class="launch-eyebrow">LIVE PERFORMANCE</div>
+            <h1>Freeza <em>Live</em></h1>
+          </div>
         </div>
-        <div class="freeza-icon start-freeza-icon" aria-label="freeza live icon"><span class="horn left"></span><span class="horn right"></span><span class="crest"></span><span class="temple left"></span><span class="temple right"></span><span class="brow left"></span><span class="brow right"></span><span class="eye left"></span><span class="eye right"></span><span class="nose"></span><span class="mouth"></span><span class="chin"></span></div>
+        <div class="launch-status">
+          <span class="launch-status-dot"></span>
+          <span>Studio ready</span>
+          <b id="startVersion">v20260710.10</b>
+        </div>
+      </header>
+
+      <div class="launch-dashboard">
+        <section class="launch-panel launch-performance">
+          <div class="launch-panel-heading">
+            <div>
+              <span class="launch-kicker">PERFORMANCE</span>
+              <h2>演奏方式</h2>
+            </div>
+            <span class="launch-heading-icon" aria-hidden="true">⌁</span>
+          </div>
+
+          <div class="launch-performance-grid">
+            <div class="launch-control-group">
+              <div class="launch-control-label"><span>模式</span><small>和弦触发</small></div>
+              <div class="launch-choice-stack" data-group="mode">
+                <button class="launch-choice" data-mode="auto"><b>自动</b><span>全自动和弦</span></button>
+                <button class="launch-choice selected" data-mode="semi"><b>辅助</b><span>半自动和弦</span></button>
+                <button class="launch-choice" data-mode="manual"><b>手动</b><span>自由触发</span></button>
+              </div>
+            </div>
+
+            <div class="launch-control-group">
+              <div class="launch-control-label"><span>鼓机</span><small>节奏跟随</small></div>
+              <div class="launch-choice-stack" data-group="drum">
+                <button class="launch-choice selected" data-drum="auto"><b>智能</b><span>跟随风格</span></button>
+                <button class="launch-choice" data-drum="on"><b>开启</b><span>持续伴奏</span></button>
+                <button class="launch-choice" data-drum="off"><b>关闭</b><span>纯净演奏</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="launch-pick-row">
+            <div>
+              <span>拨片音色</span>
+              <small>切换当前伴奏触感</small>
+            </div>
+            <div class="launch-segment" data-group="pick">
+              <button class="launch-segment-btn selected" data-pick="A">A</button>
+              <button class="launch-segment-btn" data-pick="B">B</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="launch-panel launch-mixer">
+          <div class="launch-panel-heading">
+            <div>
+              <span class="launch-kicker">MIXER</span>
+              <h2>声音控制</h2>
+            </div>
+            <span class="launch-heading-icon launch-level-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+          </div>
+          <div class="launch-mixer-rows">
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">主旋律</span>
+              <input id="menuMelodyVolRange" class="launch-range" type="range" min="25" max="200" step="5" value="100" aria-label="主旋律音量" />
+              <output id="menuMelodyVolValue" class="launch-readout">100%</output>
+            </label>
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">伴奏</span>
+              <input id="menuHarmonyVolRange" class="launch-range" type="range" min="25" max="200" step="5" value="155" aria-label="伴奏音量" />
+              <output id="menuHarmonyVolValue" class="launch-readout">155%</output>
+            </label>
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">鼓机</span>
+              <input id="menuDrumVolRange" class="launch-range" type="range" min="25" max="200" step="5" value="155" aria-label="鼓机音量" />
+              <output id="menuDrumVolValue" class="launch-readout">155%</output>
+            </label>
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">Key</span>
+              <input id="menuKeyRange" class="launch-range" type="range" min="-14" max="14" step="1" value="0" aria-label="Key" />
+              <output id="menuKeyValue" class="launch-readout">0</output>
+            </label>
+          </div>
+        </section>
+
+        <section class="launch-panel launch-switches">
+          <div class="launch-panel-heading launch-panel-heading-compact">
+            <div>
+              <span class="launch-kicker">SIGNAL</span>
+              <h2>演奏信号</h2>
+            </div>
+          </div>
+          <div class="launch-toggle-grid">
+            <div class="launch-toggle-item">
+              <div><b>主旋律</b><small>旋律声部</small></div>
+              <div class="launch-switch" data-group="melody">
+                <button class="selected" data-melody="on">开</button>
+                <button data-melody="off">关</button>
+              </div>
+            </div>
+            <div class="launch-toggle-item">
+              <div><b>引导</b><small>视觉提示</small></div>
+              <div class="launch-switch" data-group="guide">
+                <button data-guide="on">开</button>
+                <button class="selected" data-guide="off">关</button>
+              </div>
+            </div>
+            <div class="launch-toggle-item">
+              <div><b>麦克风</b><small>录音输入</small></div>
+              <div class="launch-switch" data-group="mic">
+                <button data-mic="on">开</button>
+                <button class="selected" data-mic="off">关</button>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <div class="start-section stack-section play-source-section">
-        <div class="dual-stack-block">
-          <div class="section-title"><span class="section-icon">♫</span><span>演奏方式</span></div>
-          <div class="option-group vertical-options" data-group="mode">
-            <button class="option" data-mode="auto">全自动和弦</button>
-            <button class="option selected" data-mode="semi">半自动和弦</button>
-            <button class="option" data-mode="manual">手动和弦</button>
-          </div>
-        </div>
-        <div class="dual-stack-block">
-          <div class="section-title"><span class="section-icon">≋</span><span>鼓点</span></div>
-          <div class="option-group vertical-options drum-mode-card" data-group="drum">
-            <button class="option selected" data-drum="auto"><span class="card-icon">🥁</span><span>自动</span></button>
-            <button class="option" data-drum="on"><span class="card-icon">🥁</span><span>开</span></button>
-            <button class="option" data-drum="off"><span class="card-icon">🥁</span><span>关</span></button>
-          </div>
-        </div>
-      </div>
+      <footer class="launch-footer">
+        <div class="launch-footnote"><span></span>设置会同步到演奏画面</div>
+        <button id="startGameBtn" class="launch-start-btn">
+          <span>进入演奏</span>
+          <i aria-hidden="true">→</i>
+        </button>
+      </footer>
 
-      <div class="start-section">
-        <div class="section-title"><span class="section-icon">◒</span><span>拨片</span></div>
-        <div class="option-group segmented two" data-group="pick">
-          <button class="option selected" data-pick="A">拨片 A</button>
-          <button class="option" data-pick="B">拨片 B</button>
-        </div>
-      </div>
-
-      <div class="start-section volume-section">
-        <div class="section-title"><span class="section-icon">🔊</span><span>音量</span></div>
-        <div class="volume-menu sliders">
-          <div class="volume-row">
-            <div class="volume-label">主旋律</div>
-            <input id="menuMelodyVolRange" class="volume-range" type="range" min="25" max="200" step="5" value="100" aria-label="主旋律音量" />
-            <button id="menuMelodyVolValue" class="option key-value volume-readout">100%</button>
-          </div>
-          <div class="volume-row">
-            <div class="volume-label">伴奏</div>
-            <input id="menuHarmonyVolRange" class="volume-range" type="range" min="25" max="200" step="5" value="155" aria-label="伴奏音量" />
-            <button id="menuHarmonyVolValue" class="option key-value volume-readout">155%</button>
-          </div>
-          <div class="volume-row">
-            <div class="volume-label">鼓机</div>
-            <input id="menuDrumVolRange" class="volume-range" type="range" min="25" max="200" step="5" value="155" aria-label="鼓机音量" />
-            <button id="menuDrumVolValue" class="option key-value volume-readout">155%</button>
-          </div>
-          <div class="volume-row">
-            <div class="volume-label">Key</div>
-            <input id="menuKeyRange" class="volume-range key-range" type="range" min="-14" max="14" step="1" value="0" aria-label="Key" />
-            <button id="menuKeyValue" class="option key-value volume-readout">0</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="start-section bottom-settings switch-panel">
-        <div class="section-title"><span class="section-icon">◉</span><span>开关</span></div>
-        <div class="start-row simple-row">
-          <div class="row-label with-icon"><span class="section-icon">♫</span>主旋律</div>
-          <div class="option-group segmented switch" data-group="melody">
-            <button class="option selected" data-melody="on">开</button>
-            <button class="option" data-melody="off">关</button>
-          </div>
-        </div>
-        <div class="start-row simple-row">
-          <div class="row-label with-icon"><span class="section-icon">⚑</span>引导模式</div>
-          <div class="option-group segmented switch" data-group="guide">
-            <button class="option" data-guide="on">开</button>
-            <button class="option selected" data-guide="off">关</button>
-          </div>
-        </div>
-        <div class="start-row simple-row">
-          <div class="row-label with-icon"><span class="section-icon">🎙</span>麦克风</div>
-          <div class="option-group segmented switch" data-group="mic">
-            <button class="option" data-mic="on">开</button>
-            <button class="option selected" data-mic="off">关</button>
-          </div>
-        </div>
-      </div>
-
-      <button id="startGameBtn" class="start-btn">开始</button>
-      <div id="loadingFrame" class="loading-frame" aria-live="polite">
-        <div class="loading-spinner"></div>
-        <div id="loadingText" class="loading-text">准备载入…</div>
+      <div id="loadingFrame" class="launch-loading" aria-live="polite">
+        <div class="launch-loader"><span></span><span></span><span></span><span></span></div>
+        <div id="loadingText" class="launch-loading-text">准备载入…</div>
       </div>
     </div>
   </section>
@@ -194,9 +241,9 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="guitar-manifests.js?v=reset-20260710-09"></script>
-  <script src="guitar-sampler.js?v=reset-20260710-09"></script>
-  <script src="drum-kits.js?v=reset-20260710-09"></script>
-<script src="app.js?v=reset-20260710-09"></script>
+  <script src="guitar-manifests.js?v=reset-20260710-10"></script>
+  <script src="guitar-sampler.js?v=reset-20260710-10"></script>
+  <script src="drum-kits.js?v=reset-20260710-10"></script>
+<script src="app.js?v=reset-20260710-10"></script>
 </body>
 </html>
