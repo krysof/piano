@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-04';
+const ASSET_VERSION = 'reset-20260710-05';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -64,6 +64,8 @@ let harmonyToneMode = 1;
 let userPickEvents = [];
 let initialPickSlot = null;
 let userKeyShift = 0;
+let playbackNeedsFocusResync = false;
+let focusResyncing = false;
 let HARMONY_TONES = [
   { label: 'A', code: 'GS_3', name: 'acoustic_guitar_steel', gain: 0.78 },
   { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: 0.42 },
@@ -2935,8 +2937,43 @@ document.addEventListener('selectionchange', () => {
   const sel = window.getSelection && window.getSelection();
   if (sel && !sel.isCollapsed) sel.removeAllRanges();
 });
+function markPlaybackForFocusResync() {
+  if (!playing) return;
+  playbackNeedsFocusResync = true;
+  // 离开前台时立刻撤销尚未触发的 timer/rAF，避免浏览器回到前台后
+  // 把后台积压的和弦回调一次性全部执行。
+  clearTimers();
+}
+
+async function resyncPlaybackAfterFocus() {
+  if (!playbackNeedsFocusResync || focusResyncing || !playing || !song || document.hidden) return;
+  focusResyncing = true;
+  playbackNeedsFocusResync = false;
+  // 先取得当前歌曲时间，再清除后台期间积压的旧 timer/cue。
+  // scheduleFrom() 只安排 resumeAt 之后的事件，因此不会补弹或连发错过的和弦。
+  const resumeAt = Math.min(song.duration, currentPlayTime());
+  try {
+    ensureAudio();
+    await Promise.allSettled([
+      audio.ctx?.resume?.(),
+      window.Tone ? Tone.start() : Promise.resolve(),
+    ]);
+    if (playing) scheduleFrom(resumeAt);
+    requestWakeLock();
+  } finally {
+    focusResyncing = false;
+  }
+}
+
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && playing) requestWakeLock();
+  if (document.hidden) markPlaybackForFocusResync();
+  else resyncPlaybackAfterFocus();
+});
+window.addEventListener('blur', markPlaybackForFocusResync);
+window.addEventListener('focus', resyncPlaybackAfterFocus);
+window.addEventListener('pageshow', event => {
+  if (event.persisted) playbackNeedsFocusResync = playing;
+  resyncPlaybackAfterFocus();
 });
 
 renderKeyboard('playbackKeyboard', 48, 72, 'playback');
