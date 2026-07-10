@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-31';
+const ASSET_VERSION = 'reset-20260710-32';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -591,10 +591,15 @@ function isGoodTiming(key) {
 function timingGrade(progress, correctKey = true) {
   if (!correctKey || !Number.isFinite(progress)) return 'MISS';
   const error = Math.abs(progress - 100);
-  if (error <= 2) return 'S';
-  if (error <= 5) return 'A';
-  if (error <= 8) return 'B';
-  if (error <= 10) return 'C';
+  if (error <= 1) return 'SSS';
+  if (error <= 2) return 'SS';
+  if (error <= 3) return 'S';
+  if (error <= 4) return 'A';
+  if (error <= 5) return 'B';
+  if (error <= 6) return 'C';
+  if (error <= 7) return 'D';
+  if (error <= 8) return 'E';
+  if (error <= 10) return 'F';
   return 'MISS';
 }
 
@@ -2624,7 +2629,7 @@ function autoPressCue(active) {
   const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
   const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
   keys.forEach(key => {
-    showTimingRating(key, 'S');
+    showTimingRating(key, 'SSS');
     showPickZoneFeedback(key, chordPatternSlotAtTime(active.cue.time));
     key.classList.remove('chord-due', 'miss', 'chord-release');
     key.classList.add('chord-press');
