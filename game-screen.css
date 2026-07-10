@@ -119,10 +119,6 @@ body.game-started .karaoke-line.active {
   border-bottom: 1px solid rgba(212,175,85,.35) !important;
   text-shadow: 0 0 16px rgba(154,94,255,.55), 0 2px 9px rgba(0,0,0,.70) !important;
 }
-body.game-started .karaoke-line.active::before {
-  color: #e8c46e !important;
-  filter: drop-shadow(0 0 9px rgba(232,196,110,.75)) !important;
-}
 body.game-started .karaoke-line.active .lyric-base { color: #fdf8ec !important; }
 
 /* ---------- 时间胶囊 ---------- */
@@ -219,12 +215,6 @@ body.game-started .karaoke-status .mic-meter {
   left: calc(100% + 12px) !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-}
-
-/* ---------- 修复：禁用行盒子上的 ▶（styles.css 有重复定义），只保留 .lyric-wrap::before 那一个
-   ▶（它在文字左侧外绝对定位、不推挤文字），避免两个三角标 + 行内 ▶ 占宽导致该行不居中 ---------- */
-body.game-started .karaoke-line.active::before {
-  content: none !important;
 }
 
 /* ---------- 修复：卡拉OK紫色拉幕末尾字盖不全 ----------

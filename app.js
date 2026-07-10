@@ -1,8 +1,16 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
+const ASSET_VERSION = 'reset-20260710-02';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-const audio = { ctx: null, master: null, recordDest: null, gameRecordGain: null, toneRecorderConnected: false };
+const audio = {
+  ctx: null,
+  master: null,
+  recordDest: null,
+  gameRecordGain: null,
+  toneRecorderConnected: false,
+  toneRecorderAttempted: false,
+};
 const sampled = { piano: null, ready: false };
 const freepatsGuitar = {
   base: 'samples/freepats_spanish_guitar/SpanishClassicalGuitar-SFZ-20190618/',
@@ -97,7 +105,7 @@ function updateClock() {
 
 async function loadPatternManifest() {
   if (patterns.promise) return patterns.promise;
-  patterns.promise = fetch('patterns/player_bundle/catalog/player_patterns_manifest.json?v=reset-20260706-29', { cache: 'no-store' })
+  patterns.promise = fetch(`patterns/player_bundle/catalog/player_patterns_manifest.json?v=${ASSET_VERSION}`, { cache: 'no-store' })
     .then(res => {
       if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
       return res.json();
@@ -112,9 +120,10 @@ async function loadPatternManifest() {
 
 async function loadWasmParser() {
   if (wasmParser.promise) return wasmParser.promise;
-  wasmParser.promise = WebAssembly.instantiateStreaming(fetch('pkg/piano_wasm.wasm?v=reset-20260706-29'), {})
+  const url = `pkg/piano_wasm.wasm?v=${ASSET_VERSION}`;
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch(url, { cache: 'no-store' }), {})
     .catch(async () => {
-      const res = await fetch('pkg/piano_wasm.wasm?v=reset-20260706-29', { cache: 'no-store' });
+      const res = await fetch(url, { cache: 'no-store' });
       const bytes = await res.arrayBuffer();
       return WebAssembly.instantiate(bytes, {});
     })
@@ -123,6 +132,18 @@ async function loadWasmParser() {
       return wasmParser.exports;
     });
   return wasmParser.promise;
+}
+
+function withTimeout(promise, timeoutMs, label = 'operation') {
+  let timer = null;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 }
 
 async function parseMidiWithWasm(buffer) {
@@ -193,7 +214,11 @@ function initSamplePiano() {
 }
 function ensureAudio() {
   if (!audio.ctx) {
-    audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Tone.js 和原生 WebAudio 必须共用同一个 AudioContext；否则
+    // Tone.Destination 无法连接到原生 MediaStreamDestination，录音会丢掉钢琴声。
+    const toneContext = window.Tone?.getContext?.();
+    const toneRawContext = toneContext?.rawContext || toneContext?._context || null;
+    audio.ctx = toneRawContext || new (window.AudioContext || window.webkitAudioContext)();
     audio.master = audio.ctx.createGain();
     audio.master.gain.value = 0.48;
     audio.master.connect(audio.ctx.destination);
@@ -207,7 +232,8 @@ function ensureAudio() {
 }
 
 function connectToneToRecorder() {
-  if (!window.Tone || !audio.recordDest || audio.toneRecorderConnected) return;
+  if (!window.Tone || !audio.recordDest || audio.toneRecorderConnected || audio.toneRecorderAttempted) return;
+  audio.toneRecorderAttempted = true;
   try {
     const dest = Tone.getDestination ? Tone.getDestination() : Tone.Destination;
     if (dest?.connect) {
@@ -269,7 +295,7 @@ async function getFreepatsBuffer(region) {
 function playFreepatsGuitarNote(midi, duration = 0.75, velocity = 0.5, gainScale = 0.78) {
   ensureAudio();
   const region = freepatsRegionFor(midi);
-  getFreepatsBuffer(region).then(buffer => {
+  withTimeout(getFreepatsBuffer(region), 1400, `FreePats ${region.sample}`).then(buffer => {
     const ctx = audio.ctx;
     const now = ctx.currentTime;
     const src = ctx.createBufferSource();
@@ -351,13 +377,13 @@ function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = h
     sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, undefined, Math.max(0.035, velocity * (preset.gain || 0.42) * harmonyGain));
     return;
   }
-  getSoundfontInstrument(preset).then(inst => {
+  withTimeout(getSoundfontInstrument(preset), 1400, `SoundFont ${preset.name}`).then(inst => {
     if (!inst) return fallbackSoftNote(midi, duration, velocity);
     const note = preset.drum ? Math.min(81, Math.max(35, midi)) : midi;
     inst.play(note, audio.ctx.currentTime, Math.max(0.08, duration), {
       gain: Math.max(0.05, Math.min(1, velocity * (preset.gain || 0.65) * harmonyGain)),
     });
-  });
+  }).catch(() => fallbackSoftNote(midi, duration, velocity));
 }
 
 function drumPitchToMidi(pitch) {
@@ -1135,16 +1161,15 @@ function warmHarmonyMidiSet(maxCues = 96) {
   return [...set];
 }
 
-function warmFreepatsForSong() {
+function warmFreepatsForSong(maxSamples = 8) {
   ensureAudio();
   const regions = new Map();
   warmHarmonyMidiSet().forEach(midi => {
+    if (regions.size >= maxSamples) return;
     const region = freepatsRegionFor(midi);
     regions.set(region.sample, region);
   });
-  return Promise.all([...regions.values()].map(region => getFreepatsBuffer(region))).catch(err => {
-    console.warn('FreePats warmup failed:', err);
-  });
+  return Promise.allSettled([...regions.values()].map(region => getFreepatsBuffer(region)));
 }
 
 function warmSoundfontPreset(preset) {
@@ -1565,7 +1590,7 @@ function parseMidi(arrayBuffer) {
   }));
   const trackName = (t) => (t.texts || []).find(e => e.type === 0x03)?.text || '';
   const byName = (name) => noteTracks.find(t => trackName(t).toLowerCase() === name.toLowerCase());
-  // 不依赖固定 Track 编号：先按轨道名找，名字缺失时按事件内容推断（docs/SOFTWARE_DESIGN.md §4.1）。
+  // 不依赖固定 Track 编号：先按轨道名找，名字缺失时按事件内容推断（docs/MIDI_FORMAT.md §1）。
   const melodyTrack = byName('Lead')
     || noteTracks.find(t => t.notes.length)
     || { number: 0, notes: [] };
@@ -1573,7 +1598,7 @@ function parseMidi(arrayBuffer) {
     || noteTracks.find(t => t !== melodyTrack && t.notes.length)
     || { number: 0, notes: [] };
   const chordTrack = byName('Chord Names')
-    || noteTracks.find(t => (t.texts || []).some(e => /^[A-G][#b]?(m|maj|dim|aug|sus|add|\/|\d|$)/i.test(String(e.text || '').trim())))
+    || noteTracks.find(t => (t.texts || []).some(e => e.type === 0x01 && /^[A-G][#b]?(m|maj|dim|aug|sus|add|\/|\d|$)/i.test(String(e.text || '').trim())))
     || { number: 0, notes: [], texts: [] };
   const chordCues = chordTrack.texts
     .filter(e => e.type === 0x01)
@@ -1867,10 +1892,12 @@ function syncActiveKaraokeProgress(el, line, now) {
   if (currentIndex < 0) return;
   const node = base.querySelector(`[data-kidx="${currentIndex}"]`);
   if (!node) return;
-  const rr = wrap.getBoundingClientRect();
+  const br = base.getBoundingClientRect();
   const nr = node.getBoundingClientRect();
-  const x = (nr.left - rr.left) + nr.width * frac;
-  const pct = Math.max(0, Math.min(100, (x / Math.max(1, rr.width)) * 100));
+  // 紫色层按歌词内容宽度（max-content）裁剪；进度也必须以同宽的 base 为基准。
+  // 长歌词会溢出 lyric-wrap，若使用 wrap.width 会把进度严重放大。
+  const x = (nr.left - br.left) + nr.width * frac;
+  const pct = Math.max(0, Math.min(100, (x / Math.max(1, br.width)) * 100));
   el.style.setProperty('--progress', `${pct.toFixed(2)}%`);
 }
 
@@ -2407,7 +2434,11 @@ async function prepareStartAssets() {
   setLoadingStatus('加载钢琴采样…');
   await Promise.race([sampleReadyPromise, new Promise(resolve => setTimeout(resolve, 5000))]);
   setLoadingStatus('加载伴奏音色…');
-  await warmHarmonyTones(true);
+  // 只预热当前拨片音色，并设置硬超时。其余音色会在用户切换时后台加载；
+  // 任何单个 WAV/SoundFont 解码卡住都不能阻塞“开始”按钮。
+  await withTimeout(warmHarmonyTones(false), 2500, 'harmony warmup').catch(err => {
+    console.warn('Harmony warmup continues in background:', err.message);
+  });
   if (micEnabled) {
     setLoadingStatus('打开麦克风…');
     await ensureMic();

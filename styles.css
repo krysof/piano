@@ -2722,12 +2722,6 @@ html, body {
 }
 .karaoke-line .lyric-base { color: inherit !important; text-shadow: inherit !important; }
 .karaoke-line .lyric-blue { color: #8ea7ff !important; text-shadow: 0 0 10px rgba(99,102,241,.95), 0 0 20px rgba(96,165,250,.65) !important; }
-.karaoke-status {
-  bottom: 18px !important;
-  right: 50% !important;
-  transform: translateX(50%) !important;
-  gap: 10px !important;
-}
 .karaoke-status .meter, #timeStatus {
   min-width: 150px !important;
   padding: 8px 16px !important;
@@ -3718,14 +3712,6 @@ body.game-started {
   border-bottom: 1px solid rgba(95,136,255,.16);
   text-shadow: 0 0 18px rgba(99,104,255,.62), 0 2px 10px rgba(0,0,0,.55) !important;
 }
-.karaoke-line.active::before {
-  content: "▶";
-  display: inline-block;
-  margin-right: .6em;
-  color: #9a8cff;
-  font-size: .72em;
-  filter: drop-shadow(0 0 9px #8e7dff);
-}
 .karaoke-line .lyric-base { color: rgba(235,241,255,.74) !important; text-shadow: 0 0 10px rgba(92,140,255,.16), 0 2px 8px rgba(0,0,0,.65) !important; }
 .karaoke-line.active .lyric-base { color: #f6f7ff !important; }
 .karaoke-line .lyric-blue { color: #88a4ff !important; text-shadow: 0 0 14px rgba(94,124,255,.85), 0 0 24px rgba(52,199,255,.35) !important; }
@@ -4030,10 +4016,6 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden !important; }
   letter-spacing: -0.03em !important;
   padding: 6px 0 !important;
 }
-.karaoke-line.active::before {
-  margin-right: .38em !important;
-  font-size: .62em !important;
-}
 .karaoke-line.next {
   font-size: clamp(12px, 3.35vw, 19px) !important;
 }
@@ -4175,17 +4157,8 @@ html, body { width: 100%; max-width: 100%; overflow-x: hidden !important; }
   opacity: 1 !important;
   background: linear-gradient(90deg, transparent, rgba(53,111,255,.20) 16%, rgba(25,81,220,.28) 50%, rgba(53,111,255,.20) 84%, transparent) !important;
 }
-.karaoke-line.active::before {
-  margin-right: .45em !important;
-  filter: drop-shadow(0 0 11px #8c7cff) !important;
-}
 .karaoke-line .lyric-base { text-shadow: 0 0 8px rgba(121,160,255,.14), 0 2px 8px rgba(0,0,0,.72) !important; }
 .karaoke-line.active .lyric-base { text-shadow: 0 0 12px rgba(90,132,255,.38), 0 2px 10px rgba(0,0,0,.76) !important; }
-.karaoke-status {
-  right: 50% !important;
-  bottom: 15px !important;
-  transform: translateX(50%) !important;
-}
 .top-slot {
   height: auto !important;
   border-color: rgba(162,91,255,.55) !important;
@@ -4341,7 +4314,6 @@ body { background: radial-gradient(circle at 70% 0%, #221347 0, #061026 34%, #03
   border-bottom: 1px solid rgba(99,134,255,.18) !important;
   text-shadow: 0 0 14px rgba(98,112,255,.46), 0 2px 9px rgba(0,0,0,.70) !important;
 }
-.karaoke-line.active::before { content: '▶'; margin-right: .45em !important; font-size: .60em !important; color: #9588ff !important; filter: drop-shadow(0 0 10px #8f7cff) !important; }
 /* 旧 .karaoke-status 定位已删（见 game-screen.css body.game-started 版）。 */
 .karaoke-status .meter { min-width: 126px !important; height: 30px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; font-size: 12px !important; letter-spacing: .06em !important; background: rgba(8,15,35,.62) !important; border: 1px solid rgba(123,165,255,.25) !important; }
 .top-slot {
