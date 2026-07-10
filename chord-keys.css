@@ -103,11 +103,9 @@
 #manualKeyboard .chord-symbol.fail { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.86); transition-duration: 280ms; }
 #manualKeyboard .chord-symbol.hit { color: transparent; background: transparent; border-color: transparent; box-shadow: none; text-shadow: none; }
 
-#manualKeyboard .timing-rating {
-  position: absolute;
-  z-index: 24;
-  top: 6%;
-  left: 50%;
+.timing-rating {
+  position: fixed;
+  z-index: 2147483647;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -120,26 +118,26 @@
   letter-spacing: .02em;
   text-align: center;
   pointer-events: none;
-  filter: drop-shadow(0 2px 2px rgba(0,0,0,.72));
+  will-change: transform, opacity;
   animation: timingRatingFloat .82s cubic-bezier(.18,.78,.2,1) forwards;
 }
 
-#manualKeyboard .timing-rating.grade-sss { color: #fffbd0; text-shadow: 0 0 8px #fff, 0 0 16px #ffe34f, 0 0 25px #ff9d00; }
-#manualKeyboard .timing-rating.grade-ss { color: #fff7a8; text-shadow: 0 0 7px #ffe96b, 0 0 19px #ffc21c; }
-#manualKeyboard .timing-rating.grade-s { color: #dfffb2; text-shadow: 0 0 7px #aaff5e, 0 0 18px #50cf40; }
-#manualKeyboard .timing-rating.grade-a { color: #9fffe1; text-shadow: 0 0 7px #35e8b2, 0 0 16px #1bbf91; }
-#manualKeyboard .timing-rating.grade-b { color: #a9d8ff; text-shadow: 0 0 7px #5eaaff, 0 0 16px #426cff; }
-#manualKeyboard .timing-rating.grade-c { color: #e2bdff; text-shadow: 0 0 7px #b96dff, 0 0 16px #8047d7; }
-#manualKeyboard .timing-rating.grade-d { color: #ffc5f0; text-shadow: 0 0 7px #ff73cf, 0 0 16px #ce3c9c; }
-#manualKeyboard .timing-rating.grade-e { color: #ffc49f; text-shadow: 0 0 7px #ff8b48, 0 0 16px #d75a26; }
-#manualKeyboard .timing-rating.grade-f { color: #ffaaa4; text-shadow: 0 0 7px #ff665c, 0 0 16px #c73535; }
-#manualKeyboard .timing-rating.grade-miss { color: #ff9b9b; text-shadow: 0 0 7px #ff4f5f, 0 0 16px #b91e3b; font-size: clamp(28px, 9cqw, 46px); }
+.timing-rating.grade-sss { color: #fffbd0; text-shadow: 0 0 8px #fff, 0 0 16px #ffe34f, 0 0 25px #ff9d00; }
+.timing-rating.grade-ss { color: #fff7a8; text-shadow: 0 0 7px #ffe96b, 0 0 19px #ffc21c; }
+.timing-rating.grade-s { color: #dfffb2; text-shadow: 0 0 7px #aaff5e, 0 0 18px #50cf40; }
+.timing-rating.grade-a { color: #9fffe1; text-shadow: 0 0 7px #35e8b2, 0 0 16px #1bbf91; }
+.timing-rating.grade-b { color: #a9d8ff; text-shadow: 0 0 7px #5eaaff, 0 0 16px #426cff; }
+.timing-rating.grade-c { color: #e2bdff; text-shadow: 0 0 7px #b96dff, 0 0 16px #8047d7; }
+.timing-rating.grade-d { color: #ffc5f0; text-shadow: 0 0 7px #ff73cf, 0 0 16px #ce3c9c; }
+.timing-rating.grade-e { color: #ffc49f; text-shadow: 0 0 7px #ff8b48, 0 0 16px #d75a26; }
+.timing-rating.grade-f { color: #ffaaa4; text-shadow: 0 0 7px #ff665c, 0 0 16px #c73535; }
+.timing-rating.grade-miss { color: #ff9b9b; text-shadow: 0 0 7px #ff4f5f, 0 0 16px #b91e3b; font-size: clamp(28px, 9cqw, 46px); }
 
 @keyframes timingRatingFloat {
   0% { opacity: 0; transform: translate(-50%, 8px) scale(.78); }
   18% { opacity: .68; transform: translate(-50%, 0) scale(1.08); }
   42% { opacity: .62; transform: translate(-50%, -6px) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -30px) scale(.9); }
+  100% { opacity: 0; transform: translate(-50%, -40px) scale(.9); }
 }
 
 #manualKeyboard .chord-shard {

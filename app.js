@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-34';
+const ASSET_VERSION = 'reset-20260711-01';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -618,12 +618,19 @@ function recordTimingGrade(grade) {
 function showTimingRating(key, grade, count = true) {
   if (!key) return;
   const normalized = count ? recordTimingGrade(grade) : grade;
-  key.querySelectorAll('.timing-rating').forEach(el => el.remove());
+  key._timingRating?.remove();
+  const rect = key.getBoundingClientRect();
   const rating = document.createElement('span');
   rating.className = `timing-rating grade-${String(normalized).toLowerCase()}`;
   rating.textContent = normalized;
-  key.appendChild(rating);
-  rating.addEventListener('animationend', () => rating.remove(), { once: true });
+  rating.style.left = `${rect.left + rect.width / 2}px`;
+  rating.style.top = `${rect.top + rect.height * 0.06}px`;
+  document.body.appendChild(rating);
+  key._timingRating = rating;
+  rating.addEventListener('animationend', () => {
+    if (key._timingRating === rating) key._timingRating = null;
+    rating.remove();
+  }, { once: true });
 }
 
 function showPerformanceResults() {
