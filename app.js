@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-22';
+const ASSET_VERSION = 'reset-20260710-23';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -524,13 +524,14 @@ function playDrumKitNote(midi, velocity, patternDuration) {
   }
 }
 
-function prepareDrumPattern(pattern, drumCode = pattern?.code) {
+function prepareDrumPattern(pattern, drumCode = pattern?.code, onProgress = null) {
   if (!pattern?.notes?.length || !window.FreezaDrumKits) return Promise.resolve();
   ensureAudio();
   return window.FreezaDrumKits.preload(
     audio.ctx,
     drumCode,
     pattern.notes.map(note => drumPitchToMidi(note.pitch)),
+    onProgress,
   );
 }
 
@@ -1365,6 +1366,21 @@ function warmHarmonyPreset(preset) {
     return Promise.resolve();
   }
   return warmSoundfontPreset(preset);
+}
+
+function fullyWarmHarmonyPreset(preset, onProgress = null) {
+  if (!preset) return Promise.resolve([]);
+  ensureAudio();
+  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+    return window.FreezaGuitarSampler.preloadAll(audio.ctx, preset.code, onProgress);
+  }
+  if (typeof onProgress === 'function') onProgress(0, 1);
+  const promise = preset.localPiano
+    ? Promise.resolve(sampleReadyPromise)
+    : warmSoundfontPreset(preset);
+  return Promise.resolve(promise).finally(() => {
+    if (typeof onProgress === 'function') onProgress(1, 1);
+  });
 }
 
 function warmHarmonyTones(all = false) {
@@ -2366,38 +2382,131 @@ function setLoadingStatus(text) {
   if (el) el.textContent = text;
 }
 
+const loadingCategoryProgress = new Map();
+const LOADING_CATEGORY_IDS = ['core', 'piano', 'pickA', 'pickB', 'drums', 'mic'];
+
+function updateLoadingOverall() {
+  const values = LOADING_CATEGORY_IDS.map(id => loadingCategoryProgress.get(id) || 0);
+  const progress = values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  const percent = Math.round(progress * 100);
+  const label = $('loadingPercent');
+  const bar = $('loadingOverallBar');
+  if (label) label.textContent = `${percent}%`;
+  if (bar) bar.style.width = `${percent}%`;
+}
+
+function setLoadingCategory(id, progress, detail = '', state = '') {
+  const normalized = Math.max(0, Math.min(1, Number(progress) || 0));
+  loadingCategoryProgress.set(id, normalized);
+  const item = document.querySelector(`.launch-loading-item[data-load-id="${id}"]`);
+  if (item) {
+    item.style.setProperty('--load-progress', normalized.toFixed(4));
+    item.classList.remove('loading', 'done', 'error');
+    const stateClass = state || (normalized >= 1 ? 'done' : normalized > 0 ? 'loading' : '');
+    if (stateClass) item.classList.add(stateClass);
+    const description = item.querySelector('small');
+    const status = item.querySelector('b');
+    if (description && detail) description.textContent = detail;
+    if (status) status.textContent = state === 'error' ? '部分可用' : normalized >= 1 ? '完成' : normalized > 0 ? `${Math.round(normalized * 100)}%` : '等待';
+  }
+  updateLoadingOverall();
+}
+
+function resetLoadingProgress() {
+  loadingCategoryProgress.clear();
+  LOADING_CATEGORY_IDS.forEach(id => setLoadingCategory(id, 0));
+  setLoadingStatus('正在检查演奏资源…');
+}
+
+function drumSelectionsForSong() {
+  const codes = new Set(availableDrumCodes().slice(0, 2));
+  if (currentDrumCode) codes.add(currentDrumCode);
+  for (const event of song?.drumEvents || []) {
+    const code = resolveDrumPatternCode(event.drumCodes);
+    if (code) codes.add(code);
+  }
+  return [...codes]
+    .map(code => [patterns.byCode.get(code), code])
+    .filter(([pattern]) => pattern?.notes?.length);
+}
+
+async function loadAllSongDrums() {
+  const selections = drumSelectionsForSong();
+  if (!selections.length) {
+    setLoadingCategory('drums', 1, '歌曲未使用鼓机');
+    return;
+  }
+  const counters = new Map(selections.map(([pattern, code]) => [code, {
+    done: 0,
+    total: Math.max(1, new Set(pattern.notes.map(note => drumPitchToMidi(note.pitch))).size),
+  }]));
+  const refresh = () => {
+    const values = [...counters.values()];
+    const done = values.reduce((sum, value) => sum + value.done, 0);
+    const total = values.reduce((sum, value) => sum + value.total, 0);
+    setLoadingCategory('drums', total ? done / total : 1, `${selections.length} 套歌曲鼓组`);
+  };
+  refresh();
+  await Promise.all(selections.map(([pattern, code]) => prepareDrumPattern(pattern, code, (done, total) => {
+    counters.set(code, { done, total: Math.max(1, total) });
+    refresh();
+  })));
+  setLoadingCategory('drums', 1, `${selections.length} 套歌曲鼓组`);
+}
+
+async function loadHarmonyCategory(id, preset) {
+  if (!preset) {
+    setLoadingCategory(id, 1, '当前风格未配置');
+    return;
+  }
+  const detail = preset.name || preset.code || `拨片 ${preset.label || ''}`;
+  setLoadingCategory(id, 0.01, detail);
+  await fullyWarmHarmonyPreset(preset, (done, total) => {
+    setLoadingCategory(id, total ? done / total : 1, detail);
+  });
+  setLoadingCategory(id, 1, detail);
+}
+
 async function prepareStartAssets() {
-  setLoadingStatus('加载 MIDI / WASM / 风格包…');
+  setLoadingStatus('解析 MIDI / WASM / 风格包…');
+  setLoadingCategory('core', 0.08, '解析 MIDI · WASM · 风格包');
   await (midiReadyPromise || Promise.resolve());
-  setLoadingStatus('启动音频引擎…');
+  setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 风格已解析`);
+  setLoadingStatus('启动音频引擎并缓存全部音色…');
   ensureAudio();
   if (window.Tone) await Promise.resolve(Tone.start()).catch(() => {});
-  setLoadingStatus('加载钢琴采样…');
-  await Promise.race([sampleReadyPromise, new Promise(resolve => setTimeout(resolve, 5000))]);
-  setLoadingStatus('加载伴奏音色…');
-  // 只预热当前拨片音色，并设置硬超时。其余音色会在用户切换时后台加载；
-  // 任何单个 WAV/SoundFont 解码卡住都不能阻塞“开始”按钮。
-  await withTimeout(warmHarmonyTones(false), 2500, 'harmony warmup').catch(err => {
-    console.warn('Harmony warmup continues in background:', err.message);
-  });
-  if (drumMode !== 'off') {
-    setLoadingStatus('加载鼓机采样…');
-    const selections = [];
-    const current = currentDrumPattern();
-    if (current) selections.push([current, currentDrumCode || current.code]);
-    const firstDrumEvent = song?.drumEvents?.find(event => event.switchType === 1);
-    const firstCode = resolveDrumPatternCode(firstDrumEvent?.drumCodes);
-    const firstPattern = firstCode ? patterns.byCode.get(firstCode) : null;
-    if (firstPattern && !selections.some(([, code]) => code === firstCode)) selections.push([firstPattern, firstCode]);
-    await withTimeout(Promise.all(selections.map(([pattern, code]) => prepareDrumPattern(pattern, code))), 2500, 'drum warmup').catch(err => {
-      console.warn('Drum warmup continues in background:', err.message);
+  setLoadingCategory('piano', 0.05, '等待钢琴采样解码');
+  const pianoTask = Promise.resolve(sampleReadyPromise)
+    .then(() => setLoadingCategory('piano', 1, '钢琴采样已缓存'))
+    .catch(error => {
+      console.warn('Piano preload failed:', error);
+      setLoadingCategory('piano', 1, '使用 WebAudio 备用音色', 'error');
     });
-  }
+  const categoryTasks = [
+    pianoTask,
+    loadHarmonyCategory('pickA', HARMONY_TONES[0]).catch(error => {
+      console.warn('Pick A preload failed:', error);
+      setLoadingCategory('pickA', 1, '备用音色可用', 'error');
+    }),
+    loadHarmonyCategory('pickB', HARMONY_TONES[1] || HARMONY_TONES[0]).catch(error => {
+      console.warn('Pick B preload failed:', error);
+      setLoadingCategory('pickB', 1, '备用音色可用', 'error');
+    }),
+    loadAllSongDrums().catch(error => {
+      console.warn('Drum preload failed:', error);
+      setLoadingCategory('drums', 1, '合成鼓组可用', 'error');
+    }),
+  ];
   if (micEnabled) {
-    setLoadingStatus('打开麦克风…');
-    await ensureMic();
+    setLoadingCategory('mic', 0.1, '等待浏览器授权');
+    categoryTasks.push(ensureMic().then(ready => {
+      setLoadingCategory('mic', 1, ready ? '录音输入已连接' : '未获得权限', ready ? 'done' : 'error');
+    }));
+  } else {
+    setLoadingCategory('mic', 1, '当前未启用');
   }
-  setLoadingStatus('准备开始…');
+  await Promise.all(categoryTasks);
+  setLoadingStatus('全部演奏资源已就绪');
 }
 
 function startCountdownThenPlay() {
@@ -3067,6 +3176,7 @@ async function startGameFromMenu() {
   if (startRequested) return;
   startRequested = true;
   const screen = $('startScreen');
+  resetLoadingProgress();
   screen?.classList.add('loading');
   requestWakeLock();
   setLoadingStatus('准备载入…');

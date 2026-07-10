@@ -7,10 +7,10 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260710-22" />
-  <link rel="stylesheet" href="start-screen.css?v=reset-20260710-22" />
-  <link rel="stylesheet" href="game-screen.css?v=reset-20260710-22" />
-  <link rel="stylesheet" href="chord-keys.css?v=reset-20260710-22" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260710-23" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260710-23" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260710-23" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260710-23" />
 </head>
 <body>
 
@@ -58,7 +58,7 @@
         <div class="launch-status">
           <span class="launch-status-dot"></span>
           <span>Studio ready</span>
-          <b id="startVersion">v20260710.22</b>
+          <b id="startVersion">v20260710.23</b>
         </div>
       </header>
 
@@ -190,8 +190,23 @@
       </footer>
 
       <div id="loadingFrame" class="launch-loading" aria-live="polite">
-        <div class="launch-loader"><span></span><span></span><span></span><span></span></div>
-        <div id="loadingText" class="launch-loading-text">准备载入…</div>
+        <div class="launch-loading-card">
+          <header class="launch-loading-head">
+            <span class="launch-loading-mark"><i></i><i></i><i></i><i></i></span>
+            <div><small>PERFORMANCE SETUP</small><strong>正在准备演奏</strong></div>
+            <b id="loadingPercent">0%</b>
+          </header>
+          <div class="launch-loading-overall"><i id="loadingOverallBar"></i></div>
+          <div class="launch-loading-groups">
+            <div class="launch-loading-item" data-load-id="core"><span>核心谱面</span><small>MIDI · WASM · 风格包</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="piano"><span>主旋律钢琴</span><small>动态采样音色</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="pickA"><span>拨片 A</span><small>伴奏音色与采样</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="pickB"><span>拨片 B</span><small>伴奏音色与采样</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="drums"><span>鼓机音色</span><small>歌曲所需 A/B 鼓组</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="mic"><span>麦克风</span><small>录音输入</small><i></i><b>等待</b></div>
+          </div>
+          <div id="loadingText" class="launch-loading-text">准备载入…</div>
+        </div>
       </div>
     </div>
   </section>
@@ -289,9 +304,9 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="guitar-manifests.js?v=reset-20260710-22"></script>
-  <script src="guitar-sampler.js?v=reset-20260710-22"></script>
-  <script src="drum-kits.js?v=reset-20260710-22"></script>
-<script src="app.js?v=reset-20260710-22"></script>
+  <script src="guitar-manifests.js?v=reset-20260710-23"></script>
+  <script src="guitar-sampler.js?v=reset-20260710-23"></script>
+  <script src="drum-kits.js?v=reset-20260710-23"></script>
+<script src="app.js?v=reset-20260710-23"></script>
 </body>
 </html>

@@ -80,7 +80,7 @@
     return matches[0] || regionsFor(manifest, midi, velocity, 0.5)[0];
   }
 
-  function preload(ctx, code, midis = []) {
+  function preload(ctx, code, midis = [], onProgress = null) {
     const manifest = manifestForCode(code);
     if (!manifest) return Promise.resolve([]);
     const keys = [...new Set(midis.map(Number).filter(Number.isFinite))];
@@ -89,10 +89,16 @@
       : manifest.regions;
     const unique = [...new Map(selected.map(region => [region.sample, region])).values()]
       .sort((a, b) => Math.abs(a.center - 60) - Math.abs(b.center - 60));
-    return Promise.allSettled(unique.map(region => loadRegion(ctx, manifest, region)));
+    let settled = 0;
+    const total = unique.length;
+    if (typeof onProgress === 'function') onProgress(0, total);
+    return Promise.allSettled(unique.map(region => loadRegion(ctx, manifest, region).finally(() => {
+      settled++;
+      if (typeof onProgress === 'function') onProgress(settled, total);
+    })));
   }
 
-  function preloadAll(ctx, code) { return preload(ctx, code); }
+  function preloadAll(ctx, code, onProgress = null) { return preload(ctx, code, [], onProgress); }
 
   function play(ctx, destination, code, midi, duration, velocity, gainScale) {
     const manifest = manifestForCode(code);

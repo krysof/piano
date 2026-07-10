@@ -719,47 +719,95 @@ body.game-started #startScreen {
   inset: 0;
   display: none;
   place-items: center;
-  align-content: center;
-  gap: 14px;
+  padding: clamp(12px, 4vw, 28px);
   border-radius: inherit;
-  background: rgba(8, 10, 16, 0.84);
+  background: rgba(5, 7, 12, 0.88);
   -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
-#startScreen.loading .launch-loading {
-  display: grid;
+#startScreen.loading .launch-loading { display: grid; }
+
+.launch-loading-card {
+  width: min(100%, 430px);
+  padding: clamp(16px, 4vw, 24px);
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 22px;
+  background: linear-gradient(150deg, rgba(28, 31, 45, .98), rgba(12, 14, 23, .98));
+  box-shadow: 0 30px 80px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.05);
 }
 
-.launch-loader {
+.launch-loading-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+}
+
+.launch-loading-head > div { display: grid; gap: 2px; }
+.launch-loading-head small { color: #aa8dff; font-size: 8px; font-weight: 820; letter-spacing: .18em; }
+.launch-loading-head strong { color: #f4f2fa; font-size: 18px; font-weight: 760; }
+.launch-loading-head > b { color: #cdbdff; font-size: 21px; font-variant-numeric: tabular-nums; }
+
+.launch-loading-mark {
   display: flex;
   align-items: center;
-  gap: 5px;
-  height: 35px;
+  justify-content: center;
+  gap: 3px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(170,141,255,.42);
+  border-radius: 13px;
+  background: rgba(109,74,255,.2);
 }
+.launch-loading-mark i { width: 3px; height: 12px; border-radius: 3px; background: #bba5ff; animation: launch-load 1s ease-in-out infinite; }
+.launch-loading-mark i:nth-child(2) { height: 22px; animation-delay: .1s; }
+.launch-loading-mark i:nth-child(3) { height: 16px; animation-delay: .2s; }
+.launch-loading-mark i:nth-child(4) { height: 8px; animation-delay: .3s; }
 
-.launch-loader span {
-  width: 4px;
-  height: 14px;
-  border-radius: 4px;
-  background: #a98cff;
-  animation: launch-load 0.85s ease-in-out infinite;
+@keyframes launch-load { 50% { transform: scaleY(.58); opacity: .5; } }
+
+.launch-loading-overall {
+  height: 6px;
+  margin: 15px 0 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.065);
 }
+.launch-loading-overall i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8b5cf6, #b08cff 55%, #4fd1c5); box-shadow: 0 0 16px rgba(139,92,246,.5); transition: width 220ms ease; }
 
-.launch-loader span:nth-child(2) { animation-delay: 0.1s; }
-.launch-loader span:nth-child(3) { animation-delay: 0.2s; }
-.launch-loader span:nth-child(4) { animation-delay: 0.3s; }
-
-@keyframes launch-load {
-  0%, 100% { height: 11px; opacity: 0.45; }
-  50% { height: 34px; opacity: 1; }
+.launch-loading-groups { display: grid; gap: 7px; }
+.launch-loading-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr) 54px;
+  align-items: center;
+  gap: 9px;
+  min-height: 38px;
+  padding: 7px 9px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.055);
+  border-radius: 11px;
+  background: rgba(7,9,15,.55);
 }
+.launch-loading-item::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: linear-gradient(90deg, #8b5cf6, #4fd1c5); content: ''; transform: scaleX(var(--load-progress, 0)); transform-origin: 0 50%; transition: transform 180ms ease; }
+.launch-loading-item > span { color: #e2dfea; font-size: 11px; font-weight: 690; }
+.launch-loading-item > small { overflow: hidden; color: #777d8e; font-size: 9px; white-space: nowrap; text-overflow: ellipsis; }
+.launch-loading-item > i { display: none; }
+.launch-loading-item > b { justify-self: end; color: #777d8e; font-size: 9px; font-weight: 680; font-variant-numeric: tabular-nums; }
+.launch-loading-item.loading > b { color: #bba7ff; }
+.launch-loading-item.done > b { color: #64d8b4; }
+.launch-loading-item.error > b { color: #f0a46d; }
+.launch-loading-item.done { border-color: rgba(100,216,180,.14); }
 
 .launch-loading-text {
+  min-height: 16px;
+  margin-top: 12px;
   color: #d9d5e8;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 620;
   letter-spacing: 0.04em;
+  text-align: center;
 }
 
 @media (max-width: 680px) {
@@ -992,7 +1040,7 @@ body.game-started #startScreen {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launch-loader span {
+  .launch-loading-mark i {
     animation: none;
   }
 }

@@ -53,10 +53,16 @@
     return promise;
   }
 
-  function preload(ctx, code, midis) {
+  function preload(ctx, code, midis, onProgress = null) {
     const kit = kitForCode(code);
     const notes = [...new Set((midis || []).map(Number).filter(Number.isFinite))];
-    return Promise.allSettled(notes.map(midi => load(ctx, kit, midi)));
+    let settled = 0;
+    const total = notes.length;
+    if (typeof onProgress === 'function') onProgress(0, total);
+    return Promise.allSettled(notes.map(midi => load(ctx, kit, midi).finally(() => {
+      settled++;
+      if (typeof onProgress === 'function') onProgress(settled, total);
+    })));
   }
 
   function play(ctx, destination, code, midi, velocity, volume) {
