@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-04';
+const ASSET_VERSION = 'reset-20260711-05';
 const SONG_CATALOG = Object.freeze([
   {
     id: 'later',
@@ -797,15 +797,16 @@ function selectDrumPatternSlot(slot, reschedule = true) {
 }
 
 function selectGameDrumPatternSlot(slot) {
+  const previousMode = drumMode;
   const wasPowered = drumsEnabled;
-  // 鼓 A/B 是纯 pattern 选择器。它可以把“智能”改为玩家指定的 A/B，
-  // 但绝不能改变独立鼓机电源；关闭状态下选择后仍保持静音。
+  // 鼓 A/B 是纯 pattern 选择器，绝不能改变“智能 / 开 / 关”状态。
   selectDrumPatternSlot(slot, false);
-  drumMode = 'on';
-  drumModeBeforeOff = 'on';
+  drumMode = previousMode;
   drumsEnabled = wasPowered;
   updatePlaybackToggles();
-  if (playing && wasPowered) scheduleFrom(currentPlayTime());
+  // 强制开启模式使用玩家选择的 A/B，需要立即重排；智能模式继续完全
+  // 服从歌曲 LLDRUM 事件，切 A/B 只保存下一次“开”模式所用的鼓组。
+  if (playing && wasPowered && drumMode === 'on') scheduleFrom(currentPlayTime());
 }
 
 function percentLabel(v) {
@@ -1259,9 +1260,12 @@ function updatePlaybackToggles() {
     melodyBtn.setAttribute('aria-pressed', melodyEnabled ? 'true' : 'false');
   }
   if (drumBtn) {
-    drumBtn.classList.toggle('active-toggle', drumsEnabled);
-    drumBtn.setAttribute('aria-pressed', drumsEnabled ? 'true' : 'false');
-    drumBtn.title = `鼓机电源：${drumsEnabled ? '开' : '关'} · ${drumMode === 'auto' ? '智能节奏' : `鼓组 ${drumPatternSlot > 0 ? 'B' : 'A'}`}`;
+    const drumLabel = drumMode === 'auto' ? '智能' : drumMode === 'on' ? '开' : '关';
+    drumBtn.textContent = drumLabel;
+    drumBtn.classList.toggle('active-toggle', drumMode !== 'off');
+    drumBtn.setAttribute('aria-pressed', drumMode !== 'off' ? 'true' : 'false');
+    drumBtn.setAttribute('aria-label', `鼓机状态：${drumLabel}，点击切换`);
+    drumBtn.title = `鼓机：${drumLabel} · ${drumMode === 'auto' ? '跟随歌曲事件' : `鼓组 ${drumPatternSlot > 0 ? 'B' : 'A'}`}`;
   }
   updateToneButton();
   updateGamePickControls();
@@ -3295,10 +3299,10 @@ $('melodyToggle').onclick = () => {
   if (playing) scheduleFrom(currentPlayTime());
 };
 $('drumToggle').onclick = () => {
-  // “鼓”是唯一电源。鼓 A/B 永远不能走到这里或顺带改变此状态。
-  drumsEnabled = !drumsEnabled;
-  if (drumsEnabled && drumMode === 'off') drumMode = drumModeBeforeOff || 'auto';
-  if (!drumsEnabled && drumMode !== 'off') drumModeBeforeOff = drumMode;
+  // 演奏页鼓机按固定顺序循环：智能 → 开 → 关 → 智能。
+  drumMode = drumMode === 'auto' ? 'on' : drumMode === 'on' ? 'off' : 'auto';
+  if (drumMode !== 'off') drumModeBeforeOff = drumMode;
+  drumsEnabled = drumMode !== 'off';
   updatePlaybackToggles();
   if (playing) scheduleFrom(currentPlayTime());
 };
