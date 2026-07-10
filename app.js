@@ -1,27 +1,6 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-07';
-const SONG_CATALOG = Object.freeze([
-  {
-    id: 'later',
-    title: '后来',
-    subtitle: '经典版',
-    artist: '刘若英',
-    path: 'music/后来_刘若英_C2_959553.mid',
-    duration: '04:13',
-    bpm: 75,
-    tone: 'D♯',
-  },
-  {
-    id: 'moon',
-    title: '月亮代表我的心',
-    subtitle: '进阶版',
-    artist: '邓丽君',
-    path: 'music/月亮代表我的心（进阶版）_邓丽君_C2_841537.mid',
-    duration: '03:23',
-    bpm: 78,
-    tone: 'C♯',
-  },
-]);
+const ASSET_VERSION = 'reset-20260711-08';
+const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -2375,6 +2354,66 @@ function updateSongSelectionUi(message = '') {
   if (status) status.textContent = message || (selectedSongId ? '曲目已准备' : '请选择一首歌曲');
 }
 
+function renderSongCatalog() {
+  const grid = $('songGrid');
+  if (!grid) return;
+  grid.replaceChildren();
+  const count = $('songLibraryCount');
+  if (count) count.textContent = String(SONG_CATALOG.length).padStart(2, '0');
+
+  for (const config of SONG_CATALOG) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `song-card song-card-${config.theme || 'spectrum'}`;
+    card.dataset.songId = config.id;
+    card.style.setProperty('--song-hue', String(config.hue ?? 262));
+
+    const art = document.createElement('span');
+    art.className = 'song-art';
+    art.setAttribute('aria-hidden', 'true');
+    const artPrimary = document.createElement('i');
+    const artSecondary = document.createElement('i');
+    if (config.theme === 'moon') {
+      artPrimary.className = 'song-art-moon';
+      artSecondary.className = 'song-art-rings';
+    } else {
+      artPrimary.className = 'song-art-orbit';
+      artSecondary.className = 'song-art-wave';
+    }
+    const initial = document.createElement('b');
+    initial.textContent = Array.from(config.title)[0] || '♪';
+    art.append(artPrimary, artSecondary, initial);
+
+    const content = document.createElement('span');
+    content.className = 'song-card-content';
+    const kicker = document.createElement('span');
+    kicker.className = 'song-card-kicker';
+    kicker.textContent = config.rank ? `TOP ${String(config.rank).padStart(2, '0')} · C2` : 'CLASSIC · C2';
+    const title = document.createElement('strong');
+    title.textContent = config.title;
+    const artist = document.createElement('em');
+    artist.textContent = config.artist;
+    const tags = document.createElement('span');
+    tags.className = 'song-tags';
+    for (const value of [config.subtitle, config.duration, `${config.bpm} BPM`, config.tone]) {
+      const tag = document.createElement('i');
+      tag.textContent = value;
+      tags.append(tag);
+    }
+    content.append(kicker, title, artist, tags);
+
+    const action = document.createElement('span');
+    action.className = 'song-card-action';
+    const actionLabel = document.createElement('b');
+    actionLabel.textContent = '选择曲目';
+    const arrow = document.createElement('i');
+    arrow.textContent = '→';
+    action.append(actionLabel, arrow);
+    card.append(art, content, action);
+    grid.append(card);
+  }
+}
+
 async function selectSong(songId) {
   if (songSelectionPending) return;
   const config = songConfigById(songId);
@@ -2411,6 +2450,7 @@ async function selectSong(songId) {
 function setupSongScreen() {
   const screen = $('songScreen');
   if (!screen) return;
+  renderSongCatalog();
   setupLaunchUiSounds(screen);
   screen.querySelectorAll('[data-song-id]').forEach(card => {
     card.addEventListener('click', () => {
