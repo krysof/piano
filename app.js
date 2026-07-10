@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-18';
+const ASSET_VERSION = 'reset-20260710-19';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -1810,11 +1810,11 @@ function spawnLyricGhost(box, lines) {
   // v74: 不再叠加旧字幕层，避免旧层盖住第一行；整组新字幕统一滚动。
 }
 
-function ensureKaraokeLines(maxLines = 20) {
+function ensureKaraokeLines(lineCount) {
   const box = document.querySelector('.karaoke');
   if (!box) return [];
   const status = box.querySelector('.karaoke-status');
-  for (let i = 1; i <= maxLines; i++) {
+  for (let i = 1; i <= lineCount; i++) {
     if (!$(`lyricLine${i}`)) {
       const div = document.createElement('div');
       div.id = `lyricLine${i}`;
@@ -1822,26 +1822,38 @@ function ensureKaraokeLines(maxLines = 20) {
       box.insertBefore(div, status || null);
     }
   }
-  return Array.from({ length: maxLines }, (_, i) => $(`lyricLine${i + 1}`)).filter(Boolean);
+  return Array.from({ length: lineCount }, (_, i) => $(`lyricLine${i + 1}`)).filter(Boolean);
 }
 
-function visibleLyricLineCount() {
-  const box = document.querySelector('.karaoke');
-  const h = box?.clientHeight || 280;
-  const w = window.innerWidth || 390;
-  const rowH = Math.max(24, Math.min(34, w * 0.07));
-  return Math.max(10, Math.min(20, Math.floor((h - 18) / rowH)));
+function karaokeLayoutMetrics(box = document.querySelector('.karaoke')) {
+  if (!box) return { count: 1, fontSize: 16, activeFontSize: 19 };
+  const style = getComputedStyle(box);
+  const availableHeight = Math.max(1, box.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0));
+  const availableWidth = Math.max(1, box.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0));
+  const lengths = lyricLines.map(line => [...String(line?.text || '')].length).filter(Boolean).sort((a, b) => a - b);
+  const representativeLength = lengths.length ? lengths[Math.floor((lengths.length - 1) * 0.9)] : 10;
+  const geometricFont = Math.sqrt(availableWidth * availableHeight) * 0.05;
+  const widthLimitedFont = availableWidth * 0.92 / Math.max(1, representativeLength + 1);
+  const fontSize = Math.max(12, Math.min(geometricFont, widthLimitedFont));
+  const activeFontSize = fontSize * 1.18;
+  const rowHeight = fontSize * 1.23;
+  const activeExtra = activeFontSize - fontSize;
+  const resolutionCount = Math.max(1, Math.floor((availableHeight - activeExtra) / Math.max(1, rowHeight)));
+  const count = lyricLines.length ? Math.min(lyricLines.length, resolutionCount) : resolutionCount;
+  box.style.setProperty('--lyric-font-size', `${fontSize.toFixed(2)}px`);
+  box.style.setProperty('--active-lyric-font-size', `${activeFontSize.toFixed(2)}px`);
+  box.style.setProperty('--lyric-row-height', `${rowHeight.toFixed(2)}px`);
+  return { count, fontSize, activeFontSize, rowHeight, availableHeight, availableWidth };
 }
 
 function updateLyrics() {
-  const allLines = ensureKaraokeLines(20);
   const box = document.querySelector('.karaoke');
-  const count = visibleLyricLineCount();
-  const lines = allLines.slice(0, count);
+  const { count } = karaokeLayoutMetrics(box);
+  const lines = ensureKaraokeLines(count);
   const l1 = lines[0];
   if (!lines.every(Boolean)) return;
-  if (box) { box.style.setProperty('--lyric-lines', count); box.style.gridTemplateRows = `repeat(${count}, auto)`; }
-  allLines.forEach((line, i) => { line.style.display = i < count ? '' : 'none'; });
+  if (box) box.style.setProperty('--lyric-lines', count);
+  box?.querySelectorAll('.karaoke-line').forEach((line, i) => { line.style.display = i < count ? '' : 'none'; });
   if (!lyricLines.length) {
     lines.forEach(l => setKaraokeLine(l, '', 0, false));
     return;
@@ -2799,16 +2811,18 @@ function renderManualKeyboard() {
     key.dataset.root = label;
     key.dataset.display = displayLabel;
     key.innerHTML = `<span class="pick-regions" aria-hidden="true"><span class="pick-zone pick-zone-a" data-pick-slot="0">A</span><span class="pick-zone pick-zone-b" data-pick-slot="1">B</span></span><span class="chord-fill"></span><span class="chord-line"></span><span class="chord-symbol"></span><span class="key-label">${displayLabel}</span>`;
-    key.title = `${displayLabel} (${label}) · 左半拨片 A / 右半拨片 B`;
+    key.title = `${displayLabel} (${label}) · 左下拨片 A / 右上拨片 B`;
     key.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
       requestWakeLock();
       const pressedCue = cueForInteractivePress(label);
       const explicitZone = ev.target.closest?.('.pick-zone');
       const rect = key.getBoundingClientRect();
+      const normalizedX = Math.max(0, Math.min(1, (ev.clientX - rect.left) / Math.max(1, rect.width)));
+      const normalizedY = Math.max(0, Math.min(1, (ev.clientY - rect.top) / Math.max(1, rect.height)));
       const pickSlot = explicitZone
         ? Number(explicitZone.dataset.pickSlot || 0)
-        : (ev.clientX >= rect.left + rect.width / 2 ? 1 : 0);
+        : (normalizedY >= normalizedX ? 0 : 1);
       harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, pickSlot + 1));
       const pickTime = Math.max(currentPlayTime(), Number(pressedCue?.time) || 0);
       insertUserPickEvent(pickSlot, pickTime);
@@ -2977,6 +2991,7 @@ async function startGameFromMenu() {
   }
   screen?.classList.remove('loading');
   document.body.classList.add('game-started');
+  refreshPerformanceLayout();
   // 默认半自动必须有主旋律；只有用户在开始页明确点了“主旋律关”才关闭。
   if (!melodyUserTouched && playMode === 'semi' && !guideMode) melodyEnabled = true;
   drumsEnabled = drumMode !== 'off';
@@ -2987,6 +3002,21 @@ async function startGameFromMenu() {
   clearManualMelodyTimers();
   startCountdownThenPlay();
 }
+
+let performanceLayoutRaf = 0;
+function refreshPerformanceLayout() {
+  cancelAnimationFrame(performanceLayoutRaf);
+  performanceLayoutRaf = requestAnimationFrame(() => {
+    performanceLayoutRaf = 0;
+    if (!document.body.classList.contains('game-started')) return;
+    renderPlaybackForMelody();
+    updateLyrics();
+  });
+}
+
+window.addEventListener('resize', refreshPerformanceLayout, { passive: true });
+window.addEventListener('orientationchange', refreshPerformanceLayout, { passive: true });
+window.visualViewport?.addEventListener('resize', refreshPerformanceLayout, { passive: true });
 
 document.addEventListener('contextmenu', ev => ev.preventDefault());
 document.addEventListener('selectstart', ev => ev.preventDefault());

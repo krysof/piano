@@ -43,7 +43,8 @@
   color: #fff;
   background: color-mix(in srgb, var(--note-color) 78%, #202431);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--note-color) 26%, transparent), inset 0 1px 0 rgba(255,255,255,.25);
-  font-size: clamp(21px, 5.6vw, 38px);
+  font-size: 21px;
+  font-size: min(45cqw, 18cqh);
   font-weight: 900;
   line-height: 1.08;
   text-align: center;
