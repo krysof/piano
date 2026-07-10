@@ -193,6 +193,14 @@ body.game-started #startScreen {
   background: rgba(255, 255, 255, 0.035);
   font-size: 11px;
   line-height: 1.1;
+  cursor: pointer;
+}
+
+.launch-status > span:not(.launch-status-dot) {
+  max-width: min(25vw, 180px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .launch-status-dot {

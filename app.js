@@ -1,6 +1,27 @@
 const $ = (id) => document.getElementById(id);
-const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260711-02';
+const ASSET_VERSION = 'reset-20260711-03';
+const SONG_CATALOG = Object.freeze([
+  {
+    id: 'later',
+    title: '后来',
+    subtitle: '经典版',
+    artist: '刘若英',
+    path: 'music/后来_刘若英_C2_959553.mid',
+    duration: '04:13',
+    bpm: 75,
+    tone: 'D♯',
+  },
+  {
+    id: 'moon',
+    title: '月亮代表我的心',
+    subtitle: '进阶版',
+    artist: '邓丽君',
+    path: 'music/月亮代表我的心（进阶版）_邓丽君_C2_841537.mid',
+    duration: '03:23',
+    bpm: 78,
+    tone: 'C♯',
+  },
+]);
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -57,6 +78,8 @@ let midiReady = false;
 let midiReadyPromise = null;
 let sampleReadyPromise = Promise.resolve(false);
 let startRequested = false;
+let selectedSongId = null;
+let songSelectionPending = false;
 let countdownTimer = null;
 let harmonyAutoTimers = [];
 let harmonyToneMode = 1;
@@ -655,7 +678,7 @@ function closePerformanceResults() {
   modal?.setAttribute('aria-hidden', 'true');
 }
 
-function returnToStartScreen() {
+function returnToSongScreen() {
   closePerformanceResults();
   closeSavePrompt();
   playing = false;
@@ -665,7 +688,10 @@ function returnToStartScreen() {
   clearTimers();
   resetInteractiveSequencer();
   resetHarmonyHalfSequence();
-  document.body.classList.remove('game-started');
+  document.querySelectorAll('body > .timing-rating, body > .lyric-particle').forEach(el => el.remove());
+  document.body.classList.remove('game-started', 'song-selected');
+  $('songScreen')?.setAttribute('aria-hidden', 'false');
+  $('startScreen')?.setAttribute('aria-hidden', 'true');
   $('startScreen')?.classList.remove('loading');
   updatePlayButton();
   updateClock();
@@ -2078,13 +2104,15 @@ function emitLyricParticles(line, progress) {
   }
 }
 
-async function loadDefaultMidi() {
+async function loadSongMidi(songConfig) {
   try {
     await loadPatternManifest();
-    const res = await fetch(DEFAULT_MIDI, { cache: 'no-store' });
+    if (!songConfig?.path) throw new Error('未选择歌曲');
+    const res = await fetch(songConfig.path, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = await res.arrayBuffer();
     song = await parseMidiWithWasm(buffer);
+    song.catalog = songConfig;
     // MIDI、歌词、和弦与全部 LiberLive 私有事件只有 WASM 一个权威解析器。
     userPickEvents = [];
     if (initialPickSlot !== null) insertUserPickEvent(initialPickSlot, 0);
@@ -2106,6 +2134,61 @@ async function loadDefaultMidi() {
     setPill('trackStatus', '音轨：-', 'warn');
     throw err;
   }
+}
+
+function songConfigById(id) {
+  return SONG_CATALOG.find(item => item.id === id) || null;
+}
+
+function updateSongSelectionUi(message = '') {
+  document.querySelectorAll('#songScreen [data-song-id]').forEach(card => {
+    const selected = card.dataset.songId === selectedSongId;
+    card.classList.toggle('selected', selected);
+    card.classList.toggle('loading', selected && songSelectionPending);
+    card.disabled = songSelectionPending;
+  });
+  const status = $('songSelectStatus');
+  if (status) status.textContent = message || (selectedSongId ? '曲目已准备' : '请选择一首歌曲');
+}
+
+async function selectSong(songId) {
+  if (songSelectionPending) return;
+  const config = songConfigById(songId);
+  if (!config) return;
+  selectedSongId = config.id;
+  songSelectionPending = true;
+  midiReady = false;
+  song = null;
+  lyricLines = [];
+  updateSongSelectionUi(`正在载入《${config.title}》…`);
+  midiReadyPromise = loadSongMidi(config);
+  try {
+    await midiReadyPromise;
+    const selectedStatus = $('selectedSongStatus');
+    if (selectedStatus) selectedStatus.textContent = `${config.title} · ${config.artist}`;
+    document.body.classList.add('song-selected');
+    $('songScreen')?.setAttribute('aria-hidden', 'true');
+    $('startScreen')?.setAttribute('aria-hidden', 'false');
+    updateSongSelectionUi(`《${config.title}》已载入`);
+  } catch (error) {
+    console.warn('Song selection failed:', error);
+    updateSongSelectionUi(`载入失败：${error.message}`);
+  } finally {
+    songSelectionPending = false;
+    updateSongSelectionUi(song ? `《${config.title}》已载入` : `载入失败，请重试`);
+  }
+}
+
+function setupSongScreen() {
+  const screen = $('songScreen');
+  if (!screen) return;
+  screen.querySelectorAll('[data-song-id]').forEach(card => {
+    card.addEventListener('click', () => {
+      playLaunchUiSound('select');
+      selectSong(card.dataset.songId);
+    });
+  });
+  updateSongSelectionUi();
 }
 function scheduleFrom(offset = 0, preserveInteractive = false, skipChordCueAtOffset = false) {
   if (!song || !song.melodyTrack.notes.length) return;
@@ -3201,7 +3284,7 @@ $('saveRecBtn').onclick = () => downloadRecording();
 $('savePromptDownload')?.addEventListener('click', () => { closeSavePrompt(); downloadRecording(); });
 $('savePromptCancel')?.addEventListener('click', closeSavePrompt);
 $('savePrompt')?.addEventListener('click', (ev) => { if (ev.target?.id === 'savePrompt') closeSavePrompt(); });
-$('resultHomeBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToStartScreen(); });
+$('resultHomeBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToSongScreen(); });
 $('toneBtn').onclick = () => {
   selectGameDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
 };
@@ -3322,6 +3405,7 @@ function setupStartScreen() {
     updatePlaybackToggles();
   });
   $('startGameBtn')?.addEventListener('click', startGameFromMenu);
+  $('changeSongBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToSongScreen(); });
 }
 
 async function startGameFromMenu() {
@@ -3432,8 +3516,9 @@ updateToneButton();
 updateKeyButtons();
 updateVolumeButtons();
 updatePlaybackToggles();
+setupSongScreen();
 setupStartScreen();
 setupGameUiSounds();
 setupMicWave();
 initSamplePiano();
-midiReadyPromise = loadDefaultMidi();
+midiReadyPromise = Promise.resolve(null);
