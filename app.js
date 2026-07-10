@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-06';
+const ASSET_VERSION = 'reset-20260711-07';
 const SONG_CATALOG = Object.freeze([
   {
     id: 'later',
@@ -58,10 +58,12 @@ let melodyGain = 1.0;
 let harmonyGain = 1.55;
 let drumGain = 1.55;
 let micEnabled = false;
+let cameraEnabled = false;
 // 麦克风固定 95% 防爆麦：这是内部隐藏值，不在界面暴露，也不允许用户调节。
 const FIXED_MIC_GAIN = 0.95;
 let micGain = FIXED_MIC_GAIN;
 const mic = { stream: null, source: null, gain: null, analyser: null, data: null, freqData: null, raf: 0, level: 0, ready: false };
+const cameraPreviewState = { stream: null, facingMode: 'user', switching: false, userPositioned: false };
 const recorder = { media: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, hadMic: false };
 let drumsEnabled = false;
 let drumMode = 'auto';
@@ -694,6 +696,8 @@ function returnToSongScreen() {
   clearTimers();
   resetInteractiveSequencer();
   resetHarmonyHalfSequence();
+  stopCamera();
+  cameraPreviewState.userPositioned = false;
   document.querySelectorAll('body > .timing-rating, body > .lyric-particle').forEach(el => el.remove());
   document.body.classList.remove('game-started', 'song-selected');
   $('songScreen')?.setAttribute('aria-hidden', 'false');
@@ -980,6 +984,189 @@ function stopMic() {
     karaoke.classList.remove('mic-live');
     karaoke.style.setProperty('--mic-level', '0');
   }
+}
+
+function updateCameraMenu(statusText = '') {
+  document.querySelectorAll('[data-camera]').forEach(button => {
+    button.classList.toggle('selected', (button.dataset.camera === 'on') === cameraEnabled);
+  });
+  syncLaunchSwitch('camera', cameraEnabled);
+  const facing = cameraPreviewState.facingMode === 'environment' ? '后置' : '前置';
+  const status = $('cameraStatus');
+  if (status) status.textContent = statusText || (cameraEnabled ? `${facing}画面` : '默认前置');
+  const label = $('cameraFacingLabel');
+  if (label) label.textContent = facing;
+  const pip = $('cameraPip');
+  const live = cameraEnabled && Boolean(cameraPreviewState.stream);
+  document.body.classList.toggle('camera-live', live);
+  if (pip) {
+    pip.classList.toggle('front', cameraPreviewState.facingMode !== 'environment');
+    pip.setAttribute('aria-hidden', live ? 'false' : 'true');
+    pip.tabIndex = live ? 0 : -1;
+  }
+}
+
+function releaseCameraStream(stream = cameraPreviewState.stream) {
+  stream?.getTracks?.().forEach(track => track.stop());
+}
+
+function stopCamera(disable = true) {
+  releaseCameraStream();
+  cameraPreviewState.stream = null;
+  cameraPreviewState.switching = false;
+  if (disable) cameraEnabled = false;
+  const video = $('cameraPreview');
+  if (video) video.srcObject = null;
+  updateCameraMenu();
+}
+
+async function attachCameraStream(stream, intendedFacing = 'user') {
+  cameraPreviewState.stream = stream;
+  const settings = stream.getVideoTracks?.()[0]?.getSettings?.() || {};
+  cameraPreviewState.facingMode = settings.facingMode || intendedFacing;
+  const video = $('cameraPreview');
+  if (video) {
+    video.srcObject = stream;
+    await video.play?.().catch(() => {});
+  }
+  updateCameraMenu();
+  positionCameraPip(!cameraPreviewState.userPositioned);
+  return true;
+}
+
+async function requestCamera(videoConstraints, intendedFacing = 'user') {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+  return attachCameraStream(stream, intendedFacing);
+}
+
+async function ensureCamera() {
+  if (!cameraEnabled) return false;
+  if (cameraPreviewState.stream) return true;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraEnabled = false;
+    updateCameraMenu('浏览器不支持');
+    alert('这个浏览器不支持摄像头预览');
+    return false;
+  }
+  try {
+    return await requestCamera({
+      facingMode: { ideal: 'user' },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    }, 'user');
+  } catch (error) {
+    console.warn('Camera permission failed:', error);
+    cameraEnabled = false;
+    updateCameraMenu('未授权');
+    alert('摄像头没有授权，演奏画面不会显示预览');
+    return false;
+  }
+}
+
+async function switchCamera() {
+  if (!cameraEnabled || cameraPreviewState.switching) return false;
+  cameraPreviewState.switching = true;
+  const previousFacing = cameraPreviewState.facingMode;
+  const currentTrack = cameraPreviewState.stream?.getVideoTracks?.()[0];
+  const currentDeviceId = currentTrack?.getSettings?.().deviceId;
+  let constraints;
+  let intendedFacing = previousFacing === 'environment' ? 'user' : 'environment';
+  try {
+    const devices = (await navigator.mediaDevices?.enumerateDevices?.() || []).filter(device => device.kind === 'videoinput');
+    if (devices.length > 1) {
+      const currentIndex = Math.max(0, devices.findIndex(device => device.deviceId === currentDeviceId));
+      const next = devices[(currentIndex + 1) % devices.length];
+      constraints = { deviceId: { exact: next.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } };
+    } else {
+      constraints = { facingMode: { exact: intendedFacing }, width: { ideal: 1280 }, height: { ideal: 720 } };
+    }
+    releaseCameraStream();
+    cameraPreviewState.stream = null;
+    await requestCamera(constraints, intendedFacing);
+    playLaunchUiSound('select');
+    return true;
+  } catch (error) {
+    console.warn('Camera switch failed:', error);
+    try {
+      await requestCamera({ facingMode: { ideal: previousFacing } }, previousFacing);
+      updateCameraMenu('没有其他摄像头');
+    } catch (restoreError) {
+      console.warn('Camera restore failed:', restoreError);
+      stopCamera();
+    }
+    return false;
+  } finally {
+    cameraPreviewState.switching = false;
+  }
+}
+
+function positionCameraPip(forceDefault = false) {
+  requestAnimationFrame(() => {
+    const pip = $('cameraPip');
+    if (!pip || !document.body.classList.contains('game-started') || !cameraPreviewState.stream) return;
+    const rect = pip.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const margin = 10;
+    const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+    let left = parseFloat(pip.style.left);
+    let top = parseFloat(pip.style.top);
+    if (forceDefault || !cameraPreviewState.userPositioned || !Number.isFinite(left) || !Number.isFinite(top)) {
+      const karaokeRect = document.querySelector('.karaoke')?.getBoundingClientRect();
+      left = karaokeRect ? karaokeRect.right - rect.width - 12 : maxLeft;
+      top = karaokeRect ? karaokeRect.bottom - rect.height - 12 : maxTop;
+    }
+    pip.style.left = `${Math.max(margin, Math.min(maxLeft, left))}px`;
+    pip.style.top = `${Math.max(margin, Math.min(maxTop, top))}px`;
+  });
+}
+
+function setupCameraPip() {
+  const pip = $('cameraPip');
+  if (!pip || pip.dataset.ready === '1') return;
+  pip.dataset.ready = '1';
+  let drag = null;
+  pip.addEventListener('pointerdown', event => {
+    if (!cameraEnabled) return;
+    event.preventDefault();
+    const rect = pip.getBoundingClientRect();
+    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moved: false };
+    pip.setPointerCapture?.(event.pointerId);
+    pip.classList.add('dragging');
+  });
+  pip.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    cameraPreviewState.userPositioned = true;
+    const rect = pip.getBoundingClientRect();
+    const margin = 8;
+    pip.style.left = `${Math.max(margin, Math.min(window.innerWidth - rect.width - margin, drag.left + dx))}px`;
+    pip.style.top = `${Math.max(margin, Math.min(window.innerHeight - rect.height - margin, drag.top + dy))}px`;
+  });
+  const finish = event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const shouldSwitch = !drag.moved;
+    pip.releasePointerCapture?.(drag.id);
+    drag = null;
+    pip.classList.remove('dragging');
+    if (shouldSwitch) switchCamera();
+  };
+  pip.addEventListener('pointerup', finish);
+  pip.addEventListener('pointercancel', event => {
+    if (drag && event.pointerId === drag.id) {
+      drag = null;
+      pip.classList.remove('dragging');
+    }
+  });
+  pip.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      switchCamera();
+    }
+  });
 }
 
 function setupMicWave() {
@@ -3357,6 +3544,8 @@ function setupStartScreen() {
   // 默认必须关麦克风；只有用户主动点“开”才申请权限。
   micEnabled = false;
   stopMic();
+  cameraEnabled = false;
+  stopCamera();
   // 麦克风默认必须关闭：初始化时强制 UI 和状态一致，避免浏览器缓存旧 class。
   screen.querySelectorAll('[data-mic]').forEach(b => b.classList.toggle('selected', b.dataset.mic === 'off'));
   updateMicMenu();
@@ -3391,6 +3580,14 @@ function setupStartScreen() {
     if (!micEnabled) stopMic();
     updateMicMenu();
     if (micEnabled) await ensureMic();
+  });
+  screen.querySelector('[data-group="camera"]')?.addEventListener('click', async () => {
+    cameraEnabled = !cameraEnabled;
+    if (!cameraEnabled) stopCamera();
+    else {
+      updateCameraMenu('正在连接…');
+      await ensureCamera();
+    }
   });
   $('menuKeyDown')?.addEventListener('click', () => applyKeyShift(-1));
   $('menuKeyUp')?.addEventListener('click', () => applyKeyShift(1));
@@ -3466,6 +3663,7 @@ async function startGameFromMenu() {
   screen?.classList.remove('loading');
   document.body.classList.add('game-started');
   refreshPerformanceLayout();
+  positionCameraPip(!cameraPreviewState.userPositioned);
   // 默认半自动必须有主旋律；只有用户在开始页明确点了“主旋律关”才关闭。
   if (!melodyUserTouched && playMode === 'semi' && !guideMode) melodyEnabled = true;
   drumsEnabled = drumMode !== 'off';
@@ -3487,6 +3685,7 @@ function refreshPerformanceLayout() {
     if (!document.body.classList.contains('game-started')) return;
     renderPlaybackForMelody();
     updateLyrics();
+    positionCameraPip(false);
   });
 }
 
@@ -3563,7 +3762,10 @@ async function resyncPlaybackAfterFocus() {
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) markPlaybackForFocusResync();
-  else resyncPlaybackAfterFocus();
+  else {
+    resyncPlaybackAfterFocus();
+    if (cameraPreviewState.stream) $('cameraPreview')?.play?.().catch(() => {});
+  }
 });
 window.addEventListener('blur', markPlaybackForFocusResync);
 window.addEventListener('focus', resyncPlaybackAfterFocus);
@@ -3583,6 +3785,7 @@ document.addEventListener('pointerdown', () => {
 
 renderKeyboard('playbackKeyboard', 48, 72, 'playback');
 renderManualKeyboard();
+setupCameraPip();
 updateToneButton();
 updateKeyButtons();
 updateVolumeButtons();
