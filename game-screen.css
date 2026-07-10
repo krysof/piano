@@ -109,6 +109,10 @@ body.game-started .karaoke-line .lyric-blue {
 }
 body.game-started .karaoke-line.active {
   color: #fdf8ec !important;
+  width: min(92vw, 720px) !important;
+  max-width: min(92vw, 720px) !important;
+  box-sizing: border-box !important;
+  justify-self: center !important;
   background: linear-gradient(90deg,
     transparent 0,
     rgba(124,58,237,.24) 8%,
