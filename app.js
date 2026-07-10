@@ -1,6 +1,6 @@
 const $ = (id) => document.getElementById(id);
 const DEFAULT_MIDI = 'music/后来_刘若英_C2_959553.mid';
-const ASSET_VERSION = 'reset-20260710-28';
+const ASSET_VERSION = 'reset-20260710-29';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -615,24 +615,17 @@ function clearHarmonyTimers() {
   harmonyTimers = [];
 }
 
-// 整段分解和弦分前后两段，每段对应乐谱里的一次和弦提示（cue）。
-// 判定只看乐谱结构，与“上次按了没、按多快”无关：找到这个 cue 在乐谱里的位置，
-// 看它前面那个 cue 是不是同一个根音——
-//   前一个不同（或没有前一个）→ 这是一段连续同和弦的第 1 个 → 弹前半（0）；
-//   前一个相同 → 连续同和弦的后续 → 与前一个交替，弹后半（1），再一个又回前半。
-// 因此孤立的单个和弦永远只弹前半；只有乐谱里连续排了同根音，后半才出现。
-function chordHalfForCue(cue) {
-  const cues = song?.chordCues || [];
-  const idx = cue ? cues.indexOf(cue) : -1;
-  if (idx < 0) return 0;
-  const root = cue.root || rootFromChord(cue.chord);
-  // 往前数连续同根音的个数，用奇偶决定前/后半。
-  let run = 0;
-  for (let i = idx - 1; i >= 0; i--) {
-    const r = cues[i].root || rootFromChord(cues[i].chord);
-    if (r === root) run++; else break;
-  }
-  return run % 2 === 0 ? 0 : 1;
+// 前后半相位属于“连续演奏的和弦根音”，不属于 A/B 音色。A 前半后切 B
+// 再按同根音，B 必须接后半；B→A 也相同。换根音后从前半重新开始。
+function nextHarmonyHalfForRoot(root) {
+  const previous = harmonyRepeat.get('last');
+  const half = previous?.root === root ? (previous.half === 0 ? 1 : 0) : 0;
+  harmonyRepeat.set('last', { root, half });
+  return half;
+}
+
+function resetHarmonyHalfSequence() {
+  harmonyRepeat.clear();
 }
 
 function updateToneButton() {
@@ -2561,7 +2554,10 @@ function startCountdownThenPlay() {
 
 function playPlayback() {
   if (!song) return;
-  if (playOffset <= 0.01 || playOffset >= song.duration) nextManualMelodyIndex = 0;
+  if (playOffset <= 0.01 || playOffset >= song.duration) {
+    nextManualMelodyIndex = 0;
+    resetHarmonyHalfSequence();
+  }
   if (window.Tone) Tone.start();
   requestWakeLock();
   startRecording();
@@ -2650,7 +2646,7 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1) {
   warmHarmonyTones(false);
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
-    const half = chordHalfForCue(cue);
+    const half = nextHarmonyHalfForRoot(root);
     // 和弦结构、pattern 前后半切分、音高映射和 BPM 布局统一由 WASM 计算。
     const plan = runWasmCommand({
       op: 'harmonyPlan',
@@ -2713,6 +2709,7 @@ function stopPlayback() {
   nextManualMelodyIndex = 0;
   clearTimers();
   resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
   stopRecording(false);
   releaseWakeLock();
   updateClock();
@@ -2727,6 +2724,7 @@ function finishPlayback() {
   nextManualMelodyIndex = 0;
   clearTimers();
   resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
   stopRecording(true);
   releaseWakeLock();
   updateClock();
@@ -3245,6 +3243,7 @@ async function startGameFromMenu() {
   playOffset = 0;
   nextManualMelodyIndex = 0;
   resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
   clearManualMelodyTimers();
   startCountdownThenPlay();
 }
