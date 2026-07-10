@@ -7,11 +7,11 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260711-05" />
-  <link rel="stylesheet" href="song-screen.css?v=reset-20260711-05" />
-  <link rel="stylesheet" href="start-screen.css?v=reset-20260711-05" />
-  <link rel="stylesheet" href="game-screen.css?v=reset-20260711-05" />
-  <link rel="stylesheet" href="chord-keys.css?v=reset-20260711-05" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260711-06" />
+  <link rel="stylesheet" href="song-screen.css?v=reset-20260711-06" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260711-06" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260711-06" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260711-06" />
 </head>
 <body>
 
@@ -102,7 +102,7 @@
         <button id="changeSongBtn" class="launch-status" type="button" aria-label="返回选歌">
           <span class="launch-status-dot"></span>
           <span id="selectedSongStatus">当前歌曲</span>
-          <b id="startVersion">v20260711.05</b>
+          <b id="startVersion">v20260711.06</b>
         </button>
       </header>
 
@@ -280,10 +280,7 @@
   </div>
   <main class="game">
     <header class="hud">
-      <div class="game-brand" aria-label="Freeza Live performance">
-        <span class="game-brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span><small>LIVE PERFORMANCE</small><b>Freeza Live</b></span>
-      </div>
+      <div id="gameSongTitle" class="game-song-title">当前歌曲</div>
       <div class="game-controls">
         <button id="playBtn" class="btn primary" aria-label="play">▶</button>
         <button id="restartBtn" class="btn" aria-label="restart" title="重唱">↻</button>
@@ -293,7 +290,7 @@
         <button id="toneBtn" class="btn accent" aria-label="drum pattern">鼓A</button>
         <button id="melodyToggle" class="btn active-toggle" aria-label="melody">主</button>
         <button id="drumToggle" class="btn active-toggle" aria-label="鼓机状态：智能，点击切换">智能</button>
-        <button id="saveRecBtn" class="btn save" aria-label="save recording">保存</button>
+        <button id="saveRecBtn" class="btn save" aria-label="保存录音">录音保存</button>
       </div>
     </header>
 
@@ -358,9 +355,9 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="guitar-manifests.js?v=reset-20260711-05"></script>
-  <script src="guitar-sampler.js?v=reset-20260711-05"></script>
-  <script src="drum-kits.js?v=reset-20260711-05"></script>
-<script src="app.js?v=reset-20260711-05"></script>
+  <script src="guitar-manifests.js?v=reset-20260711-06"></script>
+  <script src="guitar-sampler.js?v=reset-20260711-06"></script>
+  <script src="drum-kits.js?v=reset-20260711-06"></script>
+<script src="app.js?v=reset-20260711-06"></script>
 </body>
 </html>

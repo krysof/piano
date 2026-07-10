@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-05';
+const ASSET_VERSION = 'reset-20260711-06';
 const SONG_CATALOG = Object.freeze([
   {
     id: 'later',
@@ -1946,6 +1946,43 @@ function lyricEventForChordCue(cue, maxDistance = 0.008) {
   return best;
 }
 
+function splitTrailingChordSpaceLines(maxBlocksPerLine = 10) {
+  const split = [];
+  for (const line of lyricLines) {
+    const events = [...(line.events || [])].sort((a, b) => a.time - b.time);
+    let trailingStart = events.length;
+    while (trailingStart > 0 && events[trailingStart - 1]?.chordSpace) trailingStart -= 1;
+    const lyricEvents = events.slice(0, trailingStart);
+    const blankEvents = events.slice(trailingStart);
+    const hasLyrics = lyricEvents.some(event => String(event.text || '').trim());
+    if (!hasLyrics || blankEvents.length < 2) {
+      line.events = events;
+      split.push(line);
+      continue;
+    }
+
+    // 一句歌词结束后若还有多个无字和弦，不把一长串色块粘在歌词后面。
+    // 原歌词行在第一个空格 cue 前结束，后续色块按最多十个组成独立行。
+    const originalEnd = line.end;
+    line.events = lyricEvents;
+    line.end = Math.max(line.start, blankEvents[0].time);
+    split.push(line);
+    for (let i = 0; i < blankEvents.length; i += maxBlocksPerLine) {
+      const chunk = blankEvents.slice(i, i + maxBlocksPerLine);
+      const nextStart = blankEvents[i + maxBlocksPerLine]?.time;
+      split.push({
+        start: chunk[0].time,
+        end: Math.max(chunk[0].time, nextStart ?? originalEnd),
+        text: ' '.repeat(chunk.length),
+        events: chunk,
+        paragraphType: line.paragraphType,
+        chordOnly: true,
+      });
+    }
+  }
+  lyricLines = split.sort((a, b) => a.start - b.start);
+}
+
 function bindChordCuesToLyrics() {
   lyricLines.forEach(line => {
     line.events = (line.events || []).filter(ev => !ev.chordSpace);
@@ -1980,6 +2017,7 @@ function bindChordCuesToLyrics() {
     cue._lyricIsBlank = !String(ev.text || '').trim();
     cue._lyricEventTime = ev.time;
   });
+  splitTrailingChordSpaceLines();
 }
 
 function lyricCharForCue(cue) {
@@ -2165,6 +2203,11 @@ async function selectSong(songId) {
     await midiReadyPromise;
     const selectedStatus = $('selectedSongStatus');
     if (selectedStatus) selectedStatus.textContent = `${config.title} · ${config.artist}`;
+    const gameTitle = $('gameSongTitle');
+    if (gameTitle) {
+      gameTitle.textContent = config.title;
+      gameTitle.title = `${config.title} · ${config.artist}`;
+    }
     document.body.classList.add('song-selected');
     $('songScreen')?.setAttribute('aria-hidden', 'true');
     $('startScreen')?.setAttribute('aria-hidden', 'false');

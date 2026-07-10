@@ -46,9 +46,10 @@ body.game-started .game {
 /* Control deck */
 .hud {
   display: grid;
-  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 14px;
+  gap: 6px;
   min-height: 58px;
   padding: 8px 10px;
   border: 1px solid var(--stage-line);
@@ -57,44 +58,23 @@ body.game-started .game {
   box-shadow: 0 16px 42px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .04);
 }
 
-.game-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding-left: 2px;
+.game-song-title {
+  width: 100%;
+  overflow: hidden;
+  color: #f4f1ff;
+  font-size: clamp(18px, 2.2vw, 23px);
+  font-weight: 820;
+  line-height: 28px;
+  letter-spacing: .015em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 0 18px rgba(139,92,246,.28);
 }
-
-.game-brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  border-radius: 13px;
-  background: linear-gradient(145deg, #946cff, #6341d6);
-  box-shadow: 0 10px 24px rgba(109, 74, 255, .32), inset 0 1px 0 rgba(255, 255, 255, .24);
-}
-
-.game-brand-mark i {
-  width: 3px;
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 0 7px rgba(255,255,255,.55);
-}
-.game-brand-mark i:nth-child(1) { height: 13px; }
-.game-brand-mark i:nth-child(2) { height: 23px; }
-.game-brand-mark i:nth-child(3) { height: 16px; }
-
-.game-brand > span:last-child { display: grid; min-width: 0; }
-.game-brand small { color: #ac8cff; font-size: 8px; font-weight: 800; letter-spacing: .2em; }
-.game-brand b { overflow: hidden; margin-top: 2px; font-size: 15px; white-space: nowrap; text-overflow: ellipsis; }
 
 .game-controls {
   display: grid;
-  grid-template-columns: repeat(9, minmax(42px, 1fr));
+  grid-template-columns: repeat(8, minmax(42px, 1fr)) minmax(72px, 1.25fr);
   gap: 6px;
   min-width: 0;
 }
@@ -508,9 +488,9 @@ body.game-started .game {
     gap: 7px;
     padding: max(7px, env(safe-area-inset-top)) max(7px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
   }
-  .hud { display: block; min-height: 0; padding: 6px; border-radius: 15px; }
-  .game-brand { display: none; }
-  .game-controls { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 3px; }
+  .hud { min-height: 0; padding: 6px; border-radius: 15px; gap: 4px; }
+  .game-song-title { font-size: 18px; line-height: 25px; }
+  .game-controls { grid-template-columns: repeat(8, minmax(0, 1fr)) minmax(52px, 1.35fr); gap: 3px; }
   .btn { min-height: 38px; padding: 0 1px; border-radius: 8px; font-size: 10px; }
   .karaoke { padding: 44px 4px 8px; border-radius: 17px; }
   .karaoke-panel-title { top: 9px; left: 12px; }
