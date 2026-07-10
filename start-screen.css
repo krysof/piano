@@ -125,36 +125,22 @@ body.game-started #startScreen {
 }
 
 .launch-logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
+  display: grid;
+  place-items: center;
   flex: 0 0 auto;
   width: 52px;
   height: 52px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 17px;
-  background: linear-gradient(145deg, #9d72ff, #6542e8);
+  background: linear-gradient(145deg, rgba(151, 105, 255, 0.95), rgba(82, 52, 174, 0.96));
   box-shadow: 0 12px 30px rgba(109, 74, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-.launch-logo span {
-  width: 3px;
-  border-radius: 4px;
-  background: #fff;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.55);
-  animation: launch-eq 1.65s ease-in-out infinite;
-}
-
-.launch-logo span:nth-child(1) { height: 12px; animation-delay: -0.4s; }
-.launch-logo span:nth-child(2) { height: 24px; animation-delay: -0.15s; }
-.launch-logo span:nth-child(3) { height: 32px; animation-delay: -0.65s; }
-.launch-logo span:nth-child(4) { height: 21px; animation-delay: -0.25s; }
-.launch-logo span:nth-child(5) { height: 10px; animation-delay: -0.5s; }
-
-@keyframes launch-eq {
-  0%, 100% { transform: scaleY(0.78); opacity: 0.78; }
-  50% { transform: scaleY(1.08); opacity: 1; }
+.launch-logo svg {
+  width: 46px;
+  height: 46px;
+  overflow: visible;
+  filter: drop-shadow(0 4px 8px rgba(22, 12, 48, 0.42));
 }
 
 .launch-eyebrow,
@@ -448,7 +434,7 @@ body.game-started #startScreen {
 
 .launch-fader-row {
   display: grid;
-  grid-template-columns: 48px minmax(80px, 1fr) 45px;
+  grid-template-columns: 48px minmax(80px, 1fr) 52px;
   align-items: center;
   gap: 9px;
   min-height: 51px;
@@ -466,12 +452,12 @@ body.game-started #startScreen {
 
 .launch-readout {
   display: block;
-  overflow: hidden;
   color: #afa3d8;
-  font-size: 10px;
+  min-width: 52px;
+  overflow: visible;
+  font-size: 11px;
   font-weight: 730;
   text-align: right;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -723,11 +709,10 @@ body.game-started #startScreen {
     border-radius: 14px;
   }
 
-  .launch-logo span:nth-child(1) { height: 9px; }
-  .launch-logo span:nth-child(2) { height: 19px; }
-  .launch-logo span:nth-child(3) { height: 25px; }
-  .launch-logo span:nth-child(4) { height: 16px; }
-  .launch-logo span:nth-child(5) { height: 8px; }
+  .launch-logo svg {
+    width: 39px;
+    height: 39px;
+  }
 
   .launch-eyebrow { font-size: 7px; }
   .launch-brand h1 { font-size: 21px; }
@@ -819,7 +804,7 @@ body.game-started #startScreen {
   }
 
   .launch-fader-row {
-    grid-template-columns: 40px minmax(50px, 1fr) 38px;
+    grid-template-columns: 38px minmax(42px, 1fr) 48px;
     gap: 6px;
     min-height: 39px;
     padding: 5px 7px;
@@ -827,7 +812,10 @@ body.game-started #startScreen {
   }
 
   .launch-fader-name { font-size: 9px; }
-  .launch-readout { font-size: 8px; }
+  .launch-readout {
+    min-width: 48px;
+    font-size: 10px;
+  }
 
   .launch-panel-heading-compact {
     display: none;
@@ -887,7 +875,6 @@ body.game-started #startScreen {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launch-logo span,
   .launch-loader span {
     animation: none;
   }
