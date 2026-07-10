@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-08';
+const ASSET_VERSION = 'reset-20260711-09';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -2388,7 +2388,7 @@ function renderSongCatalog() {
     content.className = 'song-card-content';
     const kicker = document.createElement('span');
     kicker.className = 'song-card-kicker';
-    kicker.textContent = config.rank ? `TOP ${String(config.rank).padStart(2, '0')} · C2` : 'CLASSIC · C2';
+    kicker.textContent = 'PERFORMANCE';
     const title = document.createElement('strong');
     title.textContent = config.title;
     const artist = document.createElement('em');
@@ -3465,6 +3465,60 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
   beginInteractivePhrase(root, cue, timing);
 }
 
+function triggerChordKey(label, pickSlot, key) {
+  if (!key || !song || !document.body.classList.contains('game-started')) return false;
+  requestWakeLock();
+  const pressedCue = cueForInteractivePress(label);
+  const pressProgress = cueProgressForKey(key);
+  const pressCueState = cueState.get(label);
+  if (isSemiAutoMode() || isManualMode()) {
+    const timing = timingForInteractivePhrase(pressedCue, {
+      progress: pressProgress,
+      dueAt: pressCueState?.due,
+    });
+    if (timing.earlyRejected) {
+      showTimingRating(key, 'MISS');
+      rejectEarlyChordPress(key);
+      return false;
+    }
+  }
+  const normalizedPickSlot = pickSlot > 0 ? 1 : 0;
+  harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, normalizedPickSlot + 1));
+  // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
+  // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
+  const pickTime = currentPlayTime();
+  insertUserPickEvent(normalizedPickSlot, pickTime);
+  showPickZoneFeedback(key, normalizedPickSlot);
+  warmHarmonyTones(false);
+  // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
+  const matchesActiveCue = Boolean(activeCue
+    && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id));
+  showTimingRating(key, timingGrade(pressProgress, matchesActiveCue));
+  if (isGoodTiming(key) && matchesActiveCue) {
+    activeCue.hit = true;
+    activeCue.pressed = true;
+    hitCue(activeCue.midi, activeCue.cue);
+    const completedCue = activeCue;
+    window.setTimeout(() => { if (activeCue === completedCue) finishActiveCue(); }, 260);
+  } else {
+    failActiveCue(false);
+  }
+  key.classList.remove('chord-due', 'miss', 'chord-release');
+  key.classList.add('chord-press');
+  if (isSemiAutoMode() || isManualMode()) {
+    requestInteractivePhrase(label, pressedCue, { progress: pressProgress, dueAt: pressCueState?.due });
+  } else {
+    playStyledHarmony(label, pressedCue);
+  }
+  setTimeout(() => {
+    key.classList.remove('chord-press');
+    key.classList.add('chord-release');
+    setTimeout(() => key.classList.remove('chord-release'), 220);
+  }, 520);
+  cueState.delete(label);
+  return true;
+}
+
 
 function renderManualKeyboard() {
   const kb = $('manualKeyboard');
@@ -3483,8 +3537,6 @@ function renderManualKeyboard() {
     key.title = `${displayLabel} (${label}) · 左下拨片 A / 右上拨片 B`;
     key.addEventListener('pointerdown', (ev) => {
       ev.preventDefault();
-      requestWakeLock();
-      const pressedCue = cueForInteractivePress(label);
       const explicitZone = ev.target.closest?.('.pick-zone');
       const rect = key.getBoundingClientRect();
       const normalizedX = Math.max(0, Math.min(1, (ev.clientX - rect.left) / Math.max(1, rect.width)));
@@ -3493,55 +3545,79 @@ function renderManualKeyboard() {
       const pickSlot = explicitZone
         ? Number(explicitZone.dataset.pickSlot || 0)
         : (normalizedY >= pickBoundary ? 0 : 1);
-      const pressProgress = cueProgressForKey(key);
-      const pressCueState = cueState.get(label);
-      if (isSemiAutoMode() || isManualMode()) {
-        const timing = timingForInteractivePhrase(pressedCue, {
-          progress: pressProgress,
-          dueAt: pressCueState?.due,
-        });
-        if (timing.earlyRejected) {
-          showTimingRating(key, 'MISS');
-          rejectEarlyChordPress(key);
-          return;
-        }
-      }
-      harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, pickSlot + 1));
-      // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
-      // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
-      const pickTime = currentPlayTime();
-      insertUserPickEvent(pickSlot, pickTime);
-      showPickZoneFeedback(key, pickSlot);
-      warmHarmonyTones(false);
-      // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
-      const matchesActiveCue = Boolean(activeCue
-        && (activeCue.cue?.root === label || key.dataset.cueId === activeCue.cue?._id));
-      showTimingRating(key, timingGrade(pressProgress, matchesActiveCue));
-      if (isGoodTiming(key) && matchesActiveCue) {
-        activeCue.hit = true;
-        activeCue.pressed = true;
-        hitCue(activeCue.midi, activeCue.cue);
-        const pressedCue = activeCue;
-        window.setTimeout(() => { if (activeCue === pressedCue) finishActiveCue(); }, 260);
-      } else {
-        // 按早/按错：字打叉淡出（docs/UI.md）。
-        failActiveCue(false);
-      }
-      key.classList.remove('chord-due', 'miss', 'chord-release');
-      key.classList.add('chord-press');
-      if (isSemiAutoMode() || isManualMode()) {
-        requestInteractivePhrase(label, pressedCue, { progress: pressProgress, dueAt: pressCueState?.due });
-      }
-      else playStyledHarmony(label, pressedCue);
-        setTimeout(() => {
-        key.classList.remove('chord-press');
-        key.classList.add('chord-release');
-        setTimeout(() => key.classList.remove('chord-release'), 220);
-      }, 520);
-      cueState.delete(label);
+      triggerChordKey(label, pickSlot, key);
     });
     kb.appendChild(key);
   }
+}
+
+const MIDI_ROOT_BY_PITCH_CLASS = Object.freeze({
+  0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B',
+});
+
+function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {}) {
+  const connectButton = $('midiConnectBtn');
+  const startStatus = $('midiStartStatus');
+  const gameStatus = $('gameMidiStatus');
+  const gameLabel = $('gameMidiLabel');
+  const deviceNames = (status.devices || []).map(device => device.name).filter(Boolean);
+  const deviceSummary = deviceNames.length > 1 ? `${deviceNames[0]} 等 ${deviceNames.length} 台` : deviceNames[0];
+  let text = '点击连接 USB / 蓝牙';
+  if (!status.supported) text = '此浏览器不支持 Web MIDI';
+  else if (status.connecting) text = '正在请求 MIDI 权限…';
+  else if (status.error) text = status.error;
+  else if (status.connected) text = deviceSummary || `已连接 ${status.count} 台设备`;
+  else if (status.authorized) text = '已授权，等待 MIDI 设备';
+  if (startStatus) {
+    startStatus.textContent = text;
+    startStatus.title = text;
+  }
+  if (connectButton) {
+    connectButton.classList.toggle('connected', Boolean(status.connected));
+    connectButton.classList.toggle('connecting', Boolean(status.connecting));
+    connectButton.classList.toggle('unsupported', !status.supported);
+    connectButton.disabled = !status.supported || Boolean(status.connecting);
+    connectButton.title = status.connected ? `MIDI 已连接：${deviceSummary}` : text;
+  }
+  if (gameStatus) {
+    gameStatus.setAttribute('aria-hidden', status.connected ? 'false' : 'true');
+    gameStatus.tabIndex = status.connected ? 0 : -1;
+    gameStatus.title = status.connected ? `MIDI 已连接：${deviceSummary}` : text;
+  }
+  if (gameLabel) gameLabel.textContent = status.count > 1 ? `MIDI ×${status.count}` : 'MIDI';
+}
+
+function handleExternalMidiNote(message) {
+  if (!document.body.classList.contains('game-started') || !song) return;
+  const sourcePitchClass = ((Number(message.note) - userKeyShift) % 12 + 12) % 12;
+  const root = MIDI_ROOT_BY_PITCH_CLASS[sourcePitchClass];
+  if (!root) return; // 黑键只有在 Key shift 后与当前七个显示键重合时才触发。
+  const key = document.querySelector(`#manualKeyboard .key[data-root="${root}"]`);
+  if (!key) return;
+  ensureAudio();
+  audio.ctx?.resume?.().catch(() => {});
+  window.Tone?.start?.().catch?.(() => {});
+  const pickSlot = song ? chordPatternSlotAtTime(currentPlayTime()) : Math.max(0, harmonyToneMode - 1);
+  triggerChordKey(root, pickSlot, key);
+}
+
+async function requestExternalMidiConnection() {
+  if (!window.FreezaMidiInput) return;
+  playLaunchUiSound('select');
+  await window.FreezaMidiInput.connect();
+}
+
+function setupExternalMidiInput() {
+  if (!window.FreezaMidiInput) {
+    updateExternalMidiUi({ supported: false, connected: false, devices: [] });
+    return;
+  }
+  window.FreezaMidiInput.setHandlers({
+    onNote: handleExternalMidiNote,
+    onStatus: updateExternalMidiUi,
+  });
+  $('midiConnectBtn')?.addEventListener('click', requestExternalMidiConnection);
+  $('gameMidiStatus')?.addEventListener('click', requestExternalMidiConnection);
 }
 
 
@@ -3826,6 +3902,7 @@ document.addEventListener('pointerdown', () => {
 renderKeyboard('playbackKeyboard', 48, 72, 'playback');
 renderManualKeyboard();
 setupCameraPip();
+setupExternalMidiInput();
 updateToneButton();
 updateKeyButtons();
 updateVolumeButtons();

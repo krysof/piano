@@ -58,6 +58,12 @@ body.game-started .game {
   box-shadow: 0 16px 42px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .04);
 }
 
+.game-title-row {
+  position: relative;
+  min-width: 0;
+  padding-inline: 78px;
+}
+
 .game-song-title {
   width: 100%;
   overflow: hidden;
@@ -71,6 +77,41 @@ body.game-started .game {
   white-space: nowrap;
   text-shadow: 0 0 18px rgba(139,92,246,.28);
 }
+
+.game-midi-status {
+  appearance: none;
+  position: absolute;
+  top: 50%;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 27px;
+  margin: 0;
+  padding: 4px 8px 4px 6px;
+  border: 1px solid rgba(78, 215, 166, .34);
+  border-radius: 9px;
+  color: #7ce0b5;
+  background: rgba(35, 126, 94, .13);
+  font-size: 8px;
+  font-weight: 820;
+  letter-spacing: .08em;
+  box-shadow: 0 0 16px rgba(63, 205, 151, .08);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+body.game-started .game-midi-status { color: #7ce0b5; }
+.game-midi-status[aria-hidden="true"] { display: none; }
+.game-midi-status svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+.game-midi-status:active { transform: translateY(-50%) scale(.95); }
 
 .game-controls {
   display: grid;
@@ -535,7 +576,10 @@ body.game-started.camera-live .camera-pip { display: block; }
     padding: max(7px, env(safe-area-inset-top)) max(7px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
   }
   .hud { min-height: 0; padding: 6px; border-radius: 15px; gap: 4px; }
+  .game-title-row { padding-inline: 38px; }
   .game-song-title { font-size: 18px; line-height: 25px; }
+  .game-midi-status { min-height: 25px; padding: 3px 5px; }
+  .game-midi-status span { display: none; }
   .game-controls { grid-template-columns: repeat(8, minmax(0, 1fr)) minmax(52px, 1.35fr); gap: 3px; }
   .btn { min-height: 38px; padding: 0 1px; border-radius: 8px; font-size: 10px; }
   .karaoke { padding: 44px 4px 8px; border-radius: 17px; }

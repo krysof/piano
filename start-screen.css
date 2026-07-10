@@ -668,6 +668,61 @@ body.game-started #startScreen {
   margin-top: 14px;
 }
 
+.launch-footer-signals {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.launch-midi-status {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 154px;
+  min-height: 44px;
+  padding: 5px 10px 5px 7px;
+  border: 1px solid rgba(255, 255, 255, .075);
+  border-radius: 13px;
+  color: #b8bdca;
+  text-align: left;
+  background: rgba(8, 10, 17, .56);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 150ms ease, box-shadow 180ms ease;
+}
+
+.launch-midi-status:active { transform: scale(.975); }
+.launch-midi-status:hover { border-color: rgba(151, 113, 255, .42); }
+.launch-midi-status svg {
+  width: 30px;
+  height: 30px;
+  padding: 6px;
+  overflow: visible;
+  border-radius: 9px;
+  color: #9d83ef;
+  background: rgba(126, 88, 238, .12);
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+.launch-midi-status > span { display: grid; gap: 2px; min-width: 0; }
+.launch-midi-status b { color: #d9dce6; font-size: 10px; line-height: 1; }
+.launch-midi-status small { overflow: hidden; color: #747b8d; font-size: 8px; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.launch-midi-status.connecting svg { animation: launchMidiPulse .9s ease-in-out infinite alternate; }
+.launch-midi-status.connected {
+  border-color: rgba(78, 215, 166, .34);
+  background: rgba(35, 126, 94, .12);
+  box-shadow: 0 0 20px rgba(63, 205, 151, .08);
+}
+.launch-midi-status.connected svg { color: #55d9a3; background: rgba(52, 197, 144, .13); }
+.launch-midi-status.connected small { color: #80cfad; }
+.launch-midi-status.unsupported { cursor: not-allowed; opacity: .48; }
+@keyframes launchMidiPulse { to { opacity: .45; transform: scale(.92); } }
+
 .launch-footnote {
   display: flex;
   align-items: center;
@@ -1013,11 +1068,15 @@ body.game-started #startScreen {
 
   .launch-footer {
     flex: 0 0 auto;
+    gap: 8px;
     margin-top: 10px;
   }
 
+  .launch-footer-signals { gap: 7px; }
+  .launch-midi-status { min-width: 150px; min-height: 46px; }
+
   .launch-footnote {
-    font-size: 10px;
+    display: none;
   }
 
   .launch-start-btn {
@@ -1045,8 +1104,12 @@ body.game-started #startScreen {
   .launch-pick-row small,
   .launch-toggle-item small,
   .launch-footnote { display: none; }
-  .launch-footer { justify-content: flex-end; }
-  .launch-start-btn { width: 100%; }
+  .launch-footer { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); gap: 7px; }
+  .launch-footer-signals { min-width: 0; }
+  .launch-midi-status { grid-template-columns: 27px minmax(0, 1fr); min-width: 0; width: 100%; padding-inline: 5px; }
+  .launch-midi-status svg { width: 27px; height: 27px; }
+  .launch-midi-status small { display: none; }
+  .launch-start-btn { min-width: 0; width: 100%; padding-left: 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

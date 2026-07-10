@@ -10,7 +10,6 @@
     "duration": "04:13",
     "bpm": 75,
     "tone": "D♯",
-    "rank": 0,
     "hue": 262,
     "theme": "later"
   },
@@ -23,7 +22,6 @@
     "duration": "04:39",
     "bpm": 75,
     "tone": "D♯",
-    "rank": 1,
     "hue": 278,
     "theme": "spectrum"
   },
@@ -36,7 +34,6 @@
     "duration": "03:23",
     "bpm": 78,
     "tone": "C♯",
-    "rank": 2,
     "hue": 309,
     "theme": "moon"
   },
@@ -49,7 +46,6 @@
     "duration": "03:47",
     "bpm": 70,
     "tone": "E",
-    "rank": 3,
     "hue": 340,
     "theme": "spectrum"
   },
@@ -62,7 +58,6 @@
     "duration": "03:05",
     "bpm": 58,
     "tone": "D♯",
-    "rank": 4,
     "hue": 11,
     "theme": "spectrum"
   },
@@ -75,7 +70,6 @@
     "duration": "03:39",
     "bpm": 80,
     "tone": "E",
-    "rank": 5,
     "hue": 42,
     "theme": "spectrum"
   },
@@ -88,7 +82,6 @@
     "duration": "09:53",
     "bpm": 91,
     "tone": "D",
-    "rank": 6,
     "hue": 73,
     "theme": "spectrum"
   },
@@ -101,7 +94,6 @@
     "duration": "04:24",
     "bpm": 70,
     "tone": "E",
-    "rank": 7,
     "hue": 104,
     "theme": "spectrum"
   },
@@ -114,7 +106,6 @@
     "duration": "04:38",
     "bpm": 72,
     "tone": "B",
-    "rank": 8,
     "hue": 135,
     "theme": "spectrum"
   },
@@ -127,7 +118,6 @@
     "duration": "04:01",
     "bpm": 65,
     "tone": "G",
-    "rank": 9,
     "hue": 166,
     "theme": "spectrum"
   },
@@ -140,7 +130,6 @@
     "duration": "03:42",
     "bpm": 68,
     "tone": "F♯",
-    "rank": 10,
     "hue": 197,
     "theme": "spectrum"
   },
@@ -153,7 +142,6 @@
     "duration": "03:36",
     "bpm": 80,
     "tone": "C",
-    "rank": 11,
     "hue": 228,
     "theme": "spectrum"
   },
@@ -166,7 +154,6 @@
     "duration": "04:23",
     "bpm": 62,
     "tone": "E",
-    "rank": 12,
     "hue": 259,
     "theme": "spectrum"
   },
@@ -179,7 +166,6 @@
     "duration": "03:19",
     "bpm": 88,
     "tone": "D",
-    "rank": 13,
     "hue": 290,
     "theme": "spectrum"
   },
@@ -192,7 +178,6 @@
     "duration": "04:10",
     "bpm": 66,
     "tone": "A",
-    "rank": 14,
     "hue": 321,
     "theme": "spectrum"
   },
@@ -205,7 +190,6 @@
     "duration": "04:27",
     "bpm": 68,
     "tone": "G",
-    "rank": 15,
     "hue": 352,
     "theme": "spectrum"
   },
@@ -218,7 +202,6 @@
     "duration": "05:07",
     "bpm": 77,
     "tone": "F♯",
-    "rank": 16,
     "hue": 23,
     "theme": "spectrum"
   },
@@ -231,7 +214,6 @@
     "duration": "03:28",
     "bpm": 82,
     "tone": "A",
-    "rank": 17,
     "hue": 54,
     "theme": "spectrum"
   },
@@ -244,7 +226,6 @@
     "duration": "03:53",
     "bpm": 70,
     "tone": "F",
-    "rank": 18,
     "hue": 85,
     "theme": "spectrum"
   },
@@ -257,7 +238,6 @@
     "duration": "03:49",
     "bpm": 54,
     "tone": "A",
-    "rank": 19,
     "hue": 116,
     "theme": "spectrum"
   },
@@ -270,7 +250,6 @@
     "duration": "04:42",
     "bpm": 75,
     "tone": "G♯",
-    "rank": 20,
     "hue": 147,
     "theme": "spectrum"
   }
