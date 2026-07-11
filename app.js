@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-17';
+const ASSET_VERSION = 'reset-20260711-18';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -2660,7 +2660,8 @@ function hitCue(midi, cue) {
 }
 
 function clearManualCueVisuals() {
-  document.querySelectorAll('#manualKeyboard .chord-cue, #manualKeyboard .chord-due').forEach(k => {
+  document.querySelectorAll('#manualKeyboard .key').forEach(k => {
+    k.dataset.pressGeneration = String((Number(k.dataset.pressGeneration) || 0) + 1);
     k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit');
     k.style.removeProperty('--chord-scale');
     delete k.dataset.cueId;
@@ -2672,6 +2673,23 @@ function clearManualCueVisuals() {
     delete el.dataset.cueId;
   });
   cueState.clear();
+}
+
+function animateChordPress(key) {
+  if (!key) return;
+  const generation = (Number(key.dataset.pressGeneration) || 0) + 1;
+  key.dataset.pressGeneration = String(generation);
+  key.classList.remove('chord-release');
+  key.classList.add('chord-press');
+  setTimeout(() => {
+    if (Number(key.dataset.pressGeneration) !== generation) return;
+    key.classList.remove('chord-press');
+    key.classList.add('chord-release');
+    setTimeout(() => {
+      if (Number(key.dataset.pressGeneration) !== generation) return;
+      key.classList.remove('chord-release');
+    }, 220);
+  }, 520);
 }
 
 let cueCleanupTimer = null;
@@ -3106,12 +3124,7 @@ function autoPressCue(active) {
     showTimingRating(key, 'SSS', false);
     showPickZoneFeedback(key, chordPatternSlotAtTime(active.cue.time));
     key.classList.remove('chord-due', 'miss', 'chord-release');
-    key.classList.add('chord-press');
-    setTimeout(() => {
-      key.classList.remove('chord-press');
-      key.classList.add('chord-release');
-      setTimeout(() => key.classList.remove('chord-release'), 220);
-    }, 520);
+    animateChordPress(key);
   });
   playStyledHarmony(root, active.cue);
   cueState.delete(root);
@@ -3715,7 +3728,6 @@ function triggerChordKey(label, pickSlot, key) {
     failActiveCue(false);
   }
   key.classList.remove('chord-due', 'miss', 'chord-release');
-  key.classList.add('chord-press');
   const wrongInteractiveKey = (manualMode && !matchesManualCue)
     || (!oneKeyMode && !manualMode && isSemiAutoMode() && !matchesActiveCue);
   if (wrongInteractiveKey) {
@@ -3725,11 +3737,9 @@ function triggerChordKey(label, pickSlot, key) {
   } else {
     playStyledHarmony(performedRoot, pressedCue);
   }
-  setTimeout(() => {
-    key.classList.remove('chord-press');
-    key.classList.add('chord-release');
-    setTimeout(() => key.classList.remove('chord-release'), 220);
-  }, 520);
+  // 小节切换会先清理旧状态；清理完成后再启动本次按压动画，避免旧 timer
+  // 在下一小节重新给第一个琴键补上 release 颜色。
+  animateChordPress(key);
   if ((!oneKeyMode && !manualMode) || oneKeyHitsActiveCue) cueState.delete(performedRoot);
   return true;
 }
