@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-10';
+const ASSET_VERSION = 'reset-20260711-11';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3596,11 +3596,17 @@ function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {
   if (gameLabel) gameLabel.textContent = status.count > 1 ? `MIDI ×${status.count}` : 'MIDI';
 }
 
+function rootForExternalMidiNote(note) {
+  const pitchClass = ((Number(note) % 12) + 12) % 12;
+  return MIDI_ROOT_BY_PITCH_CLASS[pitchClass] || '';
+}
+
 function handleExternalMidiNote(message) {
   if (!document.body.classList.contains('game-started') || !song) return;
-  const sourcePitchClass = ((Number(message.note) - userKeyShift) % 12 + 12) % 12;
-  const root = MIDI_ROOT_BY_PITCH_CLASS[sourcePitchClass];
-  if (!root) return; // 黑键只有在 Key shift 后与当前七个显示键重合时才触发。
+  // 外接键盘只看音名，不看八度：C1/C2/C3…全部触发 C，其他自然音同理。
+  // 全局 Key shift 只改变最终发声音高，不能改变玩家该按哪个实体自然音键。
+  const root = rootForExternalMidiNote(message.note);
+  if (!root) return;
   const key = document.querySelector(`#manualKeyboard .key[data-root="${root}"]`);
   if (!key) return;
   ensureAudio();
