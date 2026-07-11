@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-16';
+const ASSET_VERSION = 'reset-20260711-17';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -619,8 +619,8 @@ function cueProgressForKey(key) {
   if (!state) return null;
   const now = performance.now();
   if (now < state.start || now > state.end) return null;
-  // 线性 140% 模型：出现(0) → 1 秒 → 应按点(100) → 生命周期结束(140)。
-  return ((now - state.start) / 1000) * 100;
+  const duration = Math.max(1, Number(state.due) - Number(state.start));
+  return ((now - state.start) / duration) * 100;
 }
 
 function isGoodTiming(key) {
@@ -2619,14 +2619,21 @@ function scheduleChordCues(offset = 0, skipCueAtOffset = false) {
   startCueRuntimeLoop();
 }
 
-function startCue(midi, cue) {
+function startCue(midi, cue, runtime = null) {
   // 取消上一个 cue 安排的延迟清理，避免它把本次 cue 的提示字擦掉。
   clearTimeout(cueCleanupTimer);
   clearManualCueVisuals();
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
     const perfNow = performance.now();
-    const due = playing ? playStartedAt + (cue.time - playOffset) * 1000 : perfNow + Math.max(0, (cue.time - currentPlayTime()) * 1000);
-    cueState.set(k.dataset.root, { start: due - 1000, due, end: due + 400, cueId: cue?._id });
+    const due = runtime?.due ?? (playing
+      ? playStartedAt + (cue.time - playOffset) * 1000
+      : perfNow + Math.max(0, (cue.time - currentPlayTime()) * 1000));
+    cueState.set(k.dataset.root, {
+      start: runtime?.start ?? due - 1000,
+      due,
+      end: runtime?.end ?? due + 400,
+      cueId: cue?._id,
+    });
     const symbol = k.querySelector('.chord-symbol');
     if (symbol) {
       const display = cueLyricDisplayForCue(cue);
@@ -2752,6 +2759,20 @@ function setCueFillProgress(key, progress) {
 
 function updateCueRuntime() {
   if ((!playing && !isManualMode()) || !song?.chordCues?.length) return;
+  // 手动/一键模式的色块是“已经开始演奏的小节进度”，不是谱面提前提示。
+  // 没按键、没有正在演奏的小节时，键盘上不产生进度条。
+  if (isManualMode()) {
+    const phrase = interactivePhrase;
+    if (!phrase || !Number.isFinite(phrase.musicStartAt) || !Number.isFinite(phrase.musicEndAt)) return;
+    const duration = Math.max(1, phrase.musicEndAt - phrase.musicStartAt);
+    const progress = ((performance.now() - phrase.musicStartAt) / duration) * 100;
+    const midi = NATURAL_TO_MIDI[phrase.cue?.root || phrase.root];
+    document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
+      setCueFillProgress(k, progress);
+      if (progress >= 100) k.classList.add('chord-due');
+    });
+    return;
+  }
   const now = currentPlayTime();
   if (activeCue) {
     const progress = 100 + (now - activeCue.cue.time) * 100;
@@ -3351,7 +3372,7 @@ function takeNextOneKeyCue() {
 }
 
 function oneKeyTimingGrade(progress) {
-  if (!Number.isFinite(progress) || progress < 70 || progress > 130) return 'MISS';
+  if (!Number.isFinite(progress) || progress < 70 || progress > 120) return 'MISS';
   const error = Math.abs(progress - 100);
   if (error <= 2) return 'SSS';
   if (error <= 4) return 'SS';
@@ -3365,11 +3386,11 @@ function oneKeyTimingGrade(progress) {
 }
 
 function oneKeyPressTiming(now = performance.now()) {
-  if (interactivePhrase && Number.isFinite(interactivePhrase.oneKeyStartAt)
-    && Number.isFinite(interactivePhrase.oneKeyEndAt)) {
-    const duration = Math.max(1, interactivePhrase.oneKeyEndAt - interactivePhrase.oneKeyStartAt);
-    const progress = ((now - interactivePhrase.oneKeyStartAt) / duration) * 100;
-    if (progress < 70 || progress > 130 || interactivePressQueue.length) {
+  if (interactivePhrase && Number.isFinite(interactivePhrase.musicStartAt)
+    && Number.isFinite(interactivePhrase.musicEndAt)) {
+    const duration = Math.max(1, interactivePhrase.musicEndAt - interactivePhrase.musicStartAt);
+    const progress = ((now - interactivePhrase.musicStartAt) / duration) * 100;
+    if (progress < 70 || progress > 120 || interactivePressQueue.length || interactiveTransitioning) {
       return { accepted: false, progress, grade: 'MISS', queued: false };
     }
     return {
@@ -3384,6 +3405,21 @@ function oneKeyPressTiming(now = performance.now()) {
     return { accepted: true, progress, grade: oneKeyTimingGrade(progress), queued: false };
   }
   return { accepted: true, progress: 100, grade: 'SSS', queued: false };
+}
+
+function manualMusicPressTiming(now = performance.now()) {
+  if (!interactivePhrase || !Number.isFinite(interactivePhrase.musicStartAt)
+    || !Number.isFinite(interactivePhrase.musicEndAt)) {
+    return { accepted: true, progress: 100, grade: 'SSS' };
+  }
+  const duration = Math.max(1, interactivePhrase.musicEndAt - interactivePhrase.musicStartAt);
+  const progress = ((now - interactivePhrase.musicStartAt) / duration) * 100;
+  // 太早不允许推进；超过 120% 仍允许玩家继续歌曲，但本次固定 MISS，避免永久卡死。
+  return {
+    accepted: progress >= 70,
+    progress,
+    grade: progress > 120 ? 'MISS' : oneKeyTimingGrade(progress),
+  };
 }
 
 function timingForInteractivePhrase(cue, timing = {}) {
@@ -3419,14 +3455,26 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     melodyEvents: melody?.events || [],
     harmonyEvents: harmony?.events || [],
   };
+  const phrase = interactivePhrase;
+  const phraseStartedAt = performance.now();
+  const naturalDurationMs = Math.max(60,
+    (Number(scheduleTiming.boundary) - Number(cue?.time || 0)) * Number(scheduleTiming.timeScale || 1) * 1000);
+  if (isManualMode()) {
+    phrase.musicStartAt = phraseStartedAt;
+    phrase.musicEndAt = phraseStartedAt + naturalDurationMs;
+    cue._id ||= `interactive-${oneKeyNextCueIndex}-${cue.time}-${cue.chord}`;
+    const phraseMidi = NATURAL_TO_MIDI[cue.root || rootFromChord(cue.chord) || root];
+    activeCue = { cue, midi: phraseMidi, hit: true, pressed: true, interactive: true };
+    startCue(phraseMidi, cue, {
+      start: phrase.musicStartAt,
+      due: phrase.musicEndAt,
+      end: phrase.musicStartAt + naturalDurationMs * 1.2,
+    });
+    startCueRuntimeLoop();
+  }
   if (isOneKeyMode()) {
-    const phrase = interactivePhrase;
-    const now = performance.now();
-    const naturalDurationMs = Math.max(60,
-      (Number(scheduleTiming.boundary) - Number(cue?.time || 0)) * Number(scheduleTiming.timeScale || 1) * 1000);
-    const naturalEndAt = now + naturalDurationMs;
-    phrase.oneKeyStartAt = now;
-    phrase.oneKeyEndAt = naturalEndAt;
+    const now = phraseStartedAt;
+    const naturalEndAt = phrase.musicEndAt;
     const lastAttackAt = [...phrase.melodyEvents, ...phrase.harmonyEvents]
       .reduce((latest, event) => Math.max(latest, Number(event.dueAt || now)), now);
     const completionTimer = setTimeout(() => {
@@ -3440,10 +3488,12 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
       scheduleChordCues(playOffset, Boolean(next));
       updateClock();
       updateLyrics();
-      // 70%–100% 的按键只负责预授权下一小节；到边界时必须按原速、
-      // 从小节头开始，不能把提前按下时的 progress 再交给追赶逻辑造成二次等待/加速。
+      // 极短小节可能在事件循环边界才收到下一次输入；下一小节仍从头开始。
       if (next) beginInteractivePhrase(next.root, next.cue, { progress: 100, dueAt: performance.now() });
-      else if (!nextCueAfter(phrase.cue)) finishPlayback();
+      else {
+        clearManualCueVisuals();
+        if (!nextCueAfter(phrase.cue)) finishPlayback();
+      }
     }, Math.max(0, Math.max(naturalEndAt, lastAttackAt) - performance.now()) + 12);
     manualMelodyTimers.push(completionTimer);
   } else if (isManualMode() && !nextCueAfter(interactivePhrase.cue)) {
@@ -3564,16 +3614,12 @@ function accelerateInteractivePhrase() {
 }
 
 function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timing = {}) {
-  // 一键模式的评分时间与播放速度分离：按键只决定何时授权小节，
-  // 真正开始后整小节始终按谱面原速播放。
+  // 一键模式的评分来自正在播放的小节；progress 不再交给谱面预告判定。
+  // 70%–100% 按下时由后面的 catch-up 先快速收完当前小节，再输出下一小节。
   const requestTiming = isOneKeyMode()
     ? { progress: 100, dueAt: performance.now() }
     : timing;
   const request = { root, cue, timing: requestTiming };
-  if (isOneKeyMode() && interactivePhrase) {
-    interactivePressQueue.push(request);
-    return;
-  }
   if (interactiveTransitioning) {
     interactivePressQueue.push(request);
     return;
@@ -3596,13 +3642,24 @@ function triggerChordKey(label, pickSlot, key) {
   if (!key || !song || !document.body.classList.contains('game-started')) return false;
   requestWakeLock();
   const oneKeyMode = isOneKeyMode();
+  const manualMode = !oneKeyMode && isManualMode();
   const oneKeyPress = oneKeyMode ? oneKeyPressTiming() : null;
+  const manualPress = manualMode ? manualMusicPressTiming() : null;
   if (oneKeyMode && !oneKeyPress.accepted) {
     showTimingRating(key, 'MISS');
     rejectEarlyChordPress(key);
     return false;
   }
-  const pressedCue = oneKeyMode ? takeNextOneKeyCue() : cueForInteractivePress(label);
+  if (manualMode && !manualPress.accepted) {
+    showTimingRating(key, 'MISS');
+    rejectEarlyChordPress(key);
+    return false;
+  }
+  const pressedCue = oneKeyMode
+    ? takeNextOneKeyCue()
+    : (manualMode && interactivePhrase?.cue
+      ? (nextCueAfter(interactivePhrase.cue) || interactivePhrase.cue)
+      : cueForInteractivePress(label));
   if (!pressedCue) return false;
   const performedRoot = oneKeyMode
     ? (pressedCue?.root || rootFromChord(pressedCue?.chord) || activeCue?.cue?.root || label)
@@ -3611,9 +3668,11 @@ function triggerChordKey(label, pickSlot, key) {
   const timingKey = (oneKeyMode || expectedRoot !== label)
     ? (document.querySelector(`#manualKeyboard .key[data-root="${expectedRoot}"]`) || key)
     : key;
-  const pressProgress = oneKeyMode ? oneKeyPress.progress : cueProgressForKey(timingKey);
+  const pressProgress = oneKeyMode
+    ? oneKeyPress.progress
+    : (manualMode ? manualPress.progress : cueProgressForKey(timingKey));
   const pressCueState = cueState.get(performedRoot);
-  if (!oneKeyMode && (isSemiAutoMode() || isManualMode())) {
+  if (!oneKeyMode && !manualMode && isSemiAutoMode()) {
     const timing = timingForInteractivePhrase(pressedCue, {
       progress: pressProgress,
       dueAt: pressCueState?.due,
@@ -3635,24 +3694,30 @@ function triggerChordKey(label, pickSlot, key) {
   // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
   const matchesActiveCue = Boolean(activeCue && (activeCue.cue?.root === label
     || key.dataset.cueId === activeCue.cue?._id));
+  const matchesManualCue = Boolean(manualMode
+    && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
   const oneKeyHitsActiveCue = Boolean(oneKeyMode && activeCue
     && (activeCue.cue === pressedCue || activeCue.cue?._id === pressedCue?._id));
-  showTimingRating(key, oneKeyMode ? oneKeyPress.grade : timingGrade(pressProgress, matchesActiveCue));
-  if ((oneKeyMode && oneKeyHitsActiveCue) || (!oneKeyMode && isGoodTiming(timingKey) && matchesActiveCue)) {
+  const rating = oneKeyMode
+    ? oneKeyPress.grade
+    : (manualMode ? (matchesManualCue ? manualPress.grade : 'MISS') : timingGrade(pressProgress, matchesActiveCue));
+  showTimingRating(key, rating);
+  if ((oneKeyMode && oneKeyHitsActiveCue) || (!oneKeyMode && !manualMode && isGoodTiming(timingKey) && matchesActiveCue)) {
     activeCue.hit = true;
     activeCue.pressed = true;
     hitCue(activeCue.midi, activeCue.cue);
     const completedCue = activeCue;
     window.setTimeout(() => { if (activeCue === completedCue) finishActiveCue(); }, 260);
-  } else if (!oneKeyMode && isManualMode() && !matchesActiveCue) {
+  } else if (manualMode && !matchesManualCue) {
     // 手动模式按错仍播放所按和弦，但保留当前 cue，绝不能推进主旋律。
     rejectEarlyChordPress(key);
-  } else if (!oneKeyMode) {
+  } else if (!oneKeyMode && !manualMode) {
     failActiveCue(false);
   }
   key.classList.remove('chord-due', 'miss', 'chord-release');
   key.classList.add('chord-press');
-  const wrongInteractiveKey = !oneKeyMode && (isSemiAutoMode() || isManualMode()) && !matchesActiveCue;
+  const wrongInteractiveKey = (manualMode && !matchesManualCue)
+    || (!oneKeyMode && !manualMode && isSemiAutoMode() && !matchesActiveCue);
   if (wrongInteractiveKey) {
     playStyledHarmony(label, pressedCue);
   } else if (isSemiAutoMode() || isManualMode()) {
@@ -3665,7 +3730,7 @@ function triggerChordKey(label, pickSlot, key) {
     key.classList.add('chord-release');
     setTimeout(() => key.classList.remove('chord-release'), 220);
   }, 520);
-  if (!oneKeyMode || oneKeyHitsActiveCue) cueState.delete(performedRoot);
+  if ((!oneKeyMode && !manualMode) || oneKeyHitsActiveCue) cueState.delete(performedRoot);
   return true;
 }
 
