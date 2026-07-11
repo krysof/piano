@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-29';
+const ASSET_VERSION = 'reset-20260711-30';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3455,6 +3455,24 @@ function nextCueAfter(cue) {
   return index >= 0 ? (cues[index + 1] || null) : null;
 }
 
+function sameInteractiveCue(left, right) {
+  if (!left || !right) return false;
+  if (left === right) return true;
+  if (left._id && right._id) return left._id === right._id;
+  return Math.abs(Number(left.time) - Number(right.time)) < 0.001
+    && String(left.chord || '') === String(right.chord || '');
+}
+
+function interactiveCueIsQueued(cue) {
+  return Boolean(cue && interactivePressQueue.some(request => sameInteractiveCue(request?.cue, cue)));
+}
+
+function enqueueInteractiveRequest(request) {
+  if (!request || interactiveCueIsQueued(request.cue)) return false;
+  interactivePressQueue.push(request);
+  return true;
+}
+
 function cueForInteractivePress(root) {
   let cue = activeCue?.cue || chordAtTime(currentPlayTime()) || null;
   if (interactivePhrase?.cue && cue === interactivePhrase.cue) {
@@ -3775,11 +3793,11 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
     : timing;
   const request = { root, cue, timing: requestTiming };
   if (interactiveTransitioning) {
-    interactivePressQueue.push(request);
+    enqueueInteractiveRequest(request);
     return;
   }
   if (interactivePhrase?.waiting) {
-    interactivePressQueue.push(request);
+    enqueueInteractiveRequest(request);
     return;
   }
   const nowSong = currentPlayTime();
@@ -3788,7 +3806,7 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
   const phraseBoundaryPending = interactivePhrase && Number.isFinite(interactivePhrase.naturalEndAt)
     && nowPerf < interactivePhrase.naturalEndAt;
   if (pending || phraseBoundaryPending) {
-    interactivePressQueue.push(request);
+    if (!enqueueInteractiveRequest(request)) return;
     const requestedCueTime = Number(cue?.time);
     const melodyAlreadyStarted = isSemiAutoMode() && Number.isFinite(requestedCueTime)
       && nowSong >= requestedCueTime - 0.008;
@@ -3837,6 +3855,12 @@ function triggerChordKey(label, pickSlot, key) {
     : label;
   const matchesManualCue = Boolean(manualMode
     && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
+  if (manualMode && matchesManualCue && interactiveCueIsQueued(pressedCue)) {
+    // 快速乱按时可能无意中已经击中过正确键；之后再按同一个正确键不能把
+    // 同一 cue 重复入队。否则边界后会连续启动两次同一小节，听起来像主旋律
+    // 双倍速，并让下一和弦错位。
+    return false;
+  }
   const expectedRoot = activeCue?.cue?.root || performedRoot;
   const timingKey = (oneKeyMode || expectedRoot !== label)
     ? (document.querySelector(`#manualKeyboard .key[data-root="${expectedRoot}"]`) || key)
