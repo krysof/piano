@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-23';
+const ASSET_VERSION = 'reset-20260711-24';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3734,9 +3734,10 @@ function accelerateInteractivePhrase() {
 }
 
 function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timing = {}) {
-  // 一键模式的评分来自正在播放的小节；progress 不再交给谱面预告判定。
-  // 70%–100% 按下时由后面的 catch-up 先快速收完当前小节，再输出下一小节。
-  const requestTiming = isOneKeyMode()
+  // 手动/一键的评分来自正在播放的小节，不能把旧小节的 progress 再用于
+  // 新小节调速。需要追赶时只由后面的 catch-up 收完当前残余事件；
+  // 下一小节始终从 100% 基准、正常速度开始。
+  const requestTiming = isManualMode()
     ? { progress: 100, dueAt: performance.now() }
     : timing;
   const request = { root, cue, timing: requestTiming };
@@ -3755,7 +3756,7 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
     accelerateInteractivePhrase();
     return;
   }
-  beginInteractivePhrase(root, cue, timing);
+  beginInteractivePhrase(root, cue, requestTiming);
 }
 
 function triggerChordKey(label, pickSlot, key) {
