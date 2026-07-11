@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-22';
+const ASSET_VERSION = 'reset-20260711-23';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3223,8 +3223,10 @@ function normalizedHarmonyVelocity(rawVelocity) {
   return Math.max(0.42, Math.min(0.92, raw * 1.32));
 }
 
-function playStyledHarmony(root, forcedCue = null, timeScale = 1) {
-  clearHarmonyTimers();
+function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) {
+  const replaceExisting = options.replaceExisting !== false;
+  const advancePhase = options.advancePhase !== false;
+  if (replaceExisting) clearHarmonyTimers();
   const now = currentPlayTime();
   const cue = forcedCue || chordAtTime(now) || { chord: root, root };
   const chordName = chordNameForPerformedRoot(root, cue);
@@ -3234,7 +3236,10 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1) {
   warmHarmonyTones(false);
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
-    const half = nextHarmonyHalfForRoot(root);
+    const previousHalf = harmonyRepeat.get('last');
+    const half = advancePhase
+      ? nextHarmonyHalfForRoot(root)
+      : (previousHalf?.root === root ? (previousHalf.half === 0 ? 1 : 0) : 0);
     // 和弦结构、pattern 前后半切分、音高映射和 BPM 布局统一由 WASM 计算。
     const plan = runWasmCommand({
       op: 'harmonyPlan',
@@ -3456,6 +3461,11 @@ function takeNextOneKeyCue() {
   const cue = cues[oneKeyNextCueIndex] || null;
   if (cue) oneKeyNextCueIndex += 1;
   return cue;
+}
+
+function oneKeyOutputKey(cue, fallbackKey) {
+  const root = cue?.root || rootFromChord(cue?.chord);
+  return (root && document.querySelector(`#manualKeyboard .key[data-root="${root}"]`)) || fallbackKey;
 }
 
 function oneKeyTimingGrade(progress) {
@@ -3759,7 +3769,9 @@ function triggerChordKey(label, pickSlot, key) {
   const oneKeyPress = oneKeyMode ? oneKeyPressTiming() : null;
   const manualPress = manualMode ? manualMusicPressTiming() : null;
   if (oneKeyMode && !oneKeyPress.accepted) {
-    showTimingRating(key, 'MISS');
+    const pendingCue = (song?.chordCues || [])[oneKeyNextCueIndex]
+      || nextCueAfter(interactivePhrase?.cue);
+    showTimingRating(oneKeyOutputKey(pendingCue, key), 'MISS');
     rejectEarlyChordPress(key);
     return false;
   }
@@ -3811,10 +3823,13 @@ function triggerChordKey(label, pickSlot, key) {
     && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
   const oneKeyHitsActiveCue = Boolean(oneKeyMode && activeCue
     && (activeCue.cue === pressedCue || activeCue.cue?._id === pressedCue?._id));
+  const ratingKey = oneKeyMode
+    ? oneKeyOutputKey(pressedCue, key)
+    : key;
   const rating = oneKeyMode
     ? oneKeyPress.grade
     : (manualMode ? (matchesManualCue ? manualPress.grade : 'MISS') : timingGrade(pressProgress, matchesActiveCue));
-  showTimingRating(key, rating);
+  showTimingRating(ratingKey, rating);
   if ((oneKeyMode && oneKeyHitsActiveCue) || (!oneKeyMode && !manualMode && isGoodTiming(timingKey) && matchesActiveCue)) {
     activeCue.hit = true;
     activeCue.pressed = true;
@@ -3831,7 +3846,9 @@ function triggerChordKey(label, pickSlot, key) {
   const wrongInteractiveKey = (manualMode && !matchesManualCue)
     || (!oneKeyMode && !manualMode && isSemiAutoMode() && !matchesActiveCue);
   if (wrongInteractiveKey) {
-    playStyledHarmony(label, pressedCue);
+    // 错误和弦只作为独立试听：不能清除当前小节尚未触发的伴奏 timer，
+    // 也不能推进正常 pattern 的前/后半 phase，否则下一次正确输入会异常追赶快放。
+    playStyledHarmony(label, pressedCue, 1, { replaceExisting: false, advancePhase: false });
   } else if (isSemiAutoMode() || isManualMode()) {
     requestInteractivePhrase(performedRoot, pressedCue, { progress: pressProgress, dueAt: pressCueState?.due });
   } else {
