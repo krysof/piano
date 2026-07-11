@@ -718,6 +718,11 @@ body.game-started #startScreen {
   background: rgba(35, 126, 94, .12);
   box-shadow: 0 0 20px rgba(63, 205, 151, .08);
 }
+
+.launch-midi-status.midi-note-active {
+  border-color: rgba(85, 217, 163, 0.78);
+  box-shadow: 0 0 0 2px rgba(85, 217, 163, 0.12), 0 0 22px rgba(85, 217, 163, 0.2);
+}
 .launch-midi-status.connected svg { color: #55d9a3; background: rgba(52, 197, 144, .13); }
 .launch-midi-status.connected small { color: #80cfad; }
 .launch-midi-status.unsupported { cursor: not-allowed; opacity: .48; }

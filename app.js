@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-13';
+const ASSET_VERSION = 'reset-20260711-14';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3615,6 +3615,12 @@ function stopExternalMidiPreviewVoice(key, release = 0.11) {
 function startExternalMidiPreviewVoice(message) {
   ensureAudio();
   audio.ctx?.resume?.().catch(() => {});
+  const startStatus = $('midiStartStatus');
+  if (startStatus) {
+    startStatus.textContent = `${labelOf(message.note)} · V${Math.round(externalMidiPerformance.volume * 100)}`;
+    startStatus.title = `已收到 Note On：${labelOf(message.note)}，力度 ${Math.round(Number(message.velocity || 0) * 127)}`;
+  }
+  $('midiConnectBtn')?.classList.add('midi-note-active');
   const key = message.key || `${message.inputId}:${message.channel}:${message.note}`;
   stopExternalMidiPreviewVoice(key, 0.025);
   const now = audio.ctx.currentTime;
@@ -3735,6 +3741,7 @@ function handleExternalMidiNoteOff(message) {
   const voice = externalMidiPerformance.voices.get(key);
   if (!voice) return;
   voice.released = true;
+  $('midiConnectBtn')?.classList.remove('midi-note-active');
   if (!externalMidiPerformance.sustain) stopExternalMidiPreviewVoice(key);
 }
 
@@ -3765,6 +3772,12 @@ function handleExternalMidiControl(message) {
 
 async function requestExternalMidiConnection() {
   if (!window.FreezaMidiInput) return;
+  // iOS/MIDIWeb 中 MIDI 消息本身不属于用户手势；必须借连接按钮这次点击先解锁音频。
+  ensureAudio();
+  await Promise.allSettled([
+    audio.ctx?.resume?.(),
+    window.Tone?.start?.(),
+  ].filter(Boolean));
   playLaunchUiSound('select');
   await window.FreezaMidiInput.connect();
 }
