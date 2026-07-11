@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-26';
+const ASSET_VERSION = 'reset-20260711-27';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3632,6 +3632,17 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
       } else finishPlayback();
     }, Math.max(0, completedDueAt - performance.now()) + 12);
     manualMelodyTimers.push(completionTimer);
+  } else if (isSemiAutoMode()) {
+    // 半自动允许玩家在当前伴奏尾音尚未结束时输入下一和弦。若下一和弦
+    // 还没迟到，就只排队并让当前伴奏自然结束，不能为了“腾位置”而快放。
+    const completedPhrase = phrase;
+    const completionTimer = setTimeout(() => {
+      if (interactivePhrase !== completedPhrase || interactiveTransitioning) return;
+      interactivePhrase = null;
+      const next = interactivePressQueue.shift();
+      if (next) beginInteractivePhrase(next.root, next.cue, { progress: 100, dueAt: performance.now() });
+    }, naturalDurationMs + 12);
+    manualMelodyTimers.push(completionTimer);
   }
 }
 
@@ -3741,8 +3752,8 @@ function accelerateInteractivePhrase() {
 
 function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timing = {}) {
   // 手动/一键的评分来自正在播放的小节，不能把旧小节的 progress 再用于
-  // 新小节调速。需要追赶时只由后面的 catch-up 收完当前残余事件；
-  // 下一小节始终从 100% 基准、正常速度开始。
+  // 新小节调速；两种模式均等待当前小节自然结束。只有半自动主旋律已先到、
+  // 伴奏迟按时，后面的 catch-up 才允许收完当前残余事件。
   const requestTiming = isManualMode()
     ? { progress: 100, dueAt: performance.now() }
     : timing;
@@ -3759,13 +3770,13 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
   const pending = interactivePhrase && pendingInteractiveEvents(interactivePhrase, nowSong, performance.now()).length;
   if (pending) {
     interactivePressQueue.push(request);
-    const currentRoot = interactivePhrase?.cue?.root || rootFromChord(interactivePhrase?.cue?.chord) || interactivePhrase?.root;
-    const requestedRoot = cue?.root || rootFromChord(cue?.chord) || root;
-    const isRepeatedScoreKey = isManualMode() && cue && interactivePhrase?.cue && cue !== interactivePhrase.cue
-      && currentRoot && requestedRoot && currentRoot === requestedRoot;
-    // 谱面允许连续两个相同根音。第二次同键是“下一小节已输入”，不是要求
-    // 把当前小节快放；保留队列，等当前小节自然结束后再正常速率开始下一小节。
-    if (isRepeatedScoreKey) return;
+    const requestedCueTime = Number(cue?.time);
+    const melodyAlreadyStarted = isSemiAutoMode() && Number.isFinite(requestedCueTime)
+      && nowSong >= requestedCueTime - 0.008;
+    // 追赶只属于半自动模式：主旋律已经到达这个 cue、伴奏却按迟时，才压缩
+    // 旧伴奏尾部来追主旋律。手动/一键由按键驱动音乐；无论根音相同还是不同，
+    // 都等待当前小节自然结束，不能把玩家的连续输入解释成加速指令。
+    if (!melodyAlreadyStarted) return;
     accelerateInteractivePhrase();
     return;
   }
