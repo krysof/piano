@@ -100,7 +100,7 @@
 
   function preloadAll(ctx, code, onProgress = null) { return preload(ctx, code, [], onProgress); }
 
-  function play(ctx, destination, code, midi, duration, velocity, gainScale) {
+  function play(ctx, destination, code, midi, duration, velocity, gainScale, when = ctx.currentTime) {
     const manifest = manifestForCode(code);
     if (!manifest) return false;
     const region = chooseRegion(manifest, midi, velocity);
@@ -109,7 +109,7 @@
       loadRegion(ctx, manifest, region).catch(error => console.warn('Guitar sample load failed:', error));
       return false;
     }
-    const now = ctx.currentTime;
+    const now = Math.max(ctx.currentTime, Number(when) || ctx.currentTime);
     const source = ctx.createBufferSource();
     const gain = ctx.createGain();
     source.buffer = buffer;
@@ -125,7 +125,7 @@
     source.connect(gain).connect(destination);
     source.start(now);
     source.stop(now + hold + release * 2.2);
-    return true;
+    return source;
   }
 
   global.FreezaGuitarSampler = Object.freeze({ libraryForCode, preload, preloadAll, play });

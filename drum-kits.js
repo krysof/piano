@@ -65,7 +65,7 @@
     })));
   }
 
-  function play(ctx, destination, code, midi, velocity, volume) {
+  function play(ctx, destination, code, midi, velocity, volume, when = ctx.currentTime) {
     const kit = kitForCode(code);
     const buffer = buffers.get(key(kit, midi)) || buffers.get(key('standard', midi));
     if (!buffer) {
@@ -77,8 +77,8 @@
     source.buffer = buffer;
     gain.gain.value = Math.max(0.001, Math.min(2.4, Number(velocity || 0) * Number(volume || 1)));
     source.connect(gain).connect(destination);
-    source.start(ctx.currentTime);
-    return true;
+    source.start(Math.max(ctx.currentTime, Number(when) || ctx.currentTime));
+    return source;
   }
 
   global.FreezaDrumKits = Object.freeze({ kitForCode, preload, play });

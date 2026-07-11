@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-36';
+const ASSET_VERSION = 'reset-20260711-37';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -22,6 +22,7 @@ const sampled = {
 };
 const wasmParser = { promise: null, exports: null };
 const patterns = { manifest: null, byCode: new Map(), promise: null };
+const audioScheduler = window.FreezaAudioScheduler.create({ lookaheadMs: 90 });
 let song = null;
 let lyricLines = [];
 let lastLyricIndex = -1;
@@ -446,10 +447,10 @@ function getSoundfontInstrument(preset) {
   return soundfont.promises.get(soundfontName);
 }
 
-function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5) {
+function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5, when = null) {
   ensureAudio();
   const ctx = audio.ctx;
-  const now = ctx.currentTime;
+  const now = Math.max(ctx.currentTime, Number(when) || ctx.currentTime);
   const freq = midiToFreq(midi);
   const osc = ctx.createOscillator();
   const filter = ctx.createBiquadFilter();
@@ -464,26 +465,40 @@ function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5) {
   osc.connect(filter).connect(gain).connect(audio.master);
   osc.start(now);
   osc.stop(now + Math.max(0.15, duration) + 0.04);
+  return osc;
 }
 
-function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = harmonyToneMode) {
+function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = harmonyToneMode, when = null) {
   const preset = HARMONY_TONES[(toneMode - 1 + HARMONY_TONES.length) % HARMONY_TONES.length];
   ensureAudio();
-  if (preset.guitarLibrary && window.FreezaGuitarSampler?.play(
-    audio.ctx, audio.master, preset.code, midi, duration, velocity, (preset.gain || 0.78) * harmonyGain,
-  )) return;
+  const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const guitarSource = preset.guitarLibrary && window.FreezaGuitarSampler?.play(
+    audio.ctx, audio.master, preset.code, midi, duration, velocity,
+    (preset.gain || 0.78) * harmonyGain, scheduledWhen,
+  );
+  if (guitarSource) return guitarSource;
   if (preset.localPiano && sampled.ready && sampled.piano && window.Tone) {
     Tone.start();
-    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, undefined, Math.max(0.035, velocity * (preset.gain || 0.42) * harmonyGain));
-    return;
+    const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
+    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, toneWhen, Math.max(0.035, velocity * (preset.gain || 0.42) * harmonyGain));
+    return null;
   }
-  withTimeout(getSoundfontInstrument(preset), 1400, `SoundFont ${preset.name}`).then(inst => {
-    if (!inst) return fallbackSoftNote(midi, duration, velocity);
+  const soundfontName = preset.fallbackName || preset.name;
+  const cachedInstrument = soundfont.instruments.get(soundfontName);
+  if (cachedInstrument) {
     const note = preset.drum ? Math.min(81, Math.max(35, midi)) : midi;
-    inst.play(note, audio.ctx.currentTime, Math.max(0.08, duration), {
+    return cachedInstrument.play(note, scheduledWhen, Math.max(0.08, duration), {
       gain: Math.max(0.05, Math.min(1, velocity * (preset.gain || 0.65) * harmonyGain)),
     });
-  }).catch(() => fallbackSoftNote(midi, duration, velocity));
+  }
+  withTimeout(getSoundfontInstrument(preset), 1400, `SoundFont ${preset.name}`).then(inst => {
+    if (!inst) return fallbackSoftNote(midi, duration, velocity, scheduledWhen);
+    const note = preset.drum ? Math.min(81, Math.max(35, midi)) : midi;
+    inst.play(note, Math.max(audio.ctx.currentTime, scheduledWhen), Math.max(0.08, duration), {
+      gain: Math.max(0.05, Math.min(1, velocity * (preset.gain || 0.65) * harmonyGain)),
+    });
+  }).catch(() => fallbackSoftNote(midi, duration, velocity, scheduledWhen));
+  return null;
 }
 
 function drumPitchToMidi(pitch) {
@@ -547,9 +562,9 @@ function playDrumOsc(when, duration, peak, type, startFrequency, endFrequency = 
   osc.stop(when + duration + 0.02);
 }
 
-function playDrumKitNote(midi, velocity, patternDuration) {
+function playDrumKitNote(midi, velocity, patternDuration, when = null) {
   ensureAudio();
-  const now = audio.ctx.currentTime;
+  const now = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
   const level = Math.min(1.6, (0.035 + Math.max(0, velocity) * 1.05) * drumGain);
   const voice = drumVoiceForMidi(midi);
   if (voice === 'kick') {
@@ -590,23 +605,30 @@ function prepareDrumPattern(pattern, drumCode = pattern?.code, onProgress = null
   );
 }
 
-function playDrumPatternNote(patternNote, drumCode = currentDrumCode) {
+function playDrumPatternNote(patternNote, drumCode = currentDrumCode, when = null) {
   ensureAudio();
   const midi = drumPitchToMidi(patternNote.pitch);
   const velocity = Math.max(0, Math.min(1, Number(patternNote.velocity || 0) / 127));
   const duration = Math.max(0.05, Number(patternNote.duration || 0.2) * beatMs() / 1000);
-  if (window.FreezaDrumKits?.play(audio.ctx, audio.master, drumCode, midi, velocity, drumGain)) return;
-  playDrumKitNote(midi, velocity, duration);
+  const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const sampledSource = window.FreezaDrumKits?.play(
+    audio.ctx, audio.master, drumCode, midi, velocity, drumGain, scheduledWhen,
+  );
+  if (sampledSource) return sampledSource;
+  return playDrumKitNote(midi, velocity, duration, scheduledWhen);
 }
 
-function playNote(midi, duration = 0.55, velocity = 0.6) {
+function playNote(midi, duration = 0.55, velocity = 0.6, when = null) {
   if (sampled.ready && sampled.piano && window.Tone) {
     Tone.start();
-    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, undefined, Math.max(0.04, Math.min(1, velocity * melodyGain)));
+    ensureAudio();
+    const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+    const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
+    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, toneWhen, Math.max(0.04, Math.min(1, velocity * melodyGain)));
     return;
   }
   ensureAudio();
-  const now = audio.ctx.currentTime;
+  const now = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
   const osc = audio.ctx.createOscillator();
   const gain = audio.ctx.createGain();
   osc.type = 'triangle';
@@ -616,6 +638,7 @@ function playNote(midi, duration = 0.55, velocity = 0.6) {
   gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
   osc.connect(gain).connect(audio.master);
   osc.start(now); osc.stop(now + duration + 0.05);
+  return osc;
 }
 
 function flash(keyboardId, midi, ms = 520, mode = 'active') {
@@ -733,20 +756,27 @@ function returnToSongScreen() {
 }
 function playVisualNote(midi, velocity, source) {
   playNote(midi, 0.65, velocity);
+  showVisualNote(midi, source);
+}
+
+function showVisualNote(midi, source) {
   flash(source === 'manual' ? 'manualKeyboard' : 'playbackKeyboard', midi);
   $('nowPlaying').textContent = source === 'manual' ? `手动弹奏：${labelOf(midi)}` : `主旋律：${labelOf(midi)}`;
 }
 
 function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42, toneMode = harmonyToneMode) {
+  ensureAudio();
   const event = {
     midi, duration, velocity, toneMode,
     dueAt: performance.now() + Math.max(0, delay),
     fired: false,
     timer: null,
   };
-  const timer = setTimeout(() => {
+  event.audioTask = audioScheduler.scheduleAudio(audio.ctx, delay, when => {
     event.fired = true;
-    playHarmonyToneNote(midi, duration, velocity, toneMode);
+    return playHarmonyToneNote(midi, duration, velocity, toneMode, when);
+  }, 'harmony');
+  const timer = setTimeout(() => {
     flash('playbackKeyboard', midi, Math.max(360, duration * 720), 'harmony');
   }, delay);
   event.timer = timer;
@@ -754,9 +784,12 @@ function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42
   return event;
 }
 
-function clearHarmonyTimers() {
+function clearHarmonyTimers(stopCommitted = false) {
   harmonyTimers.forEach(clearTimeout);
   harmonyTimers = [];
+  // 换和弦只撤销尚未发声的事件，保留已经发声的自然 release；暂停/切歌
+  // 才停止已提前提交的 AudioNode，避免尾音硬切或残留到下个页面。
+  audioScheduler.cancelGroup('harmony', { includeCommitted: stopCommitted });
 }
 
 // 前后半相位属于“连续演奏的和弦根音”，不属于 A/B 音色。A 前半后切 B
@@ -2513,6 +2546,24 @@ function setupSongScreen() {
   });
   updateSongSelectionUi();
 }
+
+function scheduleSongMelodyNote(note, delay) {
+  ensureAudio();
+  const midi = shiftedMidi(note.note);
+  audioScheduler.scheduleAudio(audio.ctx, delay, when => playNote(midi, 0.65, note.velocity, when), 'song-melody');
+  timers.push(setTimeout(() => showVisualNote(midi, 'playback'), delay));
+}
+
+function scheduleDrumNote(patternNote, drumCode, delay) {
+  ensureAudio();
+  audioScheduler.scheduleAudio(
+    audio.ctx,
+    delay,
+    when => playDrumPatternNote(patternNote, drumCode, when),
+    'drums',
+  );
+}
+
 function scheduleFrom(offset = 0, preserveInteractive = false, skipChordCueAtOffset = false) {
   if (!song || !song.melodyTrack.notes.length) return;
   if (!preserveInteractive) resetInteractiveSequencer();
@@ -2524,7 +2575,7 @@ function scheduleFrom(offset = 0, preserveInteractive = false, skipChordCueAtOff
   const notes = song.melodyTrack.notes.filter(e => e.time >= offset && shouldAutoPlayMelodyAt(e.time));
   for (const e of notes) {
     const delay = Math.max(0, (e.time - offset) * 1000);
-    timers.push(setTimeout(() => playVisualNote(shiftedMidi(e.note), e.velocity, 'playback'), delay));
+    scheduleSongMelodyNote(e, delay);
   }
   scheduleDrumsFrom(offset);
   if (isAutoChordMode()) scheduleAutoHarmonyFrom(offset);
@@ -2555,7 +2606,7 @@ function scheduleDrumsFrom(offset = 0) {
       const t = barStart + Number(n.beat || 0) * beat / 1000;
       if (t < offset - 0.02 || t > song.duration + 0.5) continue;
       const delay = Math.max(0, (t - offset) * 1000);
-      timers.push(setTimeout(() => playDrumPatternNote(n, currentDrumCode || pattern.code), delay));
+      scheduleDrumNote(n, currentDrumCode || pattern.code, delay);
     }
   }
 }
@@ -2591,7 +2642,7 @@ function scheduleDrumPatternWindow(pattern, drumCode, fromTime, anchorTime, endT
   });
   for (const event of plan.events || []) {
     const delay = Math.max(0, (Number(event.time) - offset) * 1000);
-    timers.push(setTimeout(() => playDrumPatternNote(event.note, drumCode || pattern.code), delay));
+    scheduleDrumNote(event.note, drumCode || pattern.code, delay);
   }
 }
 function clearTimers() {
@@ -2600,7 +2651,7 @@ function clearTimers() {
   cueTimers.forEach(clearTimeout); cueTimers = [];
   cancelAnimationFrame(cueRuntimeRaf); cueRuntimeRaf = null;
   activeCue = null;
-  clearHarmonyTimers();
+  clearHarmonyTimers(true);
   harmonyAutoTimers.forEach(clearTimeout);
   harmonyAutoTimers = [];
   manualMelodyTimers.forEach(clearTimeout);
@@ -2985,7 +3036,7 @@ function playManualGuideIntro() {
   startRecording();
   for (const note of song.melodyTrack.notes.filter(note => note.time < introEnd - 0.001)) {
     const delay = Math.max(0, note.time * 1000);
-    timers.push(setTimeout(() => playVisualNote(shiftedMidi(note.note), note.velocity, 'playback'), delay));
+    scheduleSongMelodyNote(note, delay);
   }
   clockTimer = setInterval(() => { updateClock(); updateLyrics(); }, 33);
   timers.push(setTimeout(() => {
@@ -3419,6 +3470,30 @@ function renderKeyboard(id, start, end, source) {
 function clearManualMelodyTimers() {
   manualMelodyTimers.forEach(clearTimeout);
   manualMelodyTimers = [];
+  audioScheduler.cancelGroup('song-melody');
+  audioScheduler.cancelGroup('drums');
+  audioScheduler.cancelGroup('interactive-melody');
+  audioScheduler.cancelGroup('interactive-melody');
+}
+
+function scheduleInteractiveMelodyEvent(note, idx, delay) {
+  ensureAudio();
+  const midi = shiftedMidi(note.note);
+  const velocity = note.velocity || 0.65;
+  const event = { note, idx, dueAt: performance.now() + delay, fired: false, timer: null, audioTask: null };
+  event.audioTask = audioScheduler.scheduleAudio(audio.ctx, delay, when => {
+    event.fired = true;
+    return playNote(midi, 0.65, velocity, when);
+  }, 'interactive-melody');
+  event.timer = setTimeout(() => {
+    playOffset = note.time;
+    showVisualNote(midi, 'playback');
+    if (nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
+    updateClock();
+    updateLyrics();
+  }, delay);
+  manualMelodyTimers.push(event.timer);
+  return event;
 }
 
 function ensureManualClock() {
@@ -3452,17 +3527,7 @@ function playNextManualMelodyNote(cue, timeScale = 1) {
   const events = chunk.map((note, localIndex) => {
     const idx = startIndex + localIndex;
     const delay = Math.max(0, (note.time - cueStart) * timeScale * 1000);
-    const event = { note, idx, dueAt: performance.now() + delay, fired: false, timer: null };
-    event.timer = setTimeout(() => {
-      event.fired = true;
-      playOffset = note.time;
-      playVisualNote(shiftedMidi(note.note), note.velocity || 0.65, 'playback');
-      if (nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
-      updateClock();
-      updateLyrics();
-    }, delay);
-    manualMelodyTimers.push(event.timer);
-    return event;
+    return scheduleInteractiveMelodyEvent(note, idx, delay);
   });
   return { events, segmentEnd: chunkEnd, endIndex, startTime: cueStart };
 }
@@ -3761,14 +3826,7 @@ function accelerateInteractivePhrase() {
       playHarmonyVisualNote(event.midi, delay, Math.max(0.045, event.duration * scale), event.velocity, event.toneMode);
     } else {
       const { note, idx } = item.event;
-      const timer = setTimeout(() => {
-        playOffset = note.time;
-        playVisualNote(shiftedMidi(note.note), note.velocity || 0.65, 'playback');
-        if (isManualMode() && nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
-        updateClock();
-        updateLyrics();
-      }, delay);
-      manualMelodyTimers.push(timer);
+      scheduleInteractiveMelodyEvent(note, idx, delay);
     }
   }
   const settleMs = catchupDuration <= 0.08 ? 8 : 45;
