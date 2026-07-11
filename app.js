@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-28';
+const ASSET_VERSION = 'reset-20260711-29';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3234,17 +3234,7 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
   let segmentEnd = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
   if (!Number.isFinite(segmentEnd) || segmentEnd <= now + 0.02) segmentEnd = Math.min(song?.duration || now + 1.8, now + 1.8);
   warmHarmonyTones(false);
-  const forcedPatternSlot = Number.isInteger(options.patternSlot)
-    ? Math.max(0, Math.min(1, Number(options.patternSlot)))
-    : null;
-  const patternSelection = forcedPatternSlot === null
-    ? chordPatternAtTime(now)
-    : (() => {
-      const codes = chordPatternCodes();
-      const code = codes[forcedPatternSlot] || codes[0] || currentHarmonyPreset()?.code;
-      return { slot: forcedPatternSlot, code, pattern: code ? patterns.byCode.get(code) : null };
-    })();
-  const { slot, code, pattern } = patternSelection;
+  const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
     const previousHalf = harmonyRepeat.get('last');
     const half = advancePhase
@@ -3285,8 +3275,7 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
     const speed = Math.max(0.62, Math.min(1.12, timeScale, targetEnd / naturalEnd));
     for (const n of fallbackNotes) {
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
-      const fallbackToneMode = forcedPatternSlot === null ? harmonyToneMode : forcedPatternSlot + 1;
-      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), fallbackToneMode));
+      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), harmonyToneMode));
     }
     console.warn('No LiberLive chord pattern loaded; using Track 2 fallback chord notes for', code || currentHarmonyPreset()?.code);
     return { root, cue, segmentEnd, events: scheduled };
@@ -3294,6 +3283,19 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
 
   console.warn('No LiberLive chord pattern or Track 2 fallback loaded for', code || currentHarmonyPreset()?.code);
   return { root, cue, segmentEnd, events: scheduled };
+}
+
+function playWrongHarmonyPreview(root, cue, pickSlot = 0) {
+  // 错键必须听得出是错误和弦，但不能再启动一整段 pattern。完整 pattern 会
+  // 与当前正确伴奏持续交叠，连续错按后就像调度器乱序。这里只播放一个短促、
+  // 同时发声的和弦击键，而且不创建任何会被下一小节继承的 timer/phase 状态。
+  const chordName = chordNameForPerformedRoot(root, cue || { chord: root, root });
+  const notes = [...new Set(parseChordNotes(chordName).map(Number).filter(Number.isFinite))].slice(0, 4);
+  const toneMode = Math.max(1, Math.min(HARMONY_TONES.length, Number(pickSlot) + 1));
+  for (const midi of notes) {
+    playHarmonyToneNote(midi, 0.26, 0.44, toneMode);
+    flash('playbackKeyboard', midi, 260, 'harmony');
+  }
 }
 function pausePlayback() {
   if (!playing) return;
@@ -3863,11 +3865,7 @@ function triggerChordKey(label, pickSlot, key) {
     rejectEarlyChordPress(key);
     showPickZoneFeedback(key, normalizedPickSlot);
     warmHarmonyTones(false);
-    playStyledHarmony(label, pressedCue, 1, {
-      replaceExisting: false,
-      advancePhase: false,
-      patternSlot: normalizedPickSlot,
-    });
+    playWrongHarmonyPreview(label, pressedCue, normalizedPickSlot);
     animateChordPress(key);
     return true;
   }
