@@ -983,9 +983,16 @@ body.game-started #startScreen {
   .launch-control-label small { font-size: 9px; }
   .launch-choice-stack {
     flex: 1 1 auto;
-    grid-template-rows: repeat(3, 1fr);
     min-height: 0;
     gap: 5px;
+  }
+
+  .launch-choice-stack[data-group="mode"] {
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+  }
+
+  .launch-choice-stack[data-group="drum"] {
+    grid-template-rows: repeat(3, minmax(0, 1fr));
   }
 
   .launch-choice {
@@ -997,6 +1004,11 @@ body.game-started #startScreen {
 
   .launch-choice b { font-size: 11px; }
   .launch-choice span { font-size: 10px; }
+
+  .launch-choice-stack[data-group="mode"] .launch-choice {
+    min-height: 30px;
+    padding-block: 3px;
+  }
 
   .launch-pick-row {
     margin-top: 0;
