@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-31';
+const ASSET_VERSION = 'reset-20260711-32';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -66,7 +66,7 @@ let manualMelodyTimers = [];
 let interactivePhrase = null;
 let interactiveTransitioning = false;
 let interactivePressQueue = [];
-let lastManualWrongPressAt = -Infinity;
+let manualWrongLockUntil = -Infinity;
 let midiReady = false;
 let midiReadyPromise = null;
 let sampleReadyPromise = Promise.resolve(false);
@@ -3447,7 +3447,7 @@ function resetInteractiveSequencer() {
   interactivePhrase = null;
   interactiveTransitioning = false;
   interactivePressQueue = [];
-  lastManualWrongPressAt = -Infinity;
+  manualWrongLockUntil = -Infinity;
   oneKeyNextCueIndex = -1;
   oneKeyLastBarEndAt = 0;
   oneKeyLastBarDurationMs = 0;
@@ -3843,11 +3843,6 @@ function triggerChordKey(label, pickSlot, key) {
     rejectEarlyChordPress(key);
     return false;
   }
-  if (manualMode && !manualPress.accepted) {
-    showTimingRating(key, 'MISS');
-    rejectEarlyChordPress(key);
-    return false;
-  }
   const pressedCue = oneKeyMode
     ? takeNextOneKeyCue()
     : (manualMode && interactivePhrase?.cue
@@ -3859,6 +3854,10 @@ function triggerChordKey(label, pickSlot, key) {
     : label;
   const matchesManualCue = Boolean(manualMode
     && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
+  const manualPhraseFinished = !manualMode || !interactivePhrase
+    || interactivePhrase.musicVisualComplete
+    || (Number.isFinite(interactivePhrase.naturalEndAt)
+      && performance.now() >= interactivePhrase.naturalEndAt);
   if (manualMode && matchesManualCue && interactiveCueIsQueued(pressedCue)) {
     // 快速乱按时可能无意中已经击中过正确键；之后再按同一个正确键不能把
     // 同一 cue 重复入队。否则边界后会连续启动两次同一小节，听起来像主旋律
@@ -3885,16 +3884,16 @@ function triggerChordKey(label, pickSlot, key) {
     }
   }
   const normalizedPickSlot = pickSlot > 0 ? 1 : 0;
-  if (manualMode && !matchesManualCue) {
+  if (manualMode && (!matchesManualCue || !manualPhraseFinished)) {
     // 错键是完全隔离的试听：不写入用户拨片事件、不改变全局音色、不推进
     // pattern 前后半、不进入交互队列，也不接触当前主旋律/伴奏的计时状态。
     // 这样连续乱按后再按正确键，仍从原小节的正确时间和相位继续。
     const wrongPressedAt = performance.now();
-    // 实体 MIDI 和多点触控可能在几毫秒内送来多个不同 Note On。错误输入只做
-    // 120ms 防抖，正确键永远不受限制；避免错误试听的大量采样声部和 DOM 动画
-    // 阻塞主旋律 timer，恢复后又把多个音符集中触发成“快放”。
-    if (wrongPressedAt - lastManualWrongPressAt < 120) return false;
-    lastManualWrongPressAt = wrongPressedAt;
+    // 一个 MISS 的浮字动画持续 1 秒。在它消失前，所有后续错误输入（包括
+    // 主旋律尚未播完时按到“下一正确键”）都静音、无动画、也不重复计分。
+    // 只有主旋律已经完整结束后的正确键可以越过这把锁并正常启动下一段。
+    if (wrongPressedAt < manualWrongLockUntil) return false;
+    manualWrongLockUntil = wrongPressedAt + 1000;
     showTimingRating(key, 'MISS');
     rejectEarlyChordPress(key);
     showPickZoneFeedback(key, normalizedPickSlot);
@@ -3903,6 +3902,7 @@ function triggerChordKey(label, pickSlot, key) {
     animateChordPress(key);
     return true;
   }
+  if (manualMode && matchesManualCue && manualPhraseFinished) manualWrongLockUntil = -Infinity;
   harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, normalizedPickSlot + 1));
   // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
   // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
