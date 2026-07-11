@@ -173,6 +173,7 @@ body.game-started .game {
 }
 .result-max-combo small { font-size: 8px; font-weight: 850; letter-spacing: .13em; }
 .result-max-combo b { color: #fff0a6; font-size: 21px; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255,213,82,.35); }
+.result-max-combo em { color: #d7caff; font-size: 11px; font-style: normal; font-weight: 780; white-space: nowrap; }
 .result-grade-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 0; }
 .result-grade {
   min-width: 0;

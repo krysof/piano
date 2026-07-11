@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-41';
+const ASSET_VERSION = 'reset-20260711-42';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -705,9 +705,11 @@ function updateComboStatus() {
   if (!status) return;
   const { current } = comboState.snapshot();
   const value = status.querySelector('b');
+  const comment = status.querySelector('em');
   if (value) value.textContent = String(current);
+  if (comment) comment.textContent = window.FreezaComboState.commentFor(current);
   status.classList.toggle('active', current > 0);
-  status.setAttribute('aria-label', `当前连击 ${current}`);
+  status.setAttribute('aria-label', `当前连击 ${current}，${window.FreezaComboState.commentFor(current)}`);
 }
 
 function showTimingRating(key, grade, count = true) {
@@ -749,8 +751,11 @@ function showPerformanceResults() {
   if (totalEl) totalEl.textContent = `总判定 ${total}`;
   const combo = $('resultMaxCombo');
   if (combo) {
+    const maximum = comboState.snapshot().maximum;
     const value = combo.querySelector('b');
-    if (value) value.textContent = String(comboState.snapshot().maximum);
+    const comment = combo.querySelector('em');
+    if (value) value.textContent = String(maximum);
+    if (comment) comment.textContent = window.FreezaComboState.commentFor(maximum);
   }
   modal.classList.add('show');
   modal.setAttribute('aria-hidden', 'false');
