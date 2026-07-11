@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-24';
+const ASSET_VERSION = 'reset-20260711-25';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3271,7 +3271,8 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
     let nextTime = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
     if (nextTime <= now + 0.08) nextTime = nextChordCueTimeAfter(now);
     const targetEnd = Math.max(0.12, nextTime - now - 0.018);
-    const speed = Math.max(0.25, Math.min(1.12, timeScale, targetEnd / naturalEnd));
+    // fallback 也遵守统一的最大约 1.6x 加速限制，禁止为了硬塞窗口压成 4x 快放。
+    const speed = Math.max(0.62, Math.min(1.12, timeScale, targetEnd / naturalEnd));
     for (const n of fallbackNotes) {
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
       scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), harmonyToneMode));
