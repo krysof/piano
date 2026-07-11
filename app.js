@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-39';
+const ASSET_VERSION = 'reset-20260711-40';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -973,7 +973,7 @@ function queueKeyPreview(delay = 0) {
   }, delay);
 }
 
-function setKeyShift(nextShift, { previewDelay = 0, reschedule = true } = {}) {
+function setKeyShift(nextShift, { previewDelay = 0, reschedule = true, warm = true } = {}) {
   const next = Math.max(-14, Math.min(14, Math.round(Number(nextShift) || 0)));
   if (next === userKeyShift) return false;
   const activeRuntime = activeCue?.cue?.root ? cueState.get(activeCue.cue.root) : null;
@@ -988,7 +988,7 @@ function setKeyShift(nextShift, { previewDelay = 0, reschedule = true } = {}) {
     startCue(midi, activeCue.cue, activeRuntime || undefined);
     if (activeCue.hit) hitCue(midi, activeCue.cue);
   }
-  if (wasmParser.exports) warmHarmonyTones(true);
+  if (warm && wasmParser.exports) warmHarmonyTones(true);
   queueKeyPreview(previewDelay);
   if (playing && reschedule) scheduleFrom(currentPlayTime());
   return true;
@@ -1734,9 +1734,12 @@ function warmHarmonyMidiSet(maxCues = 96) {
       pattern.notes.slice(0, 20).forEach(n => set.add(patternPitchToChordMidi(n.pitch, chord)));
     }
   }
-  (song?.chordCues || []).slice(0, maxCues).forEach(cue => {
-    parseChordNotes(transposeChordName(cue.chord)).forEach(n => set.add(n));
-  });
+  // 同一首歌通常反复使用少量和弦；只解析唯一和弦，避免 Key 滑动时
+  // 对 96 个重复 cue 反复调用 WASM 和重复请求相同采样。
+  const chordNames = new Set((song?.chordCues || []).slice(0, maxCues)
+    .map(cue => transposeChordName(cue.chord))
+    .filter(Boolean));
+  chordNames.forEach(chord => parseChordNotes(chord).forEach(n => set.add(n)));
   if (!set.size) [48, 52, 55, 60, 64, 67, 72].forEach(n => set.add(n));
   return [...set];
 }
@@ -2787,7 +2790,7 @@ function clearTimers() {
   clearCountdown();
   timers.forEach(clearTimeout); timers = [];
   cueTimers.forEach(clearTimeout); cueTimers = [];
-  cancelAnimationFrame(cueRuntimeRaf); cueRuntimeRaf = null;
+  stopCueRuntimeLoop();
   activeCue = null;
   clearHarmonyTimers(true);
   harmonyAutoTimers.forEach(clearTimeout);
@@ -2820,7 +2823,9 @@ function scheduleChordCues(offset = 0, skipCueAtOffset = false) {
   nextCueIndex = song.chordCues.findIndex(c => c.time >= threshold);
   if (nextCueIndex < 0) nextCueIndex = song.chordCues.length;
   activeCue = null;
-  startCueRuntimeLoop();
+  // 手动/一键在真正按下后才有进度；等待输入时不运行空的 60fps 循环。
+  if (isManualMode()) stopCueRuntimeLoop();
+  else startCueRuntimeLoop();
 }
 
 function startCue(midi, cue, runtime = null) {
@@ -2967,12 +2972,17 @@ function rejectEarlyChordPress(key) {
 }
 
 function startCueRuntimeLoop() {
-  cancelAnimationFrame(cueRuntimeRaf);
+  stopCueRuntimeLoop();
   const loop = () => {
     updateCueRuntime();
     cueRuntimeRaf = requestAnimationFrame(loop);
   };
   loop();
+}
+
+function stopCueRuntimeLoop() {
+  cancelAnimationFrame(cueRuntimeRaf);
+  cueRuntimeRaf = null;
 }
 
 function setCueFillProgress(key, progress) {
@@ -3104,6 +3114,7 @@ function showManualNextCuePreview(cue, preserveCurrentProgress = false) {
 }
 
 function finishManualCurrentCueVisual(phrase) {
+  stopCueRuntimeLoop();
   const root = phrase?.cue?.root || phrase?.root;
   const midi = NATURAL_TO_MIDI[root];
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
@@ -3554,7 +3565,9 @@ function restartPlayback() { resetTimingRatings(); stopPlayback(); playPlayback(
 
 function rangeForMelody() {
   const melodyNotes = song?.melodyTrack?.notes?.map(n => shiftedMidi(n.note)) || [];
-  const chordNotes = (song?.chordCues || []).flatMap(c => parseChordNotes(transposeChordName(c.chord)));
+  // 和弦提示可达数百个，但实际和弦名通常只有十几个。音域只需解析唯一值。
+  const chordNames = new Set((song?.chordCues || []).map(c => transposeChordName(c.chord)).filter(Boolean));
+  const chordNotes = [...chordNames].flatMap(chord => parseChordNotes(chord));
   const notes = [...melodyNotes, ...chordNotes];
   if (!notes.length) return { start: 48, end: 72 };
   let min = Math.min(...notes);
@@ -3610,7 +3623,6 @@ function clearManualMelodyTimers() {
   manualMelodyTimers = [];
   audioScheduler.cancelGroup('song-melody');
   audioScheduler.cancelGroup('drums');
-  audioScheduler.cancelGroup('interactive-melody');
   audioScheduler.cancelGroup('interactive-melody');
 }
 
@@ -4514,9 +4526,10 @@ function setupStartScreen() {
   $('menuKeyRange')?.addEventListener('input', (ev) => {
     const next = Math.max(-14, Math.min(14, Number(ev.target.value) || 0));
     // 拖动期间只更新界面并试听最后停下的 Key，避免每个刻度都重排整首播放。
-    setKeyShift(next, { previewDelay: 90, reschedule: false });
+    setKeyShift(next, { previewDelay: 90, reschedule: false, warm: false });
   });
   $('menuKeyRange')?.addEventListener('change', () => {
+    if (wasmParser.exports) warmHarmonyTones(true);
     if (playing) scheduleFrom(currentPlayTime());
   });
   screen.querySelectorAll('[data-pick]').forEach(btn => {
