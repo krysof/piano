@@ -1,6 +1,8 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-37';
+const ASSET_VERSION = 'reset-20260711-38';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
+const SONG_PAGE_SIZE = 24;
+const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const audio = {
@@ -2441,63 +2443,133 @@ function updateSongSelectionUi(message = '') {
   if (status) status.textContent = message || (selectedSongId ? '曲目已准备' : '请选择一首歌曲');
 }
 
-function renderSongCatalog() {
+function normalizedSongSearch(value) {
+  return String(value || '').normalize('NFKC').toLocaleLowerCase('zh-CN').replace(/\s+/g, ' ').trim();
+}
+
+function songMatchesLibraryFilters(config) {
+  const query = normalizedSongSearch(songLibraryState.query);
+  const haystack = normalizedSongSearch([config.title, config.artist, config.collection, config.subtitle].join(' '));
+  if (query && !query.split(' ').every(term => haystack.includes(term))) return false;
+  if (songLibraryState.artist !== 'all' && config.collection !== songLibraryState.artist
+    && config.artist !== songLibraryState.artist) return false;
+  if (songLibraryState.version === 'advanced' && !String(config.subtitle).includes('进阶')) return false;
+  if (songLibraryState.version === 'standard' && String(config.subtitle).includes('进阶')) return false;
+  return true;
+}
+
+function visibleSongCatalog() {
+  const originalOrder = new Map(SONG_CATALOG.map((item, index) => [item.id, index]));
+  const items = SONG_CATALOG.filter(songMatchesLibraryFilters);
+  const text = (left, right, field) => String(left[field] || '').localeCompare(String(right[field] || ''), 'zh-CN');
+  items.sort((left, right) => {
+    if (songLibraryState.sort === 'popular') return Number(right.hot || 0) - Number(left.hot || 0) || text(left, right, 'title');
+    if (songLibraryState.sort === 'title') return text(left, right, 'title') || text(left, right, 'artist');
+    if (songLibraryState.sort === 'artist') return text(left, right, 'artist') || text(left, right, 'title');
+    return Number(right.featured) - Number(left.featured)
+      || Number(left.order ?? 9999) - Number(right.order ?? 9999)
+      || Number(right.hot || 0) - Number(left.hot || 0)
+      || Number(originalOrder.get(left.id)) - Number(originalOrder.get(right.id));
+  });
+  return items;
+}
+
+function createSongCard(config) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = `song-card song-card-${config.theme || 'spectrum'}`;
+  card.dataset.songId = config.id;
+  card.style.setProperty('--song-hue', String(config.hue ?? 262));
+
+  const art = document.createElement('span');
+  art.className = 'song-art';
+  art.setAttribute('aria-hidden', 'true');
+  const artPrimary = document.createElement('i');
+  const artSecondary = document.createElement('i');
+  if (config.theme === 'moon') {
+    artPrimary.className = 'song-art-moon';
+    artSecondary.className = 'song-art-rings';
+  } else {
+    artPrimary.className = 'song-art-orbit';
+    artSecondary.className = 'song-art-wave';
+  }
+  const initial = document.createElement('b');
+  initial.textContent = Array.from(config.title)[0] || '♪';
+  art.append(artPrimary, artSecondary, initial);
+
+  const content = document.createElement('span');
+  content.className = 'song-card-content';
+  const kicker = document.createElement('span');
+  kicker.className = 'song-card-kicker';
+  kicker.textContent = config.collection || 'PERFORMANCE';
+  const title = document.createElement('strong');
+  title.textContent = config.title;
+  const artist = document.createElement('em');
+  artist.textContent = config.artist;
+  const tags = document.createElement('span');
+  tags.className = 'song-tags';
+  for (const value of [config.subtitle, config.duration, `${config.bpm} BPM`, config.tone].filter(Boolean)) {
+    const tag = document.createElement('i');
+    tag.textContent = value;
+    tags.append(tag);
+  }
+  content.append(kicker, title, artist, tags);
+
+  const action = document.createElement('span');
+  action.className = 'song-card-action';
+  const actionLabel = document.createElement('b');
+  actionLabel.textContent = '选择曲目';
+  const arrow = document.createElement('i');
+  arrow.textContent = '→';
+  action.append(actionLabel, arrow);
+  card.append(art, content, action);
+  return card;
+}
+
+function renderSongCatalog(resetLimit = false) {
   const grid = $('songGrid');
   if (!grid) return;
+  if (resetLimit) songLibraryState.limit = SONG_PAGE_SIZE;
   grid.replaceChildren();
   const count = $('songLibraryCount');
   if (count) count.textContent = String(SONG_CATALOG.length).padStart(2, '0');
+  const matches = visibleSongCatalog();
+  const page = matches.slice(0, songLibraryState.limit);
+  grid.append(...page.map(createSongCard));
+  const resultCount = $('songResultCount');
+  if (resultCount) resultCount.textContent = `${matches.length} 首`;
+  const empty = $('songEmptyState');
+  if (empty) empty.hidden = matches.length > 0;
+  const more = $('songLoadMore');
+  if (more) {
+    more.hidden = page.length >= matches.length;
+    const remaining = Math.max(0, matches.length - page.length);
+    more.querySelector('span').textContent = `显示更多 · 还有 ${remaining} 首`;
+    more.querySelector('b').textContent = `${page.length} / ${matches.length}`;
+  }
+  updateSongSelectionUi();
+}
 
-  for (const config of SONG_CATALOG) {
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = `song-card song-card-${config.theme || 'spectrum'}`;
-    card.dataset.songId = config.id;
-    card.style.setProperty('--song-hue', String(config.hue ?? 262));
-
-    const art = document.createElement('span');
-    art.className = 'song-art';
-    art.setAttribute('aria-hidden', 'true');
-    const artPrimary = document.createElement('i');
-    const artSecondary = document.createElement('i');
-    if (config.theme === 'moon') {
-      artPrimary.className = 'song-art-moon';
-      artSecondary.className = 'song-art-rings';
-    } else {
-      artPrimary.className = 'song-art-orbit';
-      artSecondary.className = 'song-art-wave';
-    }
-    const initial = document.createElement('b');
-    initial.textContent = Array.from(config.title)[0] || '♪';
-    art.append(artPrimary, artSecondary, initial);
-
-    const content = document.createElement('span');
-    content.className = 'song-card-content';
-    const kicker = document.createElement('span');
-    kicker.className = 'song-card-kicker';
-    kicker.textContent = 'PERFORMANCE';
-    const title = document.createElement('strong');
-    title.textContent = config.title;
-    const artist = document.createElement('em');
-    artist.textContent = config.artist;
-    const tags = document.createElement('span');
-    tags.className = 'song-tags';
-    for (const value of [config.subtitle, config.duration, `${config.bpm} BPM`, config.tone]) {
-      const tag = document.createElement('i');
-      tag.textContent = value;
-      tags.append(tag);
-    }
-    content.append(kicker, title, artist, tags);
-
-    const action = document.createElement('span');
-    action.className = 'song-card-action';
-    const actionLabel = document.createElement('b');
-    actionLabel.textContent = '选择曲目';
-    const arrow = document.createElement('i');
-    arrow.textContent = '→';
-    action.append(actionLabel, arrow);
-    card.append(art, content, action);
-    grid.append(card);
+function renderSongLibraryFilters() {
+  const counts = new Map();
+  SONG_CATALOG.forEach(item => counts.set(item.collection || item.artist, (counts.get(item.collection || item.artist) || 0) + 1));
+  const artists = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'));
+  const select = $('songArtistFilter');
+  if (select) {
+    select.replaceChildren(new Option(`全部歌手 · ${SONG_CATALOG.length}`, 'all'),
+      ...artists.map(([artist, total]) => new Option(`${artist} · ${total}`, artist)));
+  }
+  const chips = $('songArtistChips');
+  if (chips) {
+    const preferred = ['all', '周杰伦', '王菲', '卫兰', '张学友'].filter(value => value === 'all' || counts.has(value));
+    chips.replaceChildren(...preferred.map(value => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.artist = value;
+      button.className = value === songLibraryState.artist ? 'selected' : '';
+      button.textContent = value === 'all' ? `全部 ${SONG_CATALOG.length}` : `${value} ${counts.get(value)}`;
+      return button;
+    }));
   }
 }
 
@@ -2537,12 +2609,51 @@ async function selectSong(songId) {
 function setupSongScreen() {
   const screen = $('songScreen');
   if (!screen) return;
+  renderSongLibraryFilters();
   renderSongCatalog();
   setupLaunchUiSounds(screen);
-  screen.querySelectorAll('[data-song-id]').forEach(card => {
-    card.addEventListener('click', () => {
-      selectSong(card.dataset.songId);
-    });
+  $('songGrid')?.addEventListener('click', event => {
+    const card = event.target.closest('[data-song-id]');
+    if (card) selectSong(card.dataset.songId);
+  });
+  $('songSearchInput')?.addEventListener('input', event => {
+    songLibraryState.query = event.target.value;
+    $('songSearchClear')?.classList.toggle('visible', Boolean(event.target.value));
+    renderSongCatalog(true);
+  });
+  $('songSearchClear')?.addEventListener('click', () => {
+    const input = $('songSearchInput');
+    if (input) input.value = '';
+    songLibraryState.query = '';
+    $('songSearchClear')?.classList.remove('visible');
+    renderSongCatalog(true);
+    input?.focus();
+  });
+  $('songArtistChips')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-artist]');
+    if (!button) return;
+    songLibraryState.artist = button.dataset.artist || 'all';
+    if ($('songArtistFilter')) $('songArtistFilter').value = songLibraryState.artist;
+    renderSongLibraryFilters();
+    renderSongCatalog(true);
+  });
+  $('songArtistFilter')?.addEventListener('change', event => {
+    songLibraryState.artist = event.target.value;
+    renderSongLibraryFilters();
+    if ($('songArtistFilter')) $('songArtistFilter').value = songLibraryState.artist;
+    renderSongCatalog(true);
+  });
+  $('songVersionFilter')?.addEventListener('change', event => {
+    songLibraryState.version = event.target.value;
+    renderSongCatalog(true);
+  });
+  $('songSortFilter')?.addEventListener('change', event => {
+    songLibraryState.sort = event.target.value;
+    renderSongCatalog(true);
+  });
+  $('songLoadMore')?.addEventListener('click', () => {
+    songLibraryState.limit += SONG_PAGE_SIZE;
+    renderSongCatalog();
   });
   updateSongSelectionUi();
 }
