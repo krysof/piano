@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-35';
+const ASSET_VERSION = 'reset-20260711-36';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -63,10 +63,7 @@ let oneKeyNextCueIndex = -1;
 let oneKeyLastBarEndAt = 0;
 let oneKeyLastBarDurationMs = 0;
 let manualMelodyTimers = [];
-let interactivePhrase = null;
-let interactiveTransitioning = false;
-let interactivePressQueue = [];
-let manualWrongLockUntil = -Infinity;
+const interactiveSession = window.FreezaInteractiveState.create(playMode);
 let midiReady = false;
 let midiReadyPromise = null;
 let sampleReadyPromise = Promise.resolve(false);
@@ -2799,7 +2796,7 @@ function updateCueRuntime() {
   // 手动/一键模式的色块是“已经开始演奏的小节进度”，不是谱面提前提示。
   // 没按键、没有正在演奏的小节时，键盘上不产生进度条。
   if (isManualMode()) {
-    const phrase = interactivePhrase;
+    const phrase = interactiveSession.phrase;
     if (!phrase || phrase.musicVisualComplete
       || !Number.isFinite(phrase.musicStartAt) || !Number.isFinite(phrase.musicEndAt)) return;
     const duration = Math.max(1, phrase.musicEndAt - phrase.musicStartAt);
@@ -2850,6 +2847,7 @@ function clearCountdown() {
   clearTimeout(countdownTimer);
   countdownTimer = null;
   countdownActive = false;
+  interactiveSession.finishCountdown();
   clearCountdownCuePreview();
   const el = $('countdownOverlay');
   if (el) {
@@ -3142,6 +3140,7 @@ function startCountdownThenPlay() {
   const steps = ['3', '2', '1'];
   let i = 0;
   countdownActive = true;
+  interactiveSession.beginCountdown(playMode);
   showCountdownCuePreview();
   const tick = () => {
     if (!el) return playPlayback();
@@ -3164,6 +3163,7 @@ function startCountdownThenPlay() {
 
 function playPlayback() {
   if (!song) return;
+  if (!countdownActive) interactiveSession.finishCountdown();
   if (playOffset <= 0.01 || playOffset >= song.duration) {
     nextManualMelodyIndex = 0;
     resetHarmonyHalfSequence();
@@ -3468,10 +3468,7 @@ function playNextManualMelodyNote(cue, timeScale = 1) {
 }
 
 function resetInteractiveSequencer() {
-  interactivePhrase = null;
-  interactiveTransitioning = false;
-  interactivePressQueue = [];
-  manualWrongLockUntil = -Infinity;
+  interactiveSession.reset(playMode);
   oneKeyNextCueIndex = -1;
   oneKeyLastBarEndAt = 0;
   oneKeyLastBarDurationMs = 0;
@@ -3483,28 +3480,14 @@ function nextCueAfter(cue) {
   return index >= 0 ? (cues[index + 1] || null) : null;
 }
 
-function sameInteractiveCue(left, right) {
-  if (!left || !right) return false;
-  if (left === right) return true;
-  if (left._id && right._id) return left._id === right._id;
-  return Math.abs(Number(left.time) - Number(right.time)) < 0.001
-    && String(left.chord || '') === String(right.chord || '');
-}
-
 function interactiveCueIsQueued(cue) {
-  return Boolean(cue && interactivePressQueue.some(request => sameInteractiveCue(request?.cue, cue)));
-}
-
-function enqueueInteractiveRequest(request) {
-  if (!request || interactiveCueIsQueued(request.cue)) return false;
-  interactivePressQueue.push(request);
-  return true;
+  return interactiveSession.hasQueuedCue(cue);
 }
 
 function cueForInteractivePress(root) {
   let cue = activeCue?.cue || chordAtTime(currentPlayTime()) || null;
-  if (interactivePhrase?.cue && cue === interactivePhrase.cue) {
-    const next = nextCueAfter(interactivePhrase.cue);
+  if (interactiveSession.phrase?.cue && cue === interactiveSession.phrase.cue) {
+    const next = nextCueAfter(interactiveSession.phrase.cue);
     if (next && (!root || next.root === root || rootFromChord(next.chord) === root)) cue = next;
   }
   return cue || { chord: root, root, time: currentPlayTime() };
@@ -3528,71 +3511,35 @@ function oneKeyOutputKey(cue, fallbackKey) {
   return (root && document.querySelector(`#manualKeyboard .key[data-root="${root}"]`)) || fallbackKey;
 }
 
-function oneKeyTimingGrade(progress) {
-  if (!Number.isFinite(progress) || progress < 70 || progress > 120) return 'MISS';
-  const error = Math.abs(progress - 100);
-  if (error <= 2) return 'SSS';
-  if (error <= 4) return 'SS';
-  if (error <= 6) return 'S';
-  if (error <= 9) return 'A';
-  if (error <= 12) return 'B';
-  if (error <= 15) return 'C';
-  if (error <= 18) return 'D';
-  if (error <= 22) return 'E';
-  return 'F';
-}
-
 function oneKeyPressTiming(now = performance.now()) {
-  if (interactivePhrase && Number.isFinite(interactivePhrase.musicStartAt)
-    && Number.isFinite(interactivePhrase.musicEndAt)) {
-    const duration = Math.max(1, interactivePhrase.musicEndAt - interactivePhrase.musicStartAt);
-    const progress = ((now - interactivePhrase.musicStartAt) / duration) * 100;
-    if (progress < 70 || progress > 120 || interactivePressQueue.length || interactiveTransitioning) {
-      return { accepted: false, progress, grade: 'MISS', queued: false };
-    }
-    return {
-      accepted: true,
+  if (interactiveSession.phrase && Number.isFinite(interactiveSession.phrase.musicStartAt)
+    && Number.isFinite(interactiveSession.phrase.musicEndAt)) {
+    const duration = Math.max(1, interactiveSession.phrase.musicEndAt - interactiveSession.phrase.musicStartAt);
+    const progress = ((now - interactiveSession.phrase.musicStartAt) / duration) * 100;
+    const judged = window.FreezaInteractiveState.judgeOneKeyTiming(
       progress,
-      grade: oneKeyTimingGrade(progress),
-      queued: true,
+      Boolean(interactiveSession.queue.length || interactiveSession.transitioning),
+    );
+    return {
+      ...judged,
+      queued: judged.accepted,
     };
   }
   if (oneKeyLastBarEndAt > 0 && oneKeyLastBarDurationMs > 0) {
     const progress = 100 + ((now - oneKeyLastBarEndAt) / oneKeyLastBarDurationMs) * 100;
-    return { accepted: true, progress, grade: oneKeyTimingGrade(progress), queued: false };
+    return { ...window.FreezaInteractiveState.judgeOneKeyTiming(progress), queued: false };
   }
   return { accepted: true, progress: 100, grade: 'SSS', queued: false };
 }
 
 function manualMusicPressTiming(now = performance.now()) {
-  if (!interactivePhrase || !Number.isFinite(interactivePhrase.musicStartAt)
-    || !Number.isFinite(interactivePhrase.musicEndAt)) {
+  if (!interactiveSession.phrase || !Number.isFinite(interactiveSession.phrase.musicStartAt)
+    || !Number.isFinite(interactiveSession.phrase.musicEndAt)) {
     return { accepted: true, progress: 100, grade: 'SSS' };
   }
-  const duration = Math.max(1, interactivePhrase.musicEndAt - interactivePhrase.musicStartAt);
-  const progress = ((now - interactivePhrase.musicStartAt) / duration) * 100;
-  // 手动判定窗为 85–115。85 前无效；115 后不能让歌曲永久卡死，按 115
-  // 的最晚有效等级继续。按键只决定评级/排队，音乐仍等真实小节边界再启动。
-  const ratedProgress = Math.max(85, Math.min(115, progress));
-  return {
-    // 给 performance.now() 的子帧取样误差留 0.1%，界面显示 85 时必须算有效。
-    accepted: progress >= 84.9,
-    progress: ratedProgress,
-    grade: manualTimingGrade(ratedProgress),
-  };
-}
-
-function manualTimingGrade(progress) {
-  const error = Math.abs(Number(progress) - 100);
-  if (error <= 1.5) return 'SSS';
-  if (error <= 3) return 'SS';
-  if (error <= 4.5) return 'S';
-  if (error <= 6) return 'A';
-  if (error <= 7.5) return 'B';
-  if (error <= 9) return 'C';
-  if (error <= 10.5) return 'D';
-  if (error <= 12) return 'E';
-  return 'F';
+  const duration = Math.max(1, interactiveSession.phrase.musicEndAt - interactiveSession.phrase.musicStartAt);
+  const progress = ((now - interactiveSession.phrase.musicStartAt) / duration) * 100;
+  return window.FreezaInteractiveState.judgeManualTiming(progress);
 }
 
 function timingForInteractivePhrase(cue, timing = {}) {
@@ -3621,14 +3568,14 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     melody = playNextManualMelodyNote(cue, scheduleTiming.timeScale);
   }
   const harmony = playStyledHarmony(root, cue, scheduleTiming.timeScale);
-  interactivePhrase = {
+  interactiveSession.startPhrase({
     root,
     cue: harmony?.cue || cue,
     segmentEnd: Math.max(Number(melody?.segmentEnd || 0), Number(harmony?.segmentEnd || 0)),
     melodyEvents: melody?.events || [],
     harmonyEvents: harmony?.events || [],
-  };
-  const phrase = interactivePhrase;
+  });
+  const phrase = interactiveSession.phrase;
   const phraseStartedAt = performance.now();
   const naturalDurationMs = Math.max(60,
     (Number(scheduleTiming.boundary) - Number(cue?.time || 0)) * Number(scheduleTiming.timeScale || 1) * 1000);
@@ -3652,7 +3599,7 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     const nextPreviewCue = nextCueAfter(phrase.cue);
     if (nextPreviewCue) {
       const previewTimer = setTimeout(() => {
-        if (interactivePhrase !== phrase || interactiveTransitioning) return;
+        if (interactiveSession.phrase !== phrase || interactiveSession.transitioning) return;
         hideInteractivePhraseSymbol(phrase);
         showManualNextCuePreview(nextPreviewCue, true);
       }, Math.max(0, naturalDurationMs * 0.5));
@@ -3662,13 +3609,13 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
   if (isOneKeyMode()) {
     const naturalEndAt = phrase.musicEndAt;
     const completionTimer = setTimeout(() => {
-      if (interactivePhrase !== phrase || interactiveTransitioning) return;
+      if (interactiveSession.phrase !== phrase || interactiveSession.transitioning) return;
       playOffset = Math.max(playOffset, Math.min(song?.duration || scheduleTiming.boundary, scheduleTiming.boundary));
-      interactivePhrase = null;
+      interactiveSession.clearPhrase(phrase);
       oneKeyLastBarEndAt = performance.now();
       oneKeyLastBarDurationMs = naturalDurationMs;
       ensureManualClock();
-      const next = interactivePressQueue.shift();
+      const next = interactiveSession.shiftQueue();
       scheduleChordCues(playOffset, Boolean(next));
       updateClock();
       updateLyrics();
@@ -3689,16 +3636,16 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     }, Math.max(0, naturalEndAt - performance.now()) + 12);
     manualMelodyTimers.push(completionTimer);
   } else if (isManualMode()) {
-    const completedPhrase = interactivePhrase;
+    const completedPhrase = interactiveSession.phrase;
     // 下一键提示跟音乐小节边界走，不能等待钢琴/吉他采样的 release 尾音。
     // 否则长延音会让进度已经结束后仍空白很久。
     const completedDueAt = Math.max(performance.now(), Number(completedPhrase.musicEndAt || 0));
     const completionTimer = setTimeout(() => {
-      if (interactivePhrase !== completedPhrase || interactiveTransitioning) return;
-      completedPhrase.musicVisualComplete = true;
+      if (interactiveSession.phrase !== completedPhrase || interactiveSession.transitioning) return;
+      interactiveSession.markPhraseComplete(completedPhrase);
       playOffset = Math.max(playOffset,
         Math.min(song?.duration || scheduleTiming.boundary, Number(scheduleTiming.boundary)));
-      if (interactivePressQueue.length) {
+      if (interactiveSession.queue.length) {
         finishManualCurrentCueVisual(completedPhrase);
         finishInteractiveTransition('manual', scheduleTiming.boundary);
         return;
@@ -3717,9 +3664,9 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     // 还没迟到，就只排队并让当前伴奏自然结束，不能为了“腾位置”而快放。
     const completedPhrase = phrase;
     const completionTimer = setTimeout(() => {
-      if (interactivePhrase !== completedPhrase || interactiveTransitioning) return;
-      interactivePhrase = null;
-      const next = interactivePressQueue.shift();
+      if (interactiveSession.phrase !== completedPhrase || interactiveSession.transitioning) return;
+      interactiveSession.clearPhrase(completedPhrase);
+      const next = interactiveSession.shiftQueue();
       if (next) beginInteractivePhrase(next.root, next.cue, { progress: 100, dueAt: performance.now() });
     }, naturalDurationMs + 12);
     manualMelodyTimers.push(completionTimer);
@@ -3733,16 +3680,16 @@ function beginInteractivePhrase(root, cue, timing = {}) {
     const request = { root, cue, timing: { ...timing, progress: 100, dueAt: performance.now() + scheduleTiming.waitMs } };
     const waiting = { root, cue, waiting: true, waitingUntil: performance.now() + scheduleTiming.waitMs, waitingTimer: null };
     waiting.waitingTimer = setTimeout(() => {
-      if (interactivePhrase !== waiting) return;
-      interactivePhrase = null;
+      if (interactiveSession.phrase !== waiting) return;
+      interactiveSession.clearPhrase(waiting);
       startInteractivePhraseNow(request.root, request.cue, request.timing);
-      if (interactivePressQueue.length) {
-        const next = interactivePressQueue.shift();
+      if (interactiveSession.queue.length) {
+        const next = interactiveSession.shiftQueue();
         setTimeout(() => requestInteractivePhrase(next.root, next.cue, next.timing), 0);
       }
     }, scheduleTiming.waitMs);
     manualMelodyTimers.push(waiting.waitingTimer);
-    interactivePhrase = waiting;
+    interactiveSession.setWaiting(waiting);
     return;
   }
   startInteractivePhraseNow(root, cue, timing);
@@ -3767,12 +3714,11 @@ function pendingInteractiveEvents(phrase, nowSong, nowPerf) {
 
 function finishInteractiveTransition(mode, boundary) {
   playOffset = Math.max(playOffset, Math.min(song?.duration || boundary, boundary));
-  interactiveTransitioning = false;
-  interactivePhrase = null;
+  interactiveSession.finishTransition();
   // 触发追赶时，队首就是玩家已经提前按下、马上要真正播放的 boundary cue。
   // 重新调度提示时必须跳过它，否则同一个 cue 会先以 100% 进度瞬间重画一次，
   // 看起来像“下一个和弦飞快升起”。
-  const next = interactivePressQueue.shift();
+  const next = interactiveSession.shiftQueue();
   if (mode === 'semi') {
     scheduleFrom(playOffset, true, Boolean(next));
   } else {
@@ -3785,28 +3731,28 @@ function finishInteractiveTransition(mode, boundary) {
     updateLyrics();
   }
   if (next) beginInteractivePhrase(next.root, next.cue, next.timing);
-  if (interactivePressQueue.length) {
-    const following = interactivePressQueue.shift();
+  if (interactiveSession.queue.length) {
+    const following = interactiveSession.shiftQueue();
     setTimeout(() => requestInteractivePhrase(following.root, following.cue, following.timing), 0);
   }
 }
 
 function accelerateInteractivePhrase() {
-  if (!interactivePhrase || interactiveTransitioning) return;
+  if (!interactiveSession.phrase || interactiveSession.transitioning) return;
   const mode = isManualMode() ? 'manual' : 'semi';
   const nowSong = currentPlayTime();
   const nowPerf = performance.now();
-  const boundary = Math.max(nowSong, Math.min(song?.duration || Infinity, Number(interactivePhrase.segmentEnd || nowSong)));
-  const pending = pendingInteractiveEvents(interactivePhrase, nowSong, nowPerf);
+  const boundary = Math.max(nowSong, Math.min(song?.duration || Infinity, Number(interactiveSession.phrase.segmentEnd || nowSong)));
+  const pending = pendingInteractiveEvents(interactiveSession.phrase, nowSong, nowPerf);
   if (!pending.length) return finishInteractiveTransition(mode, boundary);
 
   const catchup = runWasmCommand({ op: 'catchup', remaining: pending.map(item => item.remaining) });
   const catchupDuration = Number(catchup.duration);
   const scale = Number(catchup.scale);
-  interactiveTransitioning = true;
+  if (!interactiveSession.beginTransition()) return;
   clearTimers();
   playing = false;
-  interactivePhrase = null;
+  interactiveSession.clearPhrase(interactiveSession.phrase);
 
   for (const [index, item] of pending.entries()) {
     const delay = Math.max(0, Number(catchup.delays?.[index] ?? item.remaining * scale) * 1000);
@@ -3838,47 +3784,37 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
     ? { progress: 100, dueAt: performance.now() }
     : timing;
   const request = { root, cue, timing: requestTiming };
-  if (isManualMode() && interactivePhrase?.musicVisualComplete) {
+  if (isManualMode() && interactiveSession.phrase?.musicVisualComplete) {
     // 当前片段的边界 timer 已经结束；此时才按正确键时，旧 phrase 仍保留
     // 只是为了显示下一键预告。必须先释放它，否则旧伴奏 release 事件会让
     // 请求进入一个再也没有 completion timer 消费的队列。
-    interactivePhrase = null;
-  }
-  if (interactiveTransitioning) {
-    enqueueInteractiveRequest(request);
-    return;
-  }
-  if (interactivePhrase?.waiting) {
-    enqueueInteractiveRequest(request);
-    return;
+    interactiveSession.clearPhrase(interactiveSession.phrase);
   }
   const nowSong = currentPlayTime();
   const nowPerf = performance.now();
-  const pending = interactivePhrase && pendingInteractiveEvents(interactivePhrase, nowSong, nowPerf).length;
-  const phraseBoundaryPending = interactivePhrase && Number.isFinite(interactivePhrase.naturalEndAt)
-    && nowPerf < interactivePhrase.naturalEndAt;
-  if (pending || phraseBoundaryPending) {
-    if (!enqueueInteractiveRequest(request)) return;
-    const requestedCueTime = Number(cue?.time);
-    const melodyAlreadyStarted = isSemiAutoMode() && Number.isFinite(requestedCueTime)
-      && nowSong >= requestedCueTime - 0.008;
-    // 追赶只属于半自动模式：主旋律已经到达这个 cue、伴奏却按迟时，才压缩
-    // 旧伴奏尾部来追主旋律。手动/一键由按键驱动音乐；无论根音相同还是不同，
-    // 都等待当前小节自然结束，不能把玩家的连续输入解释成加速指令。
-    // 手动/一键必须等完整小节边界，不能因为最后一个音符已经触发就提前启动
-    // 下一段。半自动也只有“已经迟到且确实还有残余事件”时才需要追赶。
-    if (!melodyAlreadyStarted || !pending) return;
-    accelerateInteractivePhrase();
-    return;
-  }
-  beginInteractivePhrase(root, cue, requestTiming);
+  const pending = interactiveSession.phrase && pendingInteractiveEvents(interactiveSession.phrase, nowSong, nowPerf).length;
+  const phraseBoundaryPending = interactiveSession.phrase && Number.isFinite(interactiveSession.phrase.naturalEndAt)
+    && nowPerf < interactiveSession.phrase.naturalEndAt;
+  const requestedCueTime = Number(cue?.time);
+  const melodyAlreadyStarted = isSemiAutoMode() && Number.isFinite(requestedCueTime)
+    && nowSong >= requestedCueTime - 0.008;
+  // 所有模式共用一个请求状态机。只有半自动且主旋律已经越过 cue 时允许
+  // catch-up；手动/一键无论连续按多少次，都只能排队等待真实小节边界。
+  const decision = interactiveSession.decideRequest(request, {
+    pending,
+    boundaryPending: phraseBoundaryPending,
+    melodyAlreadyStarted,
+    allowCatchup: isSemiAutoMode(),
+  });
+  if (decision.action === 'catchup') accelerateInteractivePhrase();
+  else if (decision.action === 'start') beginInteractivePhrase(root, cue, requestTiming);
 }
 
 function triggerChordKey(label, pickSlot, key) {
   if (!key || !song || !document.body.classList.contains('game-started')) return false;
   // 3/2/1 只是准备阶段。任何触屏、鼠标或外接 MIDI 输入都不能消费 cue、
   // 启动手动小节或改变一键索引，否则倒计时结束后会从错误状态开始。
-  if (countdownActive) return false;
+  if (countdownActive || !interactiveSession.canAcceptInput()) return false;
   requestWakeLock();
   const oneKeyMode = isOneKeyMode();
   const manualMode = !oneKeyMode && isManualMode();
@@ -3886,15 +3822,15 @@ function triggerChordKey(label, pickSlot, key) {
   const manualPress = manualMode ? manualMusicPressTiming() : null;
   if (oneKeyMode && !oneKeyPress.accepted) {
     const pendingCue = (song?.chordCues || [])[oneKeyNextCueIndex]
-      || nextCueAfter(interactivePhrase?.cue);
+      || nextCueAfter(interactiveSession.phrase?.cue);
     showTimingRating(oneKeyOutputKey(pendingCue, key), 'MISS');
     rejectEarlyChordPress(key);
     return false;
   }
   const pressedCue = oneKeyMode
     ? takeNextOneKeyCue()
-    : (manualMode && interactivePhrase?.cue
-      ? (nextCueAfter(interactivePhrase.cue) || interactivePhrase.cue)
+    : (manualMode && interactiveSession.phrase?.cue
+      ? (nextCueAfter(interactiveSession.phrase.cue) || interactiveSession.phrase.cue)
       : cueForInteractivePress(label));
   if (!pressedCue) return false;
   const performedRoot = oneKeyMode
@@ -3935,8 +3871,7 @@ function triggerChordKey(label, pickSlot, key) {
     const wrongPressedAt = performance.now();
     // 一个 MISS 的浮字动画持续 1 秒。在它消失前，所有后续错误输入都静音、
     // 无动画、也不重复计分。85–115 判定窗内的正确键可以越过这把锁。
-    if (wrongPressedAt < manualWrongLockUntil) return false;
-    manualWrongLockUntil = wrongPressedAt + 1000;
+    if (!interactiveSession.tryWrongFeedback(wrongPressedAt, 1000)) return false;
     showTimingRating(key, 'MISS');
     rejectEarlyChordPress(key);
     showPickZoneFeedback(key, normalizedPickSlot);
@@ -3945,7 +3880,7 @@ function triggerChordKey(label, pickSlot, key) {
     animateChordPress(key);
     return true;
   }
-  if (manualMode && matchesManualCue && manualPress.accepted) manualWrongLockUntil = -Infinity;
+  if (manualMode && matchesManualCue && manualPress.accepted) interactiveSession.clearWrongFeedback();
   harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, normalizedPickSlot + 1));
   // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
   // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
