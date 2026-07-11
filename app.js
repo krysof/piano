@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-42';
+const ASSET_VERSION = 'reset-20260711-43';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -2822,6 +2822,7 @@ function clearTimers() {
   clearCountdown();
   timers.forEach(clearTimeout); timers = [];
   cueTimers.forEach(clearTimeout); cueTimers = [];
+  cancelMelodyAndDrumAudio();
   stopCueRuntimeLoop();
   activeCue = null;
   clearHarmonyTimers(true);
@@ -3653,6 +3654,13 @@ function renderKeyboard(id, start, end, source) {
 function clearManualMelodyTimers() {
   manualMelodyTimers.forEach(clearTimeout);
   manualMelodyTimers = [];
+  cancelMelodyAndDrumAudio();
+}
+
+function cancelMelodyAndDrumAudio() {
+  // scheduleFrom() 会被主旋律、Key、鼓机和拨片开关用于原地重排。
+  // 只清 setTimeout 不足以撤销已交给短前瞻调度器的旧任务；否则关闭
+  // 主旋律后，旧 song-melody 队列仍会在后面的拨片事件附近继续发声。
   audioScheduler.cancelGroup('song-melody');
   audioScheduler.cancelGroup('drums');
   audioScheduler.cancelGroup('interactive-melody');
