@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-18';
+const ASSET_VERSION = 'reset-20260711-19';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -73,6 +73,7 @@ let startRequested = false;
 let selectedSongId = null;
 let songSelectionPending = false;
 let countdownTimer = null;
+let countdownActive = false;
 let harmonyAutoTimers = [];
 let harmonyToneMode = 1;
 let userPickEvents = [];
@@ -2829,6 +2830,7 @@ function updateCueRuntime() {
 function clearCountdown() {
   clearTimeout(countdownTimer);
   countdownTimer = null;
+  countdownActive = false;
   clearCountdownCuePreview();
   const el = $('countdownOverlay');
   if (el) {
@@ -3051,6 +3053,7 @@ function startCountdownThenPlay() {
   const el = $('countdownOverlay');
   const steps = ['3', '2', '1'];
   let i = 0;
+  countdownActive = true;
   showCountdownCuePreview();
   const tick = () => {
     if (!el) return playPlayback();
@@ -3653,6 +3656,9 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
 
 function triggerChordKey(label, pickSlot, key) {
   if (!key || !song || !document.body.classList.contains('game-started')) return false;
+  // 3/2/1 只是准备阶段。任何触屏、鼠标或外接 MIDI 输入都不能消费 cue、
+  // 启动手动小节或改变一键索引，否则倒计时结束后会从错误状态开始。
+  if (countdownActive) return false;
   requestWakeLock();
   const oneKeyMode = isOneKeyMode();
   const manualMode = !oneKeyMode && isManualMode();
