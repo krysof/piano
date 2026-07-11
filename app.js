@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-38';
+const ASSET_VERSION = 'reset-20260711-39';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -80,6 +80,8 @@ let harmonyToneMode = 1;
 let userPickEvents = [];
 let initialPickSlot = null;
 let userKeyShift = 0;
+let keyPreviewTimer = null;
+let keyPreviewGeneration = 0;
 let playbackNeedsFocusResync = false;
 let focusResyncing = false;
 let focusResumePosition = null;
@@ -946,29 +948,54 @@ function updateCurrentKeyStatus() {
   status.title = `当前 Key：${keyName}（升降 ${userKeyShift >= 0 ? '+' : ''}${userKeyShift}）`;
 }
 
-function previewKeyShift(delta) {
+function previewKeyShift() {
   ensureAudio();
-  // 试听变调后的实际音高：先响根音，再轻轻带出当前 Key 的 C 和弦色彩。
-  const root = shiftedMidi(60);
+  // 试听“歌曲原调 + 用户升降”后的实际主音。此前这里只叠加 userKeyShift，
+  // 非 C 调歌曲调回 0 时会错误试听 C，听起来像没有真正调回原调。
+  const root = Math.max(21, Math.min(108, Math.round(60 + songPlaybackTransposeSemitones())));
+  const generation = ++keyPreviewGeneration;
   playNote(root, 0.38, 0.72);
-  setTimeout(() => playHarmonyToneNote(root + 4, 0.32, 0.42, harmonyToneMode), 70);
-  setTimeout(() => playHarmonyToneNote(root + 7, 0.32, 0.40, harmonyToneMode), 115);
+  setTimeout(() => {
+    if (generation === keyPreviewGeneration) playHarmonyToneNote(Math.min(108, root + 4), 0.32, 0.42, harmonyToneMode);
+  }, 70);
+  setTimeout(() => {
+    if (generation === keyPreviewGeneration) playHarmonyToneNote(Math.min(108, root + 7), 0.32, 0.40, harmonyToneMode);
+  }, 115);
 }
 
-function applyKeyShift(delta) {
-  userKeyShift = Math.max(-14, Math.min(14, userKeyShift + delta));
+function queueKeyPreview(delay = 0) {
+  clearTimeout(keyPreviewTimer);
+  // 立即使上一次试听的后续和弦音失效，避免快速升降后旧 Key 仍补响。
+  keyPreviewGeneration += 1;
+  keyPreviewTimer = setTimeout(() => {
+    keyPreviewTimer = null;
+    previewKeyShift();
+  }, delay);
+}
+
+function setKeyShift(nextShift, { previewDelay = 0, reschedule = true } = {}) {
+  const next = Math.max(-14, Math.min(14, Math.round(Number(nextShift) || 0)));
+  if (next === userKeyShift) return false;
+  const activeRuntime = activeCue?.cue?.root ? cueState.get(activeCue.cue.root) : null;
+  userKeyShift = next;
   updateKeyButtons();
   renderManualKeyboard();
   renderPlaybackForMelody();
   updateLyrics();
   if (activeCue) {
     const midi = NATURAL_TO_MIDI[activeCue.cue.root];
+    // 重建变调后的键盘时保留当前提示的原始时间轴，不能从 0 重新计时。
+    startCue(midi, activeCue.cue, activeRuntime || undefined);
     if (activeCue.hit) hitCue(midi, activeCue.cue);
-    else startCue(midi, activeCue.cue);
   }
-  warmHarmonyTones(true);
-  previewKeyShift(delta);
-  if (playing) scheduleFrom(currentPlayTime());
+  if (wasmParser.exports) warmHarmonyTones(true);
+  queueKeyPreview(previewDelay);
+  if (playing && reschedule) scheduleFrom(currentPlayTime());
+  return true;
+}
+
+function applyKeyShift(delta) {
+  setKeyShift(userKeyShift + delta);
 }
 
 async function ensureMic() {
@@ -4486,13 +4513,10 @@ function setupStartScreen() {
   $('menuKeyUp')?.addEventListener('click', () => applyKeyShift(1));
   $('menuKeyRange')?.addEventListener('input', (ev) => {
     const next = Math.max(-14, Math.min(14, Number(ev.target.value) || 0));
-    if (next === userKeyShift) return;
-    userKeyShift = next;
-    updateKeyButtons();
-    renderManualKeyboard();
-    renderPlaybackForMelody();
-    updateLyrics();
-    previewKeyShift(0);
+    // 拖动期间只更新界面并试听最后停下的 Key，避免每个刻度都重排整首播放。
+    setKeyShift(next, { previewDelay: 90, reschedule: false });
+  });
+  $('menuKeyRange')?.addEventListener('change', () => {
     if (playing) scheduleFrom(currentPlayTime());
   });
   screen.querySelectorAll('[data-pick]').forEach(btn => {
