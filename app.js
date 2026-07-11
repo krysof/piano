@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-32';
+const ASSET_VERSION = 'reset-20260711-33';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3408,16 +3408,22 @@ function ensureManualClock() {
   clockTimer = setInterval(() => { updateClock(); updateLyrics(); }, 33);
 }
 
-function playNextManualMelodyNote(timeScale = 1) {
+function playNextManualMelodyNote(cue, timeScale = 1) {
   const notes = song?.melodyTrack?.notes || [];
   if (!notes.length || nextManualMelodyIndex >= notes.length) return { events: [], segmentEnd: playOffset };
   ensureManualClock();
 
+  // 手动片段必须以和弦 cue 的谱面时间为原点。旧实现以该段第一个旋律音
+  // 为原点，会吞掉 cue 到首音之间的休止：例如《月亮代表我的心》第二个 C
+  // 在 1.564s，而旋律首音在 1.956s，旧代码会把它提前约 391ms，随后越来越
+  // 像双倍速并与和弦错位。
+  const cueStart = Number.isFinite(Number(cue?.time)) ? Number(cue.time) : playOffset;
+  while (nextManualMelodyIndex < notes.length
+    && Number(notes[nextManualMelodyIndex].time) < cueStart - 0.001) nextManualMelodyIndex += 1;
   const startIndex = nextManualMelodyIndex;
-  const startTime = notes[startIndex].time;
-  const nextCue = (song?.chordCues || []).find(c => c.time > startTime + 0.08);
+  const nextCue = nextCueAfter(cue);
   // 最后一个和弦必须把剩余主旋律完整播完，不能只截取固定 1.8 秒后永远到不了结算。
-  const chunkEnd = Math.min(song?.duration || Infinity, nextCue?.time ?? (song?.duration || startTime + 1.8));
+  const chunkEnd = Math.min(song?.duration || Infinity, nextCue?.time ?? (song?.duration || cueStart + 1.8));
   let endIndex = notes.findIndex((n, i) => i > startIndex && n.time >= chunkEnd - 0.001);
   if (endIndex < 0) endIndex = nextCue ? Math.min(notes.length, startIndex + 8) : notes.length;
   endIndex = Math.max(endIndex, startIndex + 1);
@@ -3427,7 +3433,7 @@ function playNextManualMelodyNote(timeScale = 1) {
 
   const events = chunk.map((note, localIndex) => {
     const idx = startIndex + localIndex;
-    const delay = Math.max(0, (note.time - startTime) * timeScale * 1000);
+    const delay = Math.max(0, (note.time - cueStart) * timeScale * 1000);
     const event = { note, idx, dueAt: performance.now() + delay, fired: false, timer: null };
     event.timer = setTimeout(() => {
       event.fired = true;
@@ -3440,7 +3446,7 @@ function playNextManualMelodyNote(timeScale = 1) {
     manualMelodyTimers.push(event.timer);
     return event;
   });
-  return { events, segmentEnd: chunkEnd, endIndex, startTime };
+  return { events, segmentEnd: chunkEnd, endIndex, startTime: cueStart };
 }
 
 function resetInteractiveSequencer() {
@@ -3578,7 +3584,7 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
   let melody = { events: [], segmentEnd: scheduleTiming.boundary };
   if (isManualMode()) {
     clearManualMelodyTimers();
-    melody = playNextManualMelodyNote(scheduleTiming.timeScale);
+    melody = playNextManualMelodyNote(cue, scheduleTiming.timeScale);
   }
   const harmony = playStyledHarmony(root, cue, scheduleTiming.timeScale);
   interactivePhrase = {
