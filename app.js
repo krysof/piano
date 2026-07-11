@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-21';
+const ASSET_VERSION = 'reset-20260711-22';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -2918,6 +2918,20 @@ function finishManualCurrentCueVisual(phrase) {
   activeCue = null;
 }
 
+function hideInteractivePhraseSymbol(phrase) {
+  const root = phrase?.cue?.root || phrase?.root;
+  const midi = NATURAL_TO_MIDI[root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    const symbol = key.querySelector('.chord-symbol');
+    if (!symbol) return;
+    symbol.textContent = '';
+    symbol.classList.remove('blank', 'hit', 'fail');
+    delete symbol.dataset.text;
+    delete symbol.dataset.cueId;
+    delete symbol.dataset.manualNextPreview;
+  });
+}
+
 function enterPlaybackAfterCountdown() {
   if (isManualMode()) {
     if (guideMode) {
@@ -3545,21 +3559,19 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     });
     startCueRuntimeLoop();
   }
-  if (isManualMode() && !isOneKeyMode()) {
+  if (isManualMode()) {
     const nextPreviewCue = nextCueAfter(phrase.cue);
     if (nextPreviewCue) {
       const previewTimer = setTimeout(() => {
         if (interactivePhrase !== phrase || interactiveTransitioning) return;
+        hideInteractivePhraseSymbol(phrase);
         showManualNextCuePreview(nextPreviewCue, true);
       }, Math.max(0, naturalDurationMs * 0.5));
       manualMelodyTimers.push(previewTimer);
     }
   }
   if (isOneKeyMode()) {
-    const now = phraseStartedAt;
     const naturalEndAt = phrase.musicEndAt;
-    const lastAttackAt = [...phrase.melodyEvents, ...phrase.harmonyEvents]
-      .reduce((latest, event) => Math.max(latest, Number(event.dueAt || now)), now);
     const completionTimer = setTimeout(() => {
       if (interactivePhrase !== phrase || interactiveTransitioning) return;
       playOffset = Math.max(playOffset, Math.min(song?.duration || scheduleTiming.boundary, scheduleTiming.boundary));
@@ -3574,10 +3586,18 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
       // 极短小节可能在事件循环边界才收到下一次输入；下一小节仍从头开始。
       if (next) beginInteractivePhrase(next.root, next.cue, { progress: 100, dueAt: performance.now() });
       else {
-        clearManualCueVisuals();
-        if (!nextCueAfter(phrase.cue)) finishPlayback();
+        const upcoming = nextCueAfter(phrase.cue);
+        finishManualCurrentCueVisual(phrase);
+        if (upcoming) {
+          const alreadyShown = [...document.querySelectorAll('#manualKeyboard .chord-symbol[data-manual-next-preview="1"]')]
+            .some(symbol => symbol.dataset.cueId === (upcoming?._id || ''));
+          if (!alreadyShown) showManualNextCuePreview(upcoming, true);
+        } else {
+          clearManualCueVisuals();
+          finishPlayback();
+        }
       }
-    }, Math.max(0, Math.max(naturalEndAt, lastAttackAt) - performance.now()) + 12);
+    }, Math.max(0, naturalEndAt - performance.now()) + 12);
     manualMelodyTimers.push(completionTimer);
   } else if (isManualMode()) {
     const completedPhrase = interactivePhrase;
