@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-25';
+const ASSET_VERSION = 'reset-20260711-26';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3618,6 +3618,11 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     const completionTimer = setTimeout(() => {
       if (interactivePhrase !== completedPhrase || interactiveTransitioning) return;
       completedPhrase.musicVisualComplete = true;
+      if (interactivePressQueue.length) {
+        finishManualCurrentCueVisual(completedPhrase);
+        finishInteractiveTransition('manual', scheduleTiming.boundary);
+        return;
+      }
       const next = nextCueAfter(completedPhrase.cue);
       finishManualCurrentCueVisual(completedPhrase);
       if (next) {
@@ -3754,6 +3759,13 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
   const pending = interactivePhrase && pendingInteractiveEvents(interactivePhrase, nowSong, performance.now()).length;
   if (pending) {
     interactivePressQueue.push(request);
+    const currentRoot = interactivePhrase?.cue?.root || rootFromChord(interactivePhrase?.cue?.chord) || interactivePhrase?.root;
+    const requestedRoot = cue?.root || rootFromChord(cue?.chord) || root;
+    const isRepeatedScoreKey = isManualMode() && cue && interactivePhrase?.cue && cue !== interactivePhrase.cue
+      && currentRoot && requestedRoot && currentRoot === requestedRoot;
+    // 谱面允许连续两个相同根音。第二次同键是“下一小节已输入”，不是要求
+    // 把当前小节快放；保留队列，等当前小节自然结束后再正常速率开始下一小节。
+    if (isRepeatedScoreKey) return;
     accelerateInteractivePhrase();
     return;
   }
@@ -4045,7 +4057,7 @@ function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {
   const deviceSummary = deviceNames.length > 1 ? `${deviceNames[0]} 等 ${deviceNames.length} 台` : deviceNames[0];
   let text = '点击连接 USB / 蓝牙';
   if (!status.supported) text = isIosBrowser() ? '不支持 · 点击安装 MIDIWeb' : '此浏览器不支持 Web MIDI';
-  else if (status.connecting) text = '正在请求 MIDI 权限…';
+  else if (status.connecting) text = status.restoring ? '正在恢复 MIDI 连接…' : '正在请求 MIDI 权限…';
   else if (status.error) text = status.error;
   else if (status.connected) text = deviceSummary || `已连接 ${status.count} 台设备`;
   else if (status.authorized) text = '已授权，等待 MIDI 设备';
@@ -4159,6 +4171,9 @@ function setupExternalMidiInput() {
   });
   $('midiConnectBtn')?.addEventListener('click', requestExternalMidiConnection);
   $('gameMidiStatus')?.addEventListener('click', requestExternalMidiConnection);
+  // 只有用户曾经明确连接成功过才自动恢复。刷新后 MIDIAccess 对象必然失效，
+  // 因此重新申请已有权限并重新绑定所有输入端口；未连接过的用户不会被弹窗打扰。
+  window.FreezaMidiInput.autoConnect?.().catch(() => {});
 }
 
 

@@ -1,9 +1,11 @@
 // Web MIDI adapter for USB and OS-paired Bluetooth MIDI keyboards.
 // This module normalizes device state, notes and common performance controls; playback stays in app.js.
 (() => {
+  const AUTO_CONNECT_KEY = 'freeza-midi-autoconnect-v1';
   const state = {
     access: null,
     connecting: false,
+    restoring: false,
     authorized: false,
     error: '',
     inputs: new Map(),
@@ -28,6 +30,7 @@
     return Object.freeze({
       supported: supported(),
       connecting: state.connecting,
+      restoring: state.restoring,
       authorized: state.authorized,
       connected: devices.length > 0,
       count: devices.length,
@@ -105,7 +108,24 @@
     emitStatus();
   }
 
-  async function connect() {
+  function autoConnectRemembered() {
+    try {
+      return localStorage.getItem(AUTO_CONNECT_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function rememberAutoConnect() {
+    try {
+      localStorage.setItem(AUTO_CONNECT_KEY, '1');
+    } catch {
+      // Storage can be disabled in private/embedded browsers; the live connection still works.
+    }
+  }
+
+  async function connect(options = {}) {
+    const restoring = Boolean(options.restoring);
     if (!supported()) {
       state.error = '此浏览器不支持 Web MIDI';
       emitStatus();
@@ -117,11 +137,13 @@
     }
     if (state.connecting) return snapshot();
     state.connecting = true;
+    state.restoring = restoring;
     state.error = '';
     emitStatus();
     try {
       state.access = await navigator.requestMIDIAccess({ sysex: false });
       state.authorized = true;
+      rememberAutoConnect();
       state.access.onstatechange = refreshInputs;
       refreshInputs();
     } catch (error) {
@@ -132,9 +154,15 @@
           : `MIDI 连接失败：${error?.message || '未知错误'}`;
     } finally {
       state.connecting = false;
+      state.restoring = false;
       emitStatus();
     }
     return snapshot();
+  }
+
+  async function autoConnect() {
+    if (!supported() || !autoConnectRemembered()) return snapshot();
+    return connect({ restoring: true });
   }
 
   function setHandlers({ onNote, onNoteOff, onControl, onPitchBend, onStatus } = {}) {
@@ -146,5 +174,5 @@
     emitStatus();
   }
 
-  window.FreezaMidiInput = Object.freeze({ connect, setHandlers, snapshot });
+  window.FreezaMidiInput = Object.freeze({ connect, autoConnect, setHandlers, snapshot });
 })();
