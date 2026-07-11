@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-20';
+const ASSET_VERSION = 'reset-20260711-21';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -2672,6 +2672,7 @@ function clearManualCueVisuals() {
     el.classList.remove('blank', 'hit', 'fail');
     delete el.dataset.floatShattered;
     delete el.dataset.cueId;
+    delete el.dataset.manualNextPreview;
   });
   cueState.clear();
 }
@@ -2865,9 +2866,24 @@ function showCountdownCuePreview() {
   });
 }
 
-function showManualNextCuePreview(cue) {
-  clearManualCueVisuals();
-  activeCue = null;
+function clearManualNextCuePreview() {
+  document.querySelectorAll('#manualKeyboard .manual-next-cue-preview').forEach(key => {
+    key.classList.remove('manual-next-cue-preview');
+    const symbol = key.querySelector('.chord-symbol[data-manual-next-preview="1"]');
+    if (!symbol) return;
+    symbol.textContent = '';
+    symbol.classList.remove('blank');
+    delete symbol.dataset.manualNextPreview;
+    delete symbol.dataset.cueId;
+  });
+}
+
+function showManualNextCuePreview(cue, preserveCurrentProgress = false) {
+  if (preserveCurrentProgress) clearManualNextCuePreview();
+  else {
+    clearManualCueVisuals();
+    activeCue = null;
+  }
   if (!cue?.root || !NATURAL_TO_MIDI[cue.root]) return;
   const midi = NATURAL_TO_MIDI[cue.root];
   document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
@@ -2877,9 +2893,29 @@ function showManualNextCuePreview(cue) {
     symbol.textContent = display.text;
     symbol.dataset.text = display.text;
     symbol.dataset.cueId = cue?._id || '';
+    symbol.dataset.manualNextPreview = '1';
     symbol.classList.toggle('blank', Boolean(display.blank));
     key.classList.add('manual-next-cue-preview');
   });
+}
+
+function finishManualCurrentCueVisual(phrase) {
+  const root = phrase?.cue?.root || phrase?.root;
+  const midi = NATURAL_TO_MIDI[root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    key.dataset.pressGeneration = String((Number(key.dataset.pressGeneration) || 0) + 1);
+    key.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit');
+    key.style.removeProperty('--chord-scale');
+    const symbol = key.querySelector('.chord-symbol');
+    // 同根音的下一小节会复用这个键；50% 时写入的下一提示必须保留。
+    if (symbol && symbol.dataset.manualNextPreview !== '1') {
+      symbol.textContent = '';
+      symbol.classList.remove('blank', 'hit', 'fail');
+      delete symbol.dataset.cueId;
+    }
+  });
+  cueState.delete(root);
+  activeCue = null;
 }
 
 function enterPlaybackAfterCountdown() {
@@ -3509,6 +3545,16 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     });
     startCueRuntimeLoop();
   }
+  if (isManualMode() && !isOneKeyMode()) {
+    const nextPreviewCue = nextCueAfter(phrase.cue);
+    if (nextPreviewCue) {
+      const previewTimer = setTimeout(() => {
+        if (interactivePhrase !== phrase || interactiveTransitioning) return;
+        showManualNextCuePreview(nextPreviewCue, true);
+      }, Math.max(0, naturalDurationMs * 0.5));
+      manualMelodyTimers.push(previewTimer);
+    }
+  }
   if (isOneKeyMode()) {
     const now = phraseStartedAt;
     const naturalEndAt = phrase.musicEndAt;
@@ -3535,17 +3581,19 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     manualMelodyTimers.push(completionTimer);
   } else if (isManualMode()) {
     const completedPhrase = interactivePhrase;
-    const completedDueAt = [
-      completedPhrase.musicEndAt,
-      ...completedPhrase.melodyEvents.map(event => event.dueAt + Number(event.note?.duration || 0.45) * 1000),
-      ...completedPhrase.harmonyEvents.map(event => event.dueAt + Number(event.duration || 0.45) * 1000),
-    ].reduce((latest, dueAt) => Math.max(latest, Number(dueAt || 0)), performance.now());
+    // 下一键提示跟音乐小节边界走，不能等待钢琴/吉他采样的 release 尾音。
+    // 否则长延音会让进度已经结束后仍空白很久。
+    const completedDueAt = Math.max(performance.now(), Number(completedPhrase.musicEndAt || 0));
     const completionTimer = setTimeout(() => {
       if (interactivePhrase !== completedPhrase || interactiveTransitioning) return;
       completedPhrase.musicVisualComplete = true;
       const next = nextCueAfter(completedPhrase.cue);
-      if (next) showManualNextCuePreview(next);
-      else finishPlayback();
+      finishManualCurrentCueVisual(completedPhrase);
+      if (next) {
+        const alreadyShown = [...document.querySelectorAll('#manualKeyboard .chord-symbol[data-manual-next-preview="1"]')]
+          .some(symbol => symbol.dataset.cueId === (next?._id || ''));
+        if (!alreadyShown) showManualNextCuePreview(next, true);
+      } else finishPlayback();
     }, Math.max(0, completedDueAt - performance.now()) + 12);
     manualMelodyTimers.push(completionTimer);
   }
