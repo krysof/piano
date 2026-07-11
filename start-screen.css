@@ -214,13 +214,6 @@ body.game-started #startScreen {
   box-shadow: 0 0 12px rgba(85, 217, 163, 0.75);
 }
 
-.launch-status b {
-  color: #747b90;
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: 0.03em;
-}
-
 .launch-dashboard {
   display: grid;
   grid-template-columns: 1.08fr 0.92fr;
@@ -920,8 +913,6 @@ body.game-started #startScreen {
     border-radius: 12px;
     font-size: 10px;
   }
-
-  .launch-status b { font-size: 8px; }
 
   .launch-dashboard {
     flex: 1 1 auto;

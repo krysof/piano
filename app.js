@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-33';
+const ASSET_VERSION = 'reset-20260711-34';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -334,6 +334,22 @@ function playLaunchUiSound(kind = 'select', value = 0.5) {
     }
   } catch (err) {
     console.warn('Launch UI sound unavailable:', err);
+  }
+}
+
+function playRaceCountdownSound(step) {
+  try {
+    if (step > 0) {
+      // 赛车发车灯式短提示：3/2/1 使用同一低音脉冲，避免被误听成歌曲旋律。
+      playLaunchTone(293.66, 0, 0.13, 0.052, 'square');
+      playLaunchTone(440, 0.012, 0.105, 0.026, 'sine');
+    } else {
+      // 倒数完成用更高、更明亮的双音明确表示 GO。
+      playLaunchTone(587.33, 0, 0.16, 0.058, 'square');
+      playLaunchTone(880, 0.035, 0.21, 0.046, 'sine');
+    }
+  } catch (err) {
+    console.warn('Countdown sound unavailable:', err);
   }
 }
 
@@ -3131,11 +3147,13 @@ function startCountdownThenPlay() {
     if (!el) return playPlayback();
     el.textContent = steps[i];
     el.classList.add('show');
+    playRaceCountdownSound(Number(steps[i]));
     i++;
     if (i < steps.length) {
       countdownTimer = setTimeout(tick, 760);
     } else {
       countdownTimer = setTimeout(() => {
+        playRaceCountdownSound(0);
         clearCountdown();
         enterPlaybackAfterCountdown();
       }, 760);
@@ -3662,6 +3680,8 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     const completionTimer = setTimeout(() => {
       if (interactivePhrase !== completedPhrase || interactiveTransitioning) return;
       completedPhrase.musicVisualComplete = true;
+      playOffset = Math.max(playOffset,
+        Math.min(song?.duration || scheduleTiming.boundary, Number(scheduleTiming.boundary)));
       if (interactivePressQueue.length) {
         finishManualCurrentCueVisual(completedPhrase);
         finishInteractiveTransition('manual', scheduleTiming.boundary);
@@ -3802,6 +3822,12 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
     ? { progress: 100, dueAt: performance.now() }
     : timing;
   const request = { root, cue, timing: requestTiming };
+  if (isManualMode() && interactivePhrase?.musicVisualComplete) {
+    // 当前片段的边界 timer 已经结束；此时才按正确键时，旧 phrase 仍保留
+    // 只是为了显示下一键预告。必须先释放它，否则旧伴奏 release 事件会让
+    // 请求进入一个再也没有 completion timer 消费的队列。
+    interactivePhrase = null;
+  }
   if (interactiveTransitioning) {
     enqueueInteractiveRequest(request);
     return;
