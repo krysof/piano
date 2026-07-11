@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-27';
+const ASSET_VERSION = 'reset-20260711-28';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3234,7 +3234,17 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
   let segmentEnd = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
   if (!Number.isFinite(segmentEnd) || segmentEnd <= now + 0.02) segmentEnd = Math.min(song?.duration || now + 1.8, now + 1.8);
   warmHarmonyTones(false);
-  const { slot, code, pattern } = chordPatternAtTime(now);
+  const forcedPatternSlot = Number.isInteger(options.patternSlot)
+    ? Math.max(0, Math.min(1, Number(options.patternSlot)))
+    : null;
+  const patternSelection = forcedPatternSlot === null
+    ? chordPatternAtTime(now)
+    : (() => {
+      const codes = chordPatternCodes();
+      const code = codes[forcedPatternSlot] || codes[0] || currentHarmonyPreset()?.code;
+      return { slot: forcedPatternSlot, code, pattern: code ? patterns.byCode.get(code) : null };
+    })();
+  const { slot, code, pattern } = patternSelection;
   if (pattern?.notes?.length) {
     const previousHalf = harmonyRepeat.get('last');
     const half = advancePhase
@@ -3275,7 +3285,8 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
     const speed = Math.max(0.62, Math.min(1.12, timeScale, targetEnd / naturalEnd));
     for (const n of fallbackNotes) {
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
-      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), harmonyToneMode));
+      const fallbackToneMode = forcedPatternSlot === null ? harmonyToneMode : forcedPatternSlot + 1;
+      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), fallbackToneMode));
     }
     console.warn('No LiberLive chord pattern loaded; using Track 2 fallback chord notes for', code || currentHarmonyPreset()?.code);
     return { root, cue, segmentEnd, events: scheduled };
@@ -3557,6 +3568,9 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
   const phraseStartedAt = performance.now();
   const naturalDurationMs = Math.max(60,
     (Number(scheduleTiming.boundary) - Number(cue?.time || 0)) * Number(scheduleTiming.timeScale || 1) * 1000);
+  // “小节结束”以谱面边界为准，不以最后一个 Note On 是否已触发为准。
+  // 采样的最后一个音可能很早就触发，但这不代表下一小节可以立刻开始。
+  phrase.naturalEndAt = phraseStartedAt + naturalDurationMs;
   if (isManualMode()) {
     phrase.musicStartAt = phraseStartedAt;
     phrase.musicEndAt = phraseStartedAt + naturalDurationMs;
@@ -3767,8 +3781,11 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
     return;
   }
   const nowSong = currentPlayTime();
-  const pending = interactivePhrase && pendingInteractiveEvents(interactivePhrase, nowSong, performance.now()).length;
-  if (pending) {
+  const nowPerf = performance.now();
+  const pending = interactivePhrase && pendingInteractiveEvents(interactivePhrase, nowSong, nowPerf).length;
+  const phraseBoundaryPending = interactivePhrase && Number.isFinite(interactivePhrase.naturalEndAt)
+    && nowPerf < interactivePhrase.naturalEndAt;
+  if (pending || phraseBoundaryPending) {
     interactivePressQueue.push(request);
     const requestedCueTime = Number(cue?.time);
     const melodyAlreadyStarted = isSemiAutoMode() && Number.isFinite(requestedCueTime)
@@ -3776,7 +3793,9 @@ function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timi
     // 追赶只属于半自动模式：主旋律已经到达这个 cue、伴奏却按迟时，才压缩
     // 旧伴奏尾部来追主旋律。手动/一键由按键驱动音乐；无论根音相同还是不同，
     // 都等待当前小节自然结束，不能把玩家的连续输入解释成加速指令。
-    if (!melodyAlreadyStarted) return;
+    // 手动/一键必须等完整小节边界，不能因为最后一个音符已经触发就提前启动
+    // 下一段。半自动也只有“已经迟到且确实还有残余事件”时才需要追赶。
+    if (!melodyAlreadyStarted || !pending) return;
     accelerateInteractivePhrase();
     return;
   }
@@ -3814,6 +3833,8 @@ function triggerChordKey(label, pickSlot, key) {
   const performedRoot = oneKeyMode
     ? (pressedCue?.root || rootFromChord(pressedCue?.chord) || activeCue?.cue?.root || label)
     : label;
+  const matchesManualCue = Boolean(manualMode
+    && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
   const expectedRoot = activeCue?.cue?.root || performedRoot;
   const timingKey = (oneKeyMode || expectedRoot !== label)
     ? (document.querySelector(`#manualKeyboard .key[data-root="${expectedRoot}"]`) || key)
@@ -3834,6 +3855,22 @@ function triggerChordKey(label, pickSlot, key) {
     }
   }
   const normalizedPickSlot = pickSlot > 0 ? 1 : 0;
+  if (manualMode && !matchesManualCue) {
+    // 错键是完全隔离的试听：不写入用户拨片事件、不改变全局音色、不推进
+    // pattern 前后半、不进入交互队列，也不接触当前主旋律/伴奏的计时状态。
+    // 这样连续乱按后再按正确键，仍从原小节的正确时间和相位继续。
+    showTimingRating(key, 'MISS');
+    rejectEarlyChordPress(key);
+    showPickZoneFeedback(key, normalizedPickSlot);
+    warmHarmonyTones(false);
+    playStyledHarmony(label, pressedCue, 1, {
+      replaceExisting: false,
+      advancePhase: false,
+      patternSlot: normalizedPickSlot,
+    });
+    animateChordPress(key);
+    return true;
+  }
   harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, normalizedPickSlot + 1));
   // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
   // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
@@ -3844,8 +3881,6 @@ function triggerChordKey(label, pickSlot, key) {
   // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
   const matchesActiveCue = Boolean(activeCue && (activeCue.cue?.root === label
     || key.dataset.cueId === activeCue.cue?._id));
-  const matchesManualCue = Boolean(manualMode
-    && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
   const oneKeyHitsActiveCue = Boolean(oneKeyMode && activeCue
     && (activeCue.cue === pressedCue || activeCue.cue?._id === pressedCue?._id));
   const ratingKey = oneKeyMode
@@ -3861,15 +3896,11 @@ function triggerChordKey(label, pickSlot, key) {
     hitCue(activeCue.midi, activeCue.cue);
     const completedCue = activeCue;
     window.setTimeout(() => { if (activeCue === completedCue) finishActiveCue(); }, 260);
-  } else if (manualMode && !matchesManualCue) {
-    // 手动模式按错仍播放所按和弦，但保留当前 cue，绝不能推进主旋律。
-    rejectEarlyChordPress(key);
   } else if (!oneKeyMode && !manualMode) {
     failActiveCue(false);
   }
   key.classList.remove('chord-due', 'miss', 'chord-release');
-  const wrongInteractiveKey = (manualMode && !matchesManualCue)
-    || (!oneKeyMode && !manualMode && isSemiAutoMode() && !matchesActiveCue);
+  const wrongInteractiveKey = !oneKeyMode && !manualMode && isSemiAutoMode() && !matchesActiveCue;
   if (wrongInteractiveKey) {
     // 错误和弦只作为独立试听：不能清除当前小节尚未触发的伴奏 timer，
     // 也不能推进正常 pattern 的前/后半 phase，否则下一次正确输入会异常追赶快放。
