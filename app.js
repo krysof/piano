@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-12';
+const ASSET_VERSION = 'reset-20260711-13';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3573,6 +3573,106 @@ function renderManualKeyboard() {
 const MIDI_ROOT_BY_PITCH_CLASS = Object.freeze({
   0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B',
 });
+const externalMidiPerformance = {
+  volume: 1,
+  expression: 1,
+  pitchBend: 0,
+  modulation: 0,
+  sustain: false,
+  voices: new Map(),
+};
+
+function externalMidiVoiceGain(velocity) {
+  return Math.max(0.0001, Math.min(0.42,
+    Number(velocity || 0.65) * externalMidiPerformance.volume
+      * externalMidiPerformance.expression * melodyGain * 0.34));
+}
+
+function updateExternalMidiVoiceControls(voice, immediate = false) {
+  if (!voice || !audio.ctx) return;
+  const now = audio.ctx.currentTime;
+  const glide = immediate ? 0.005 : 0.035;
+  const pitchCents = externalMidiPerformance.pitchBend * 200;
+  voice.oscillators.forEach(osc => osc.detune.setTargetAtTime(pitchCents, now, glide));
+  voice.lfoGain.gain.setTargetAtTime(externalMidiPerformance.modulation * 34, now, glide);
+  voice.gain.gain.setTargetAtTime(externalMidiVoiceGain(voice.velocity), now, glide);
+}
+
+function stopExternalMidiPreviewVoice(key, release = 0.11) {
+  const voice = externalMidiPerformance.voices.get(key);
+  if (!voice || voice.stopping) return;
+  voice.stopping = true;
+  externalMidiPerformance.voices.delete(key);
+  const now = audio.ctx?.currentTime || 0;
+  voice.gain.gain.cancelScheduledValues(now);
+  voice.gain.gain.setTargetAtTime(0.0001, now, Math.max(0.012, release / 3));
+  const stopAt = now + release + 0.08;
+  [...voice.oscillators, voice.lfo].forEach(node => {
+    try { node.stop(stopAt); } catch (_) {}
+  });
+}
+
+function startExternalMidiPreviewVoice(message) {
+  ensureAudio();
+  audio.ctx?.resume?.().catch(() => {});
+  const key = message.key || `${message.inputId}:${message.channel}:${message.note}`;
+  stopExternalMidiPreviewVoice(key, 0.025);
+  const now = audio.ctx.currentTime;
+  const gain = audio.ctx.createGain();
+  const oscA = audio.ctx.createOscillator();
+  const oscB = audio.ctx.createOscillator();
+  const lfo = audio.ctx.createOscillator();
+  const lfoGain = audio.ctx.createGain();
+  const baseFrequency = midiToFreq(message.note);
+  oscA.type = 'triangle';
+  oscA.frequency.value = baseFrequency;
+  oscB.type = 'sine';
+  oscB.frequency.value = baseFrequency * 2;
+  oscB.connect(gain);
+  oscA.connect(gain).connect(audio.master);
+  lfo.frequency.value = 5.25;
+  lfoGain.gain.value = 0;
+  lfo.connect(lfoGain);
+  lfoGain.connect(oscA.detune);
+  lfoGain.connect(oscB.detune);
+  gain.gain.setValueAtTime(0.0001, now);
+  const voice = {
+    key,
+    velocity: message.velocity,
+    gain,
+    lfo,
+    lfoGain,
+    oscillators: [oscA, oscB],
+    released: false,
+    stopping: false,
+  };
+  externalMidiPerformance.voices.set(key, voice);
+  updateExternalMidiVoiceControls(voice, true);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(externalMidiVoiceGain(message.velocity), now + 0.012);
+  gain.gain.setTargetAtTime(externalMidiVoiceGain(message.velocity) * 0.68, now + 0.22, 0.7);
+  oscA.start(now);
+  oscB.start(now);
+  lfo.start(now);
+}
+
+function refreshExternalMidiPerformanceTitle() {
+  const status = window.FreezaMidiInput?.snapshot?.() || {};
+  if (!status.connected) return;
+  const summary = [
+    `音量 ${Math.round(externalMidiPerformance.volume * 100)}%`,
+    `Pitch ${(externalMidiPerformance.pitchBend * 2).toFixed(1)} 半音`,
+    `Mod ${Math.round(externalMidiPerformance.modulation * 100)}%`,
+  ].join(' · ');
+  const compact = `V${Math.round(externalMidiPerformance.volume * 100)} · P${externalMidiPerformance.pitchBend >= 0 ? '+' : ''}${(externalMidiPerformance.pitchBend * 2).toFixed(1)} · M${Math.round(externalMidiPerformance.modulation * 100)}`;
+  const startStatus = $('midiStartStatus');
+  const connectButton = $('midiConnectBtn');
+  if (startStatus) {
+    startStatus.textContent = compact;
+    startStatus.title = summary;
+  }
+  if (connectButton) connectButton.title = `${connectButton.title.split(' · ')[0]} · ${summary}`;
+}
 
 function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {}) {
   const connectButton = $('midiConnectBtn');
@@ -3612,7 +3712,11 @@ function rootForExternalMidiNote(note) {
 }
 
 function handleExternalMidiNote(message) {
-  if (!document.body.classList.contains('game-started') || !song) return;
+  if (!document.body.classList.contains('game-started')) {
+    if (document.body.classList.contains('song-selected')) startExternalMidiPreviewVoice(message);
+    return;
+  }
+  if (!song) return;
   // 外接键盘只看音名，不看八度：C1/C2/C3…全部触发 C，其他自然音同理。
   // 全局 Key shift 只改变最终发声音高，不能改变玩家该按哪个实体自然音键。
   const root = rootForExternalMidiNote(message.note);
@@ -3624,6 +3728,39 @@ function handleExternalMidiNote(message) {
   window.Tone?.start?.().catch?.(() => {});
   const pickSlot = song ? chordPatternSlotAtTime(currentPlayTime()) : Math.max(0, harmonyToneMode - 1);
   triggerChordKey(root, pickSlot, key);
+}
+
+function handleExternalMidiNoteOff(message) {
+  const key = message.key || `${message.inputId}:${message.channel}:${message.note}`;
+  const voice = externalMidiPerformance.voices.get(key);
+  if (!voice) return;
+  voice.released = true;
+  if (!externalMidiPerformance.sustain) stopExternalMidiPreviewVoice(key);
+}
+
+function handleExternalMidiPitchBend(message) {
+  externalMidiPerformance.pitchBend = Math.max(-1, Math.min(1, Number(message.value || 0)));
+  externalMidiPerformance.voices.forEach(voice => updateExternalMidiVoiceControls(voice));
+  refreshExternalMidiPerformanceTitle();
+}
+
+function handleExternalMidiControl(message) {
+  const controller = Number(message.controller);
+  if (controller === 1) externalMidiPerformance.modulation = message.value;
+  else if (controller === 7) externalMidiPerformance.volume = message.value;
+  else if (controller === 11) externalMidiPerformance.expression = message.value;
+  else if (controller === 64) {
+    externalMidiPerformance.sustain = message.raw >= 64;
+    if (!externalMidiPerformance.sustain) {
+      [...externalMidiPerformance.voices.values()]
+        .filter(voice => voice.released)
+        .forEach(voice => stopExternalMidiPreviewVoice(voice.key));
+    }
+  } else if (controller === 120 || controller === 123) {
+    [...externalMidiPerformance.voices.keys()].forEach(key => stopExternalMidiPreviewVoice(key, 0.04));
+  } else return;
+  externalMidiPerformance.voices.forEach(voice => updateExternalMidiVoiceControls(voice));
+  refreshExternalMidiPerformanceTitle();
 }
 
 async function requestExternalMidiConnection() {
@@ -3639,6 +3776,9 @@ function setupExternalMidiInput() {
   }
   window.FreezaMidiInput.setHandlers({
     onNote: handleExternalMidiNote,
+    onNoteOff: handleExternalMidiNoteOff,
+    onControl: handleExternalMidiControl,
+    onPitchBend: handleExternalMidiPitchBend,
     onStatus: updateExternalMidiUi,
   });
   $('midiConnectBtn')?.addEventListener('click', requestExternalMidiConnection);

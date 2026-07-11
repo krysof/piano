@@ -1,5 +1,5 @@
 // Web MIDI adapter for USB and OS-paired Bluetooth MIDI keyboards.
-// This module only normalizes device state and note messages; playback stays in app.js.
+// This module normalizes device state, notes and common performance controls; playback stays in app.js.
 (() => {
   const state = {
     access: null,
@@ -9,6 +9,9 @@
     inputs: new Map(),
     pressed: new Set(),
     onNote: null,
+    onNoteOff: null,
+    onControl: null,
+    onPitchBend: null,
     onStatus: null,
   };
 
@@ -51,23 +54,38 @@
     const status = Number(data[0]);
     const command = status & 0xf0;
     const channel = status & 0x0f;
-    const note = Number(data[1]);
-    const velocityByte = Number(data[2] || 0);
+    const data1 = Number(data[1] || 0);
+    const data2 = Number(data[2] || 0);
+    const common = {
+      channel,
+      inputId: input.id || '',
+      inputName: input.name || input.manufacturer || 'MIDI 键盘',
+      receivedAt: Number(event.receivedTime || globalThis.performance?.now?.() || Date.now()),
+    };
+    if (command === 0xe0) {
+      const raw = (data2 << 7) | data1;
+      state.onPitchBend?.({ ...common, raw, value: Math.max(-1, Math.min(1, (raw - 8192) / 8192)) });
+      return;
+    }
+    if (command === 0xb0) {
+      state.onControl?.({ ...common, controller: data1, raw: data2, value: Math.max(0, Math.min(1, data2 / 127)) });
+      return;
+    }
+    const note = data1;
     if (!Number.isInteger(note) || note < 0 || note > 127) return;
     const key = noteKey(input, channel, note);
-    if (command === 0x80 || (command === 0x90 && velocityByte === 0)) {
+    if (command === 0x80 || (command === 0x90 && data2 === 0)) {
       state.pressed.delete(key);
+      state.onNoteOff?.({ ...common, key, note, velocity: Math.max(0, Math.min(1, data2 / 127)) });
       return;
     }
     if (command !== 0x90 || state.pressed.has(key)) return;
     state.pressed.add(key);
     state.onNote?.({
+      ...common,
+      key,
       note,
-      velocity: Math.max(0, Math.min(1, velocityByte / 127)),
-      channel,
-      inputId: input.id || '',
-      inputName: input.name || input.manufacturer || 'MIDI 键盘',
-      receivedAt: Number(event.receivedTime || globalThis.performance?.now?.() || Date.now()),
+      velocity: Math.max(0, Math.min(1, data2 / 127)),
     });
   }
 
@@ -119,8 +137,11 @@
     return snapshot();
   }
 
-  function setHandlers({ onNote, onStatus } = {}) {
+  function setHandlers({ onNote, onNoteOff, onControl, onPitchBend, onStatus } = {}) {
     state.onNote = typeof onNote === 'function' ? onNote : null;
+    state.onNoteOff = typeof onNoteOff === 'function' ? onNoteOff : null;
+    state.onControl = typeof onControl === 'function' ? onControl : null;
+    state.onPitchBend = typeof onPitchBend === 'function' ? onPitchBend : null;
     state.onStatus = typeof onStatus === 'function' ? onStatus : null;
     emitStatus();
   }
