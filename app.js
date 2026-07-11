@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-19';
+const ASSET_VERSION = 'reset-20260711-20';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -2663,7 +2663,7 @@ function hitCue(midi, cue) {
 function clearManualCueVisuals() {
   document.querySelectorAll('#manualKeyboard .key').forEach(k => {
     k.dataset.pressGeneration = String((Number(k.dataset.pressGeneration) || 0) + 1);
-    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit');
+    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit', 'manual-next-cue-preview');
     k.style.removeProperty('--chord-scale');
     delete k.dataset.cueId;
   });
@@ -2782,7 +2782,8 @@ function updateCueRuntime() {
   // 没按键、没有正在演奏的小节时，键盘上不产生进度条。
   if (isManualMode()) {
     const phrase = interactivePhrase;
-    if (!phrase || !Number.isFinite(phrase.musicStartAt) || !Number.isFinite(phrase.musicEndAt)) return;
+    if (!phrase || phrase.musicVisualComplete
+      || !Number.isFinite(phrase.musicStartAt) || !Number.isFinite(phrase.musicEndAt)) return;
     const duration = Math.max(1, phrase.musicEndAt - phrase.musicStartAt);
     const progress = ((performance.now() - phrase.musicStartAt) / duration) * 100;
     const midi = NATURAL_TO_MIDI[phrase.cue?.root || phrase.root];
@@ -2864,6 +2865,23 @@ function showCountdownCuePreview() {
   });
 }
 
+function showManualNextCuePreview(cue) {
+  clearManualCueVisuals();
+  activeCue = null;
+  if (!cue?.root || !NATURAL_TO_MIDI[cue.root]) return;
+  const midi = NATURAL_TO_MIDI[cue.root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    const symbol = key.querySelector('.chord-symbol');
+    if (!symbol) return;
+    const display = cueLyricDisplayForCue(cue);
+    symbol.textContent = display.text;
+    symbol.dataset.text = display.text;
+    symbol.dataset.cueId = cue?._id || '';
+    symbol.classList.toggle('blank', Boolean(display.blank));
+    key.classList.add('manual-next-cue-preview');
+  });
+}
+
 function enterPlaybackAfterCountdown() {
   if (isManualMode()) {
     if (guideMode) {
@@ -2874,6 +2892,7 @@ function enterPlaybackAfterCountdown() {
     clearTimers();
     ensureManualClock();
     scheduleChordCues(0);
+    showManualNextCuePreview((song?.chordCues || [])[0]);
     updateClock();
     updateLyrics();
   } else {
@@ -2888,6 +2907,7 @@ function playManualGuideIntro() {
     playOffset = 0;
     ensureManualClock();
     scheduleChordCues(0);
+    showManualNextCuePreview((song?.chordCues || [])[0]);
     updateClock();
     updateLyrics();
     return;
@@ -2911,6 +2931,7 @@ function playManualGuideIntro() {
     nextManualMelodyIndex = nextIndex < 0 ? song.melodyTrack.notes.length : nextIndex;
     ensureManualClock();
     scheduleChordCues(introEnd);
+    showManualNextCuePreview((song?.chordCues || []).find(cue => cue.time >= introEnd - 0.02));
     updatePlayButton();
     updateClock();
     updateLyrics();
@@ -3512,15 +3533,20 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
       }
     }, Math.max(0, Math.max(naturalEndAt, lastAttackAt) - performance.now()) + 12);
     manualMelodyTimers.push(completionTimer);
-  } else if (isManualMode() && !nextCueAfter(interactivePhrase.cue)) {
-    const finalPhrase = interactivePhrase;
-    const finalDueAt = [
-      ...finalPhrase.melodyEvents.map(event => event.dueAt + Number(event.note?.duration || 0.45) * 1000),
-      ...finalPhrase.harmonyEvents.map(event => event.dueAt + Number(event.duration || 0.45) * 1000),
-    ].reduce((latest, dueAt) => Math.max(latest, dueAt), performance.now());
+  } else if (isManualMode()) {
+    const completedPhrase = interactivePhrase;
+    const completedDueAt = [
+      completedPhrase.musicEndAt,
+      ...completedPhrase.melodyEvents.map(event => event.dueAt + Number(event.note?.duration || 0.45) * 1000),
+      ...completedPhrase.harmonyEvents.map(event => event.dueAt + Number(event.duration || 0.45) * 1000),
+    ].reduce((latest, dueAt) => Math.max(latest, Number(dueAt || 0)), performance.now());
     const completionTimer = setTimeout(() => {
-      if (interactivePhrase === finalPhrase && !interactiveTransitioning) finishPlayback();
-    }, Math.max(0, finalDueAt - performance.now()) + 500);
+      if (interactivePhrase !== completedPhrase || interactiveTransitioning) return;
+      completedPhrase.musicVisualComplete = true;
+      const next = nextCueAfter(completedPhrase.cue);
+      if (next) showManualNextCuePreview(next);
+      else finishPlayback();
+    }, Math.max(0, completedDueAt - performance.now()) + 12);
     manualMelodyTimers.push(completionTimer);
   }
 }
