@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-09';
+const ASSET_VERSION = 'reset-20260711-10';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -2058,12 +2058,12 @@ function syncActiveKaraokeProgress(el, line, state) {
   const tokens = tokensForLine(line);
   const base = el?.querySelector('.lyric-base');
   const wrap = el?.querySelector('.lyric-wrap');
-  if (!base || !wrap || !tokens.length) return;
+  if (!base || !wrap || !tokens.length) return null;
   const currentIndex = Number(state?.currentIndex ?? -1);
-  const frac = Number(state?.fraction ?? 0);
-  if (currentIndex < 0) return;
+  const frac = Math.max(0, Math.min(1, Number(state?.fraction ?? 0)));
+  if (currentIndex < 0) return null;
   const node = base.querySelector(`[data-kidx="${currentIndex}"]`);
-  if (!node) return;
+  if (!node) return null;
   const br = base.getBoundingClientRect();
   const nr = node.getBoundingClientRect();
   // 紫色层按歌词内容宽度（max-content）裁剪；进度也必须以同宽的 base 为基准。
@@ -2071,6 +2071,14 @@ function syncActiveKaraokeProgress(el, line, state) {
   const x = (nr.left - br.left) + nr.width * frac;
   const pct = Math.max(0, Math.min(100, (x / Math.max(1, br.width)) * 100));
   el.style.setProperty('--progress', `${pct.toFixed(2)}%`);
+  // 特效必须使用和紫色裁剪边界完全相同的实际像素坐标，不能再用整行容器宽度。
+  // 当前行在面板里居中，而歌词内容宽度通常远小于整行；以整行百分比换算会明显偏离文字。
+  return {
+    progress: pct,
+    x: br.left + x,
+    y: nr.top + nr.height * 0.56,
+    tokenRect: nr,
+  };
 }
 
 function lyricEventAt(time, maxHold = Infinity) {
@@ -2275,8 +2283,8 @@ function updateLyrics() {
     if (active) activeEl = lines[i];
     setKaraokeLine(lines[i], lyricLines[lineIndex] || '', active ? progress : 0, active);
   }
-  syncActiveKaraokeProgress(activeEl, cur, progressState);
-  if (playing) emitLyricParticles(activeEl, progress);
+  const visualProgress = syncActiveKaraokeProgress(activeEl, cur, progressState);
+  if (playing) emitLyricParticles(visualProgress);
 }
 
 function lyricCharAt(time) {
@@ -2284,13 +2292,14 @@ function lyricCharAt(time) {
   return ev && String(ev.text).trim() ? [...ev.text].at(-1) : '';
 }
 
-function emitLyricParticles(line, progress) {
+function emitLyricParticles(visualProgress) {
   const now = performance.now();
+  const progress = Number(visualProgress?.progress);
   if (now - lastLyricParticleAt < 95 || progress <= 0 || progress >= 99.5) return;
+  const x = Number(visualProgress.x);
+  const y = Number(visualProgress.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   lastLyricParticleAt = now;
-  const r = line.getBoundingClientRect();
-  const x = r.left + r.width * progress / 100;
-  const y = r.top + r.height * (0.35 + Math.random() * 0.35);
   for (let i = 0; i < 4; i++) {
     const p = document.createElement('span');
     p.className = 'lyric-particle';
