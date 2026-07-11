@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-14';
+const ASSET_VERSION = 'reset-20260711-15';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -11,7 +11,15 @@ const audio = {
   toneRecorderConnected: false,
   toneRecorderAttempted: false,
 };
-const sampled = { piano: null, ready: false };
+const sampled = {
+  piano: null,
+  ready: false,
+  midiPiano: null,
+  midiReady: false,
+  midiPitch: null,
+  midiVibrato: null,
+  midiVolume: null,
+};
 const wasmParser = { promise: null, exports: null };
 const patterns = { manifest: null, byCode: new Map(), promise: null };
 let song = null;
@@ -51,6 +59,7 @@ let drumPatternSlot = 0;
 let playMode = 'semi';
 let guideMode = false;
 let nextManualMelodyIndex = 0;
+let oneKeyNextCueIndex = -1;
 let manualMelodyTimers = [];
 let interactivePhrase = null;
 let interactiveTransitioning = false;
@@ -215,9 +224,7 @@ function initSamplePiano() {
     sampleReadyPromise = Promise.resolve(false);
     return sampleReadyPromise;
   }
-  sampleReadyPromise = new Promise(resolve => {
-    sampled.piano = new Tone.Sampler({
-    urls: {
+  const urls = {
       A0: 'A0.mp3', C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3', A1: 'A1.mp3',
       C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
       C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
@@ -225,7 +232,10 @@ function initSamplePiano() {
       C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3',
       C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', A6: 'A6.mp3',
       C7: 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3', A7: 'A7.mp3', C8: 'C8.mp3',
-    },
+  };
+  sampleReadyPromise = new Promise(resolve => {
+    sampled.piano = new Tone.Sampler({
+      urls,
     release: 1.25,
     baseUrl: 'samples/salamander/',
       onload: () => {
@@ -235,6 +245,22 @@ function initSamplePiano() {
       },
     }).toDestination();
     Tone.Destination.volume.value = -5;
+    try {
+      sampled.midiVolume = new Tone.Volume(0).toDestination();
+      sampled.midiPitch = new Tone.PitchShift({ pitch: 0, windowSize: 0.055 });
+      sampled.midiVibrato = new Tone.Vibrato({ frequency: 5.25, depth: 0 });
+      sampled.midiVibrato.connect(sampled.midiPitch);
+      sampled.midiPitch.connect(sampled.midiVolume);
+      sampled.midiPiano = new Tone.Sampler({
+        urls,
+        release: 1.25,
+        baseUrl: 'samples/salamander/',
+        onload: () => { sampled.midiReady = true; },
+      }).connect(sampled.midiVibrato);
+    } catch (error) {
+      console.warn('MIDI piano preview effects unavailable:', error);
+      sampled.midiPiano = null;
+    }
   });
   return sampleReadyPromise;
 }
@@ -3289,6 +3315,7 @@ function resetInteractiveSequencer() {
   interactivePhrase = null;
   interactiveTransitioning = false;
   interactivePressQueue = [];
+  oneKeyNextCueIndex = -1;
 }
 
 function nextCueAfter(cue) {
@@ -3304,6 +3331,19 @@ function cueForInteractivePress(root) {
     if (next && (!root || next.root === root || rootFromChord(next.chord) === root)) cue = next;
   }
   return cue || { chord: root, root, time: currentPlayTime() };
+}
+
+function takeNextOneKeyCue() {
+  const cues = song?.chordCues || [];
+  if (!cues.length) return null;
+  if (oneKeyNextCueIndex < 0) {
+    const now = currentPlayTime();
+    const index = cues.findIndex(cue => Number(cue.time) >= now - 0.08);
+    oneKeyNextCueIndex = index >= 0 ? index : cues.length;
+  }
+  const cue = cues[oneKeyNextCueIndex] || null;
+  if (cue) oneKeyNextCueIndex += 1;
+  return cue;
 }
 
 function timingForInteractivePhrase(cue, timing = {}) {
@@ -3339,7 +3379,27 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     melodyEvents: melody?.events || [],
     harmonyEvents: harmony?.events || [],
   };
-  if (isManualMode() && !nextCueAfter(interactivePhrase.cue)) {
+  if (isOneKeyMode()) {
+    const phrase = interactivePhrase;
+    const now = performance.now();
+    const naturalEndAt = now + Math.max(0.06,
+      (Number(scheduleTiming.boundary) - Number(cue?.time || 0)) * Number(scheduleTiming.timeScale || 1)) * 1000;
+    const lastAttackAt = [...phrase.melodyEvents, ...phrase.harmonyEvents]
+      .reduce((latest, event) => Math.max(latest, Number(event.dueAt || now)), now);
+    const completionTimer = setTimeout(() => {
+      if (interactivePhrase !== phrase || interactiveTransitioning) return;
+      playOffset = Math.max(playOffset, Math.min(song?.duration || scheduleTiming.boundary, scheduleTiming.boundary));
+      interactivePhrase = null;
+      ensureManualClock();
+      const next = interactivePressQueue.shift();
+      scheduleChordCues(playOffset, Boolean(next));
+      updateClock();
+      updateLyrics();
+      if (next) beginInteractivePhrase(next.root, next.cue, next.timing);
+      else if (!nextCueAfter(phrase.cue)) finishPlayback();
+    }, Math.max(0, Math.max(naturalEndAt, lastAttackAt) - performance.now()) + 12);
+    manualMelodyTimers.push(completionTimer);
+  } else if (isManualMode() && !nextCueAfter(interactivePhrase.cue)) {
     const finalPhrase = interactivePhrase;
     const finalDueAt = [
       ...finalPhrase.melodyEvents.map(event => event.dueAt + Number(event.note?.duration || 0.45) * 1000),
@@ -3458,6 +3518,10 @@ function accelerateInteractivePhrase() {
 
 function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timing = {}) {
   const request = { root, cue, timing };
+  if (isOneKeyMode() && interactivePhrase) {
+    interactivePressQueue.push(request);
+    return;
+  }
   if (interactiveTransitioning) {
     interactivePressQueue.push(request);
     return;
@@ -3480,16 +3544,18 @@ function triggerChordKey(label, pickSlot, key) {
   if (!key || !song || !document.body.classList.contains('game-started')) return false;
   requestWakeLock();
   const oneKeyMode = isOneKeyMode();
-  const pressedCue = cueForInteractivePress(oneKeyMode ? '' : label);
+  const pressedCue = oneKeyMode ? takeNextOneKeyCue() : cueForInteractivePress(label);
+  if (!pressedCue) return false;
   const performedRoot = oneKeyMode
     ? (pressedCue?.root || rootFromChord(pressedCue?.chord) || activeCue?.cue?.root || label)
     : label;
-  const timingKey = oneKeyMode
-    ? (document.querySelector(`#manualKeyboard .key[data-root="${performedRoot}"]`) || key)
+  const expectedRoot = activeCue?.cue?.root || performedRoot;
+  const timingKey = (oneKeyMode || expectedRoot !== label)
+    ? (document.querySelector(`#manualKeyboard .key[data-root="${expectedRoot}"]`) || key)
     : key;
-  const pressProgress = cueProgressForKey(timingKey);
+  const pressProgress = oneKeyMode ? 100 : cueProgressForKey(timingKey);
   const pressCueState = cueState.get(performedRoot);
-  if (isSemiAutoMode() || isManualMode()) {
+  if (!oneKeyMode && (isSemiAutoMode() || isManualMode())) {
     const timing = timingForInteractivePhrase(pressedCue, {
       progress: pressProgress,
       dueAt: pressCueState?.due,
@@ -3509,22 +3575,29 @@ function triggerChordKey(label, pickSlot, key) {
   showPickZoneFeedback(key, normalizedPickSlot);
   warmHarmonyTones(false);
   // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
-  const matchesActiveCue = Boolean(activeCue && (oneKeyMode
-    || activeCue.cue?.root === label
+  const matchesActiveCue = Boolean(activeCue && (activeCue.cue?.root === label
     || key.dataset.cueId === activeCue.cue?._id));
-  showTimingRating(key, timingGrade(pressProgress, matchesActiveCue));
-  if (isGoodTiming(timingKey) && matchesActiveCue) {
+  const oneKeyHitsActiveCue = Boolean(oneKeyMode && activeCue
+    && (activeCue.cue === pressedCue || activeCue.cue?._id === pressedCue?._id));
+  showTimingRating(key, oneKeyMode ? 'SSS' : timingGrade(pressProgress, matchesActiveCue));
+  if ((oneKeyMode && oneKeyHitsActiveCue) || (!oneKeyMode && isGoodTiming(timingKey) && matchesActiveCue)) {
     activeCue.hit = true;
     activeCue.pressed = true;
     hitCue(activeCue.midi, activeCue.cue);
     const completedCue = activeCue;
     window.setTimeout(() => { if (activeCue === completedCue) finishActiveCue(); }, 260);
-  } else {
+  } else if (!oneKeyMode && isManualMode() && !matchesActiveCue) {
+    // 手动模式按错仍播放所按和弦，但保留当前 cue，绝不能推进主旋律。
+    rejectEarlyChordPress(key);
+  } else if (!oneKeyMode) {
     failActiveCue(false);
   }
   key.classList.remove('chord-due', 'miss', 'chord-release');
   key.classList.add('chord-press');
-  if (isSemiAutoMode() || isManualMode()) {
+  const wrongInteractiveKey = !oneKeyMode && (isSemiAutoMode() || isManualMode()) && !matchesActiveCue;
+  if (wrongInteractiveKey) {
+    playStyledHarmony(label, pressedCue);
+  } else if (isSemiAutoMode() || isManualMode()) {
     requestInteractivePhrase(performedRoot, pressedCue, { progress: pressProgress, dueAt: pressCueState?.due });
   } else {
     playStyledHarmony(performedRoot, pressedCue);
@@ -3573,6 +3646,12 @@ function renderManualKeyboard() {
 const MIDI_ROOT_BY_PITCH_CLASS = Object.freeze({
   0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B',
 });
+const MIDIWEB_IOS_URL = 'https://apps.apple.com/app/midiweb-browser/id6757226617';
+
+function isIosBrowser() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
 const externalMidiPerformance = {
   volume: 1,
   expression: 1,
@@ -3589,7 +3668,15 @@ function externalMidiVoiceGain(velocity) {
 }
 
 function updateExternalMidiVoiceControls(voice, immediate = false) {
-  if (!voice || !audio.ctx) return;
+  if (sampled.midiPitch) sampled.midiPitch.pitch = externalMidiPerformance.pitchBend * 2;
+  if (sampled.midiVibrato?.depth) {
+    sampled.midiVibrato.depth.rampTo(externalMidiPerformance.modulation * 0.32, immediate ? 0.005 : 0.035);
+  }
+  if (sampled.midiVolume?.volume && window.Tone) {
+    const linear = Math.max(0.001, externalMidiPerformance.volume * externalMidiPerformance.expression * melodyGain);
+    sampled.midiVolume.volume.rampTo(Tone.gainToDb(linear), immediate ? 0.005 : 0.035);
+  }
+  if (!voice || voice.kind === 'piano' || !audio.ctx) return;
   const now = audio.ctx.currentTime;
   const glide = immediate ? 0.005 : 0.035;
   const pitchCents = externalMidiPerformance.pitchBend * 200;
@@ -3603,6 +3690,10 @@ function stopExternalMidiPreviewVoice(key, release = 0.11) {
   if (!voice || voice.stopping) return;
   voice.stopping = true;
   externalMidiPerformance.voices.delete(key);
+  if (voice.kind === 'piano') {
+    sampled.midiPiano?.triggerRelease?.(voice.noteName);
+    return;
+  }
   const now = audio.ctx?.currentTime || 0;
   voice.gain.gain.cancelScheduledValues(now);
   voice.gain.gain.setTargetAtTime(0.0001, now, Math.max(0.012, release / 3));
@@ -3623,6 +3714,18 @@ function startExternalMidiPreviewVoice(message) {
   $('midiConnectBtn')?.classList.add('midi-note-active');
   const key = message.key || `${message.inputId}:${message.channel}:${message.note}`;
   stopExternalMidiPreviewVoice(key, 0.025);
+  if (sampled.midiReady && sampled.midiPiano && window.Tone) {
+    const noteName = toneNoteOf(message.note);
+    const voice = {
+      kind: 'piano', key, noteName, velocity: message.velocity,
+      released: false, stopping: false,
+    };
+    externalMidiPerformance.voices.set(key, voice);
+    updateExternalMidiVoiceControls(voice, true);
+    sampled.midiPiano.triggerAttack(noteName, undefined,
+      Math.max(0.025, Math.min(1, Number(message.velocity || 0.65))));
+    return;
+  }
   const now = audio.ctx.currentTime;
   const gain = audio.ctx.createGain();
   const oscA = audio.ctx.createOscillator();
@@ -3643,6 +3746,7 @@ function startExternalMidiPreviewVoice(message) {
   lfoGain.connect(oscB.detune);
   gain.gain.setValueAtTime(0.0001, now);
   const voice = {
+    kind: 'synth',
     key,
     velocity: message.velocity,
     gain,
@@ -3688,7 +3792,7 @@ function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {
   const deviceNames = (status.devices || []).map(device => device.name).filter(Boolean);
   const deviceSummary = deviceNames.length > 1 ? `${deviceNames[0]} 等 ${deviceNames.length} 台` : deviceNames[0];
   let text = '点击连接 USB / 蓝牙';
-  if (!status.supported) text = '此浏览器不支持 Web MIDI';
+  if (!status.supported) text = isIosBrowser() ? '不支持 · 点击安装 MIDIWeb' : '此浏览器不支持 Web MIDI';
   else if (status.connecting) text = '正在请求 MIDI 权限…';
   else if (status.error) text = status.error;
   else if (status.connected) text = deviceSummary || `已连接 ${status.count} 台设备`;
@@ -3701,8 +3805,10 @@ function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {
     connectButton.classList.toggle('connected', Boolean(status.connected));
     connectButton.classList.toggle('connecting', Boolean(status.connecting));
     connectButton.classList.toggle('unsupported', !status.supported);
-    connectButton.disabled = !status.supported || Boolean(status.connecting);
-    connectButton.title = status.connected ? `MIDI 已连接：${deviceSummary}` : text;
+    connectButton.disabled = Boolean(status.connecting) || (!status.supported && !isIosBrowser());
+    connectButton.title = status.connected
+      ? `MIDI 已连接：${deviceSummary}`
+      : (!status.supported && isIosBrowser() ? '前往 App Store 安装 MIDIWeb Browser' : text);
   }
   if (gameStatus) {
     gameStatus.setAttribute('aria-hidden', status.connected ? 'false' : 'true');
@@ -3772,6 +3878,11 @@ function handleExternalMidiControl(message) {
 
 async function requestExternalMidiConnection() {
   if (!window.FreezaMidiInput) return;
+  const status = window.FreezaMidiInput.snapshot?.() || {};
+  if (!status.supported) {
+    if (isIosBrowser()) window.location.assign(MIDIWEB_IOS_URL);
+    return;
+  }
   // iOS/MIDIWeb 中 MIDI 消息本身不属于用户手势；必须借连接按钮这次点击先解锁音频。
   ensureAudio();
   await Promise.allSettled([
