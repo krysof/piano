@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-40';
+const ASSET_VERSION = 'reset-20260711-41';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -25,6 +25,7 @@ const sampled = {
 const wasmParser = { promise: null, exports: null };
 const patterns = { manifest: null, byCode: new Map(), promise: null };
 const audioScheduler = window.FreezaAudioScheduler.create({ lookaheadMs: 90 });
+const comboState = window.FreezaComboState.create();
 let song = null;
 let lyricLines = [];
 let lastLyricIndex = -1;
@@ -687,12 +688,26 @@ function timingGrade(progress, correctKey = true) {
 
 function resetTimingRatings() {
   TIMING_GRADES.forEach(grade => timingRatingCounts.set(grade, 0));
+  comboState.reset();
+  updateComboStatus();
 }
 
 function recordTimingGrade(grade) {
   const normalized = TIMING_GRADES.includes(grade) ? grade : 'MISS';
   timingRatingCounts.set(normalized, (timingRatingCounts.get(normalized) || 0) + 1);
+  comboState.record(normalized);
+  updateComboStatus();
   return normalized;
+}
+
+function updateComboStatus() {
+  const status = $('comboStatus');
+  if (!status) return;
+  const { current } = comboState.snapshot();
+  const value = status.querySelector('b');
+  if (value) value.textContent = String(current);
+  status.classList.toggle('active', current > 0);
+  status.setAttribute('aria-label', `当前连击 ${current}`);
 }
 
 function showTimingRating(key, grade, count = true) {
@@ -703,6 +718,13 @@ function showTimingRating(key, grade, count = true) {
   const rating = document.createElement('span');
   rating.className = `timing-rating grade-${String(normalized).toLowerCase()}`;
   rating.textContent = normalized;
+  const { current } = comboState.snapshot();
+  if (normalized !== 'MISS' && current >= 2) {
+    const combo = document.createElement('small');
+    combo.className = 'timing-combo';
+    combo.textContent = `×${current}`;
+    rating.appendChild(combo);
+  }
   rating.style.left = `${rect.left + rect.width / 2}px`;
   // 出现点比和弦文字再高约 1/3 个现有上移行程（40 / 3 ≈ 13.3px）。
   rating.style.top = `${rect.top + rect.height * 0.06 - 14}px`;
@@ -725,6 +747,11 @@ function showPerformanceResults() {
   const total = TIMING_GRADES.reduce((sum, grade) => sum + (timingRatingCounts.get(grade) || 0), 0);
   const totalEl = $('resultTotal');
   if (totalEl) totalEl.textContent = `总判定 ${total}`;
+  const combo = $('resultMaxCombo');
+  if (combo) {
+    const value = combo.querySelector('b');
+    if (value) value.textContent = String(comboState.snapshot().maximum);
+  }
   modal.classList.add('show');
   modal.setAttribute('aria-hidden', 'false');
 }

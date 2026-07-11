@@ -139,6 +139,16 @@
 .timing-rating.grade-e { color: #ffc49f; text-shadow: 0 0 7px #ff8b48, 0 0 16px #d75a26; }
 .timing-rating.grade-f { color: #ffaaa4; text-shadow: 0 0 7px #ff665c, 0 0 16px #c73535; }
 .timing-rating.grade-miss { color: #ff9b9b; text-shadow: 0 0 7px #ff4f5f, 0 0 16px #b91e3b; font-size: clamp(28px, 9cqw, 46px); }
+.timing-rating .timing-combo {
+  display: block;
+  margin-top: .2em;
+  color: currentColor;
+  font-size: .34em;
+  font-weight: 850;
+  letter-spacing: .08em;
+  opacity: .76;
+  text-shadow: inherit;
+}
 
 @keyframes timingRatingFloat {
   0% { opacity: 0; transform: translate3d(-50%, 4px, 0) scale(.96); }

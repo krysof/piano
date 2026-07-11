@@ -226,6 +226,23 @@ body.game-started .game-midi-status { color: #7ce0b5; }
 .key-status small { font-size: 8px; letter-spacing: .18em; }
 .key-status b { color: #b59cff; font-size: 14px; line-height: 1; text-shadow: 0 0 8px rgba(139,92,246,.36); }
 
+.combo-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 48px;
+  color: #777d90;
+  font-size: 8px;
+  font-weight: 820;
+  letter-spacing: .08em;
+  opacity: .48;
+  transition: color 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+.combo-status small { font-size: 7px; letter-spacing: .12em; }
+.combo-status b { color: #9ca2b5; font-size: 13px; line-height: 1; font-variant-numeric: tabular-nums; }
+.combo-status.active { color: #b99fff; opacity: 1; transform: translateY(-1px); }
+.combo-status.active b { color: #fff0a6; text-shadow: 0 0 9px rgba(255,215,86,.5); }
+
 .meter {
   min-width: 112px;
   padding: 7px 12px;
@@ -585,6 +602,8 @@ body.game-started.camera-live .camera-pip { display: block; }
   .karaoke { padding: 44px 4px 8px; border-radius: 17px; }
   .karaoke-panel-title { top: 9px; left: 12px; }
   .karaoke-status { top: 8px; right: 10px; }
+  .combo-status { min-width: 39px; gap: 2px; }
+  .combo-status small { display: none; }
   .meter { min-width: 96px; padding: 6px 9px; font-size: 9px; }
   .karaoke-line { padding-inline: 4px; }
   .piano-slot { padding: 6px 7px 7px; border-radius: 15px; }

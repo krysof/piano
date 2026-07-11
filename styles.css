@@ -159,7 +159,20 @@ body.game-started .game {
 
 .result-eyebrow { color: #a98bff; font-size: 11px; font-weight: 850; letter-spacing: .24em; }
 .result-card h2 { margin: 7px 0 3px; color: #f7f4ff; font-size: clamp(26px, 7vw, 38px); }
-.result-total { margin-bottom: 20px; color: rgba(232,227,249,.62); font-size: 13px; }
+.result-summary { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 12px 0 20px; }
+.result-total { color: rgba(232,227,249,.62); font-size: 13px; }
+.result-max-combo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255,220,102,.2);
+  border-radius: 999px;
+  color: #c9b8ff;
+  background: rgba(157,116,255,.09);
+}
+.result-max-combo small { font-size: 8px; font-weight: 850; letter-spacing: .13em; }
+.result-max-combo b { color: #fff0a6; font-size: 21px; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255,213,82,.35); }
 .result-grade-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 0; }
 .result-grade {
   min-width: 0;
