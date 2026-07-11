@@ -1,17 +1,26 @@
 (function attachComboState(root) {
   const COMMENT_LEVELS = Object.freeze([
-    Object.freeze({ min: 200, text: '传奇演奏' }),
-    Object.freeze({ min: 100, text: '舞台主宰' }),
-    Object.freeze({ min: 60, text: '火力全开' }),
-    Object.freeze({ min: 30, text: '节奏在线' }),
-    Object.freeze({ min: 10, text: '渐入佳境' }),
-    Object.freeze({ min: 1, text: '初露锋芒' }),
-    Object.freeze({ min: 0, text: '尚未连击' }),
+    Object.freeze({ minRatio: 1.00, text: '传奇演奏' }),
+    Object.freeze({ minRatio: 0.80, text: '舞台主宰' }),
+    Object.freeze({ minRatio: 0.60, text: '火力全开' }),
+    Object.freeze({ minRatio: 0.40, text: '节奏在线' }),
+    Object.freeze({ minRatio: 0.20, text: '渐入佳境' }),
+    Object.freeze({ minRatio: 0.00, text: '初露锋芒' }),
   ]);
 
-  function commentFor(combo) {
+  function ratioFor(combo, total) {
     const value = Math.max(0, Math.floor(Number(combo) || 0));
-    return COMMENT_LEVELS.find(level => value >= level.min)?.text || '尚未连击';
+    const target = Math.max(0, Math.floor(Number(total) || 0));
+    if (!value || !target) return 0;
+    return Math.max(0, Math.min(1, value / target));
+  }
+
+  function commentFor(combo, total) {
+    const value = Math.max(0, Math.floor(Number(combo) || 0));
+    const target = Math.max(0, Math.floor(Number(total) || 0));
+    if (!value || !target) return '尚未连击';
+    const ratio = ratioFor(value, target);
+    return COMMENT_LEVELS.find(level => ratio >= level.minRatio)?.text || '初露锋芒';
   }
 
   function create({ breakGrades = ['MISS'] } = {}) {
@@ -41,5 +50,5 @@
     });
   }
 
-  root.FreezaComboState = Object.freeze({ create, commentFor, levels: COMMENT_LEVELS });
+  root.FreezaComboState = Object.freeze({ create, ratioFor, commentFor, levels: COMMENT_LEVELS });
 })(typeof window !== 'undefined' ? window : globalThis);

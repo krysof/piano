@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-44';
+const ASSET_VERSION = 'reset-20260712-01';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -706,16 +706,25 @@ function recordTimingGrade(grade) {
   return normalized;
 }
 
+function comboTargetCount() {
+  // 每个 chord cue 对应本曲一次应按节点；错误重试会增加总判定次数，
+  // 但不能扩大称号分母，否则同一首歌会因乱按而改变难度基准。
+  return song?.chordCues?.length || 0;
+}
+
 function updateComboStatus() {
   const status = $('comboStatus');
   if (!status) return;
   const { current } = comboState.snapshot();
+  const target = comboTargetCount();
+  const ratio = window.FreezaComboState.ratioFor(current, target);
+  const label = window.FreezaComboState.commentFor(current, target);
   const value = status.querySelector('b');
   const comment = status.querySelector('em');
   if (value) value.textContent = String(current);
-  if (comment) comment.textContent = window.FreezaComboState.commentFor(current);
+  if (comment) comment.textContent = label;
   status.classList.toggle('active', current > 0);
-  status.setAttribute('aria-label', `当前连击 ${current}，${window.FreezaComboState.commentFor(current)}`);
+  status.setAttribute('aria-label', `当前连击 ${current} / ${target}，完成度 ${Math.round(ratio * 100)}%，${label}`);
 }
 
 function showTimingRating(key, grade, count = true) {
@@ -758,10 +767,12 @@ function showPerformanceResults() {
   const combo = $('resultMaxCombo');
   if (combo) {
     const maximum = comboState.snapshot().maximum;
+    const target = comboTargetCount();
+    const percent = window.FreezaComboState.ratioFor(maximum, target) * 100;
     const value = combo.querySelector('b');
     const comment = combo.querySelector('em');
     if (value) value.textContent = String(maximum);
-    if (comment) comment.textContent = window.FreezaComboState.commentFor(maximum);
+    if (comment) comment.textContent = `${window.FreezaComboState.commentFor(maximum, target)} · ${percent.toFixed(1)}%`;
   }
   modal.classList.add('show');
   modal.setAttribute('aria-hidden', 'false');
