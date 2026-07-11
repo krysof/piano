@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-30';
+const ASSET_VERSION = 'reset-20260711-31';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -66,6 +66,7 @@ let manualMelodyTimers = [];
 let interactivePhrase = null;
 let interactiveTransitioning = false;
 let interactivePressQueue = [];
+let lastManualWrongPressAt = -Infinity;
 let midiReady = false;
 let midiReadyPromise = null;
 let sampleReadyPromise = Promise.resolve(false);
@@ -3290,11 +3291,13 @@ function playWrongHarmonyPreview(root, cue, pickSlot = 0) {
   // 与当前正确伴奏持续交叠，连续错按后就像调度器乱序。这里只播放一个短促、
   // 同时发声的和弦击键，而且不创建任何会被下一小节继承的 timer/phase 状态。
   const chordName = chordNameForPerformedRoot(root, cue || { chord: root, root });
-  const notes = [...new Set(parseChordNotes(chordName).map(Number).filter(Number.isFinite))].slice(0, 4);
+  // 两个和弦音已经足够让玩家听出按错；不要为一次错误输入同时创建 3–4 个
+  // 长 release 采样声部，否则手机上连续乱按会堆出几十个并发音源。
+  const notes = [...new Set(parseChordNotes(chordName).map(Number).filter(Number.isFinite))].slice(0, 2);
   const toneMode = Math.max(1, Math.min(HARMONY_TONES.length, Number(pickSlot) + 1));
   for (const midi of notes) {
-    playHarmonyToneNote(midi, 0.26, 0.44, toneMode);
-    flash('playbackKeyboard', midi, 260, 'harmony');
+    playHarmonyToneNote(midi, 0.14, 0.38, toneMode);
+    flash('playbackKeyboard', midi, 180, 'harmony');
   }
 }
 function pausePlayback() {
@@ -3444,6 +3447,7 @@ function resetInteractiveSequencer() {
   interactivePhrase = null;
   interactiveTransitioning = false;
   interactivePressQueue = [];
+  lastManualWrongPressAt = -Infinity;
   oneKeyNextCueIndex = -1;
   oneKeyLastBarEndAt = 0;
   oneKeyLastBarDurationMs = 0;
@@ -3885,6 +3889,12 @@ function triggerChordKey(label, pickSlot, key) {
     // 错键是完全隔离的试听：不写入用户拨片事件、不改变全局音色、不推进
     // pattern 前后半、不进入交互队列，也不接触当前主旋律/伴奏的计时状态。
     // 这样连续乱按后再按正确键，仍从原小节的正确时间和相位继续。
+    const wrongPressedAt = performance.now();
+    // 实体 MIDI 和多点触控可能在几毫秒内送来多个不同 Note On。错误输入只做
+    // 120ms 防抖，正确键永远不受限制；避免错误试听的大量采样声部和 DOM 动画
+    // 阻塞主旋律 timer，恢复后又把多个音符集中触发成“快放”。
+    if (wrongPressedAt - lastManualWrongPressAt < 120) return false;
+    lastManualWrongPressAt = wrongPressedAt;
     showTimingRating(key, 'MISS');
     rejectEarlyChordPress(key);
     showPickZoneFeedback(key, normalizedPickSlot);
