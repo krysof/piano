@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-43';
+const ASSET_VERSION = 'reset-20260711-44';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -87,9 +87,10 @@ let playbackNeedsFocusResync = false;
 let focusResyncing = false;
 let focusResumePosition = null;
 let focusResyncRetryTimer = null;
+const balancedHarmonyGain = (code, fallback) => window.FreezaHarmonyBalance?.gainForCode(code, fallback) ?? fallback;
 let HARMONY_TONES = [
-  { label: 'A', code: 'GS_3', name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: 0.78 },
-  { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: 0.42 },
+  { label: 'A', code: 'GS_3', name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: balancedHarmonyGain('GS_3', 0.70), fallbackGain: 0.65 },
+  { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: balancedHarmonyGain('PianoStudio_4', 0.42) },
 ];
 const soundfont = { instruments: new Map(), promises: new Map(), ready: false };
 const drumKit = { ctx: null, noise: null };
@@ -439,7 +440,9 @@ function getSoundfontInstrument(preset) {
       format: 'mp3',
       nameToUrl: localSoundfontUrl,
       destination: audio.master,
-      gain: preset.gain || 0.65,
+      // 每个 Note On 已按音色设置 gain；instrument 层不能再乘一次，否则
+      // 本地采样回退 SoundFont 时会被双重衰减。
+      gain: 1,
     }).then(inst => {
       soundfont.instruments.set(soundfontName, inst);
       return inst;
@@ -477,6 +480,8 @@ function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = h
   const preset = HARMONY_TONES[(toneMode - 1 + HARMONY_TONES.length) % HARMONY_TONES.length];
   ensureAudio();
   const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const fallbackLevel = Math.max(0.05, Math.min(1,
+    velocity * (preset.fallbackGain || preset.gain || 0.65) * harmonyGain));
   const guitarSource = preset.guitarLibrary && window.FreezaGuitarSampler?.play(
     audio.ctx, audio.master, preset.code, midi, duration, velocity,
     (preset.gain || 0.78) * harmonyGain, scheduledWhen,
@@ -485,7 +490,8 @@ function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = h
   if (preset.localPiano && sampled.ready && sampled.piano && window.Tone) {
     Tone.start();
     const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
-    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, toneWhen, Math.max(0.035, velocity * (preset.gain || 0.42) * harmonyGain));
+    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, toneWhen,
+      Math.max(0.035, Math.min(1, velocity * (preset.gain || 0.42) * harmonyGain)));
     return null;
   }
   const soundfontName = preset.fallbackName || preset.name;
@@ -493,16 +499,16 @@ function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = h
   if (cachedInstrument) {
     const note = preset.drum ? Math.min(81, Math.max(35, midi)) : midi;
     return cachedInstrument.play(note, scheduledWhen, Math.max(0.08, duration), {
-      gain: Math.max(0.05, Math.min(1, velocity * (preset.gain || 0.65) * harmonyGain)),
+      gain: fallbackLevel,
     });
   }
   withTimeout(getSoundfontInstrument(preset), 1400, `SoundFont ${preset.name}`).then(inst => {
-    if (!inst) return fallbackSoftNote(midi, duration, velocity, scheduledWhen);
+    if (!inst) return fallbackSoftNote(midi, duration, fallbackLevel, scheduledWhen);
     const note = preset.drum ? Math.min(81, Math.max(35, midi)) : midi;
     inst.play(note, Math.max(audio.ctx.currentTime, scheduledWhen), Math.max(0.08, duration), {
-      gain: Math.max(0.05, Math.min(1, velocity * (preset.gain || 0.65) * harmonyGain)),
+      gain: fallbackLevel,
     });
-  }).catch(() => fallbackSoftNote(midi, duration, velocity, scheduledWhen));
+  }).catch(() => fallbackSoftNote(midi, duration, fallbackLevel, scheduledWhen));
   return null;
 }
 
@@ -1712,13 +1718,13 @@ function transposeChordName(chordName, semis = songPlaybackTransposeSemitones())
 
 function presetForStyleCode(code, label) {
   const c = String(code || '').trim();
-  if (/^PianoStudio/i.test(c)) return { label, code: c, name: 'Salamander Grand Piano', localPiano: true, gain: 0.42 };
-  if (/^GS_1$/i.test(c)) return { label, code: c, name: 'FreePats Spanish Classical Guitar', fallbackName: 'acoustic_guitar_nylon', guitarLibrary: true, gain: 0.9 };
-  if (/^GEC2/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Jazz', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: 0.64 };
-  if (/^GED/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Distorted', fallbackName: 'distortion_guitar', guitarLibrary: true, gain: 0.58 };
-  if (/^GEC|electric|eg/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Clean', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: 0.64 };
+  if (/^PianoStudio/i.test(c)) return { label, code: c, name: 'Salamander Grand Piano', localPiano: true, gain: balancedHarmonyGain(c, 0.42) };
+  if (/^GS_1$/i.test(c)) return { label, code: c, name: 'FreePats Spanish Classical Guitar', fallbackName: 'acoustic_guitar_nylon', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.9), fallbackGain: 0.72 };
+  if (/^GEC2/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Jazz', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.64), fallbackGain: 0.62 };
+  if (/^GED/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Distorted', fallbackName: 'distortion_guitar', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.58), fallbackGain: 0.55 };
+  if (/^GEC|electric|eg/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Clean', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.64), fallbackGain: 0.62 };
   if (/drum|chap/i.test(c)) return { label, code: c, name: 'synth_drum', gain: 0.74, drum: true };
-  return { label, code: c || label, name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: 0.70 };
+  return { label, code: c || label, name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: balancedHarmonyGain(c || 'GS_3', 0.70), fallbackGain: 0.65 };
 }
 
 function refreshHarmonyTonesFromStyle(styleInfo) {
@@ -3501,8 +3507,13 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
       barBeats: patternBeats(pattern),
       notes: pattern.notes,
     });
-    for (const event of plan.events || []) {
-      const velocity = normalizedHarmonyVelocity(event.velocity);
+    const balancedEvents = (plan.events || []).map(event => ({
+      ...event,
+      velocity: normalizedHarmonyVelocity(event.velocity),
+    }));
+    const densityGain = window.FreezaHarmonyBalance?.planGain(balancedEvents) || 1;
+    for (const event of balancedEvents) {
+      const velocity = Math.max(0.04, Math.min(0.98, event.velocity * densityGain));
       scheduled.push(playHarmonyVisualNote(
         Number(event.midi),
         Number(event.delay) * timeScale * 1000,
@@ -3525,9 +3536,18 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
     const targetEnd = Math.max(0.12, nextTime - now - 0.018);
     // fallback 也遵守统一的最大约 1.6x 加速限制，禁止为了硬塞窗口压成 4x 快放。
     const speed = Math.max(0.62, Math.min(1.12, timeScale, targetEnd / naturalEnd));
-    for (const n of fallbackNotes) {
+    const balancedFallback = fallbackNotes.map(n => ({
+      note: n,
+      delay: (n.time - start) * speed,
+      duration: Math.max(0.08, Number(n.duration || 0.45) * speed),
+      velocity: normalizedHarmonyVelocity((n.velocity || 0.48) * 127),
+    }));
+    const densityGain = window.FreezaHarmonyBalance?.planGain(balancedFallback) || 1;
+    for (const event of balancedFallback) {
+      const n = event.note;
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
-      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, Math.max(0.08, Number(n.duration || 0.45) * speed), normalizedHarmonyVelocity((n.velocity || 0.48) * 127), harmonyToneMode));
+      const velocity = Math.max(0.04, Math.min(0.98, event.velocity * densityGain));
+      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, event.duration, velocity, harmonyToneMode));
     }
     console.warn('No LiberLive chord pattern loaded; using Track 2 fallback chord notes for', code || currentHarmonyPreset()?.code);
     return { root, cue, segmentEnd, events: scheduled };
