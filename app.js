@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260711-34';
+const ASSET_VERSION = 'reset-20260711-35';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -3571,12 +3571,28 @@ function manualMusicPressTiming(now = performance.now()) {
   }
   const duration = Math.max(1, interactivePhrase.musicEndAt - interactivePhrase.musicStartAt);
   const progress = ((now - interactivePhrase.musicStartAt) / duration) * 100;
-  // 太早不允许推进；超过 120% 仍允许玩家继续歌曲，但本次固定 MISS，避免永久卡死。
+  // 手动判定窗为 85–115。85 前无效；115 后不能让歌曲永久卡死，按 115
+  // 的最晚有效等级继续。按键只决定评级/排队，音乐仍等真实小节边界再启动。
+  const ratedProgress = Math.max(85, Math.min(115, progress));
   return {
-    accepted: progress >= 70,
-    progress,
-    grade: progress > 120 ? 'MISS' : oneKeyTimingGrade(progress),
+    // 给 performance.now() 的子帧取样误差留 0.1%，界面显示 85 时必须算有效。
+    accepted: progress >= 84.9,
+    progress: ratedProgress,
+    grade: manualTimingGrade(ratedProgress),
   };
+}
+
+function manualTimingGrade(progress) {
+  const error = Math.abs(Number(progress) - 100);
+  if (error <= 1.5) return 'SSS';
+  if (error <= 3) return 'SS';
+  if (error <= 4.5) return 'S';
+  if (error <= 6) return 'A';
+  if (error <= 7.5) return 'B';
+  if (error <= 9) return 'C';
+  if (error <= 10.5) return 'D';
+  if (error <= 12) return 'E';
+  return 'F';
 }
 
 function timingForInteractivePhrase(cue, timing = {}) {
@@ -3886,10 +3902,6 @@ function triggerChordKey(label, pickSlot, key) {
     : label;
   const matchesManualCue = Boolean(manualMode
     && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
-  const manualPhraseFinished = !manualMode || !interactivePhrase
-    || interactivePhrase.musicVisualComplete
-    || (Number.isFinite(interactivePhrase.naturalEndAt)
-      && performance.now() >= interactivePhrase.naturalEndAt);
   if (manualMode && matchesManualCue && interactiveCueIsQueued(pressedCue)) {
     // 快速乱按时可能无意中已经击中过正确键；之后再按同一个正确键不能把
     // 同一 cue 重复入队。否则边界后会连续启动两次同一小节，听起来像主旋律
@@ -3916,14 +3928,13 @@ function triggerChordKey(label, pickSlot, key) {
     }
   }
   const normalizedPickSlot = pickSlot > 0 ? 1 : 0;
-  if (manualMode && (!matchesManualCue || !manualPhraseFinished)) {
+  if (manualMode && (!matchesManualCue || !manualPress.accepted)) {
     // 错键是完全隔离的试听：不写入用户拨片事件、不改变全局音色、不推进
     // pattern 前后半、不进入交互队列，也不接触当前主旋律/伴奏的计时状态。
     // 这样连续乱按后再按正确键，仍从原小节的正确时间和相位继续。
     const wrongPressedAt = performance.now();
-    // 一个 MISS 的浮字动画持续 1 秒。在它消失前，所有后续错误输入（包括
-    // 主旋律尚未播完时按到“下一正确键”）都静音、无动画、也不重复计分。
-    // 只有主旋律已经完整结束后的正确键可以越过这把锁并正常启动下一段。
+    // 一个 MISS 的浮字动画持续 1 秒。在它消失前，所有后续错误输入都静音、
+    // 无动画、也不重复计分。85–115 判定窗内的正确键可以越过这把锁。
     if (wrongPressedAt < manualWrongLockUntil) return false;
     manualWrongLockUntil = wrongPressedAt + 1000;
     showTimingRating(key, 'MISS');
@@ -3934,7 +3945,7 @@ function triggerChordKey(label, pickSlot, key) {
     animateChordPress(key);
     return true;
   }
-  if (manualMode && matchesManualCue && manualPhraseFinished) manualWrongLockUntil = -Infinity;
+  if (manualMode && matchesManualCue && manualPress.accepted) manualWrongLockUntil = -Infinity;
   harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, normalizedPickSlot + 1));
   // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
   // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
