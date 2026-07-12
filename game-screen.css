@@ -294,10 +294,11 @@ body.game-started .game-midi-status { color: #7ce0b5; }
   transform: translateZ(0);
 }
 
-body.game-started.camera-live .camera-pip { display: block; }
+body.game-started.media-pip-live .camera-pip { display: block; }
 .camera-pip.dragging { cursor: grabbing; box-shadow: 0 22px 58px rgba(0,0,0,.54), 0 0 34px rgba(139,92,246,.3); }
 .camera-pip video { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
 .camera-pip.front video { transform: scaleX(-1); }
+.camera-pip.local-video video { transform: none; }
 .camera-pip-hint {
   position: absolute;
   right: 7px;

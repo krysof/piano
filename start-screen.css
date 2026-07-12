@@ -622,6 +622,26 @@ body.game-started #startScreen {
   background: rgba(8, 10, 17, 0.36);
 }
 
+.launch-media-item,
+.launch-video-sound {
+  grid-column: span 2;
+  grid-template-columns: minmax(88px, .7fr) minmax(220px, 1.3fr);
+}
+
+.launch-media-switch {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+}
+
+.launch-media-switch::before { display: none; }
+.launch-media-switch button.selected {
+  border-color: rgba(255,255,255,.11);
+  background: linear-gradient(135deg, #8e64f5, #6744d9);
+  box-shadow: 0 5px 13px rgba(72,42,150,.34), inset 0 1px 0 rgba(255,255,255,.18);
+}
+
+.launch-video-sound[hidden] { display: none; }
+
 .launch-toggle-item > div:first-child {
   display: grid;
   gap: 2px;
@@ -1067,6 +1087,22 @@ body.game-started #startScreen {
     padding: 7px;
     text-align: center;
   }
+  .launch-media-item,
+  .launch-video-sound {
+    grid-column: 1 / -1;
+    grid-template-columns: 74px minmax(0, 1fr);
+    min-height: 54px;
+    text-align: left;
+  }
+  .launch-media-item > div:first-child,
+  .launch-video-sound > div:first-child { text-align: left; }
+  .launch-media-switch button { min-width: 0; padding-inline: 2px; white-space: nowrap; }
+  .launch-shell:has(.launch-video-sound:not([hidden])) .launch-dashboard {
+    flex: 0 0 auto;
+    grid-template-rows: auto auto auto;
+  }
+  .launch-shell:has(.launch-video-sound:not([hidden])) .launch-switches { overflow: visible; }
+  .launch-video-sound { min-height: 46px; }
 
   .launch-toggle-item > div:first-child { gap: 0; }
   .launch-toggle-item b { font-size: 11px; }

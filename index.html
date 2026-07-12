@@ -7,11 +7,11 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260712-03" />
-  <link rel="stylesheet" href="song-screen.css?v=reset-20260712-03" />
-  <link rel="stylesheet" href="start-screen.css?v=reset-20260712-03" />
-  <link rel="stylesheet" href="game-screen.css?v=reset-20260712-03" />
-  <link rel="stylesheet" href="chord-keys.css?v=reset-20260712-03" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260712-04" />
+  <link rel="stylesheet" href="song-screen.css?v=reset-20260712-04" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260712-04" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260712-04" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260712-04" />
 </head>
 <body>
 
@@ -56,7 +56,7 @@
         </div>
         <div class="song-library-summary">
           <div class="song-library-count"><strong id="songLibraryCount">00</strong><span>TRACKS</span></div>
-          <b id="startVersion" class="song-version">v20260712.03</b>
+          <b id="startVersion" class="song-version">v20260712.04</b>
         </div>
       </header>
 
@@ -219,11 +219,22 @@
                 <button class="selected" data-mic="off">关</button>
               </div>
             </div>
-            <div class="launch-toggle-item">
-              <div><b>摄像头</b><small id="cameraStatus">前置画面</small></div>
-              <div class="launch-switch" data-group="camera">
-                <button data-camera="on">开</button>
-                <button class="selected" data-camera="off">关</button>
+            <div class="launch-toggle-item launch-media-item">
+              <div><b>素材来源</b><small id="cameraStatus">未选择素材</small></div>
+              <div class="launch-switch launch-media-switch" data-group="media-source">
+                <button data-media-source="camera">摄像头</button>
+                <button data-media-source="video">视频</button>
+                <button data-media-source="audio">声音</button>
+                <button class="selected" data-media-source="off">关</button>
+              </div>
+              <input id="localVideoInput" type="file" accept="video/*" hidden />
+              <input id="localAudioInput" type="file" accept="audio/*" hidden />
+            </div>
+            <div id="videoSoundItem" class="launch-toggle-item launch-video-sound" hidden>
+              <div><b>视频声音</b><small>是否加入演奏与录像</small></div>
+              <div class="launch-switch" data-group="video-sound">
+                <button class="selected" data-video-sound="on">开</button>
+                <button data-video-sound="off">关</button>
               </div>
             </div>
           </div>
@@ -268,10 +279,10 @@
   <div id="countdownOverlay" class="countdown-overlay" aria-hidden="true"></div>
 
   <div id="savePrompt" class="save-prompt" aria-hidden="true">
-    <div class="save-card" role="dialog" aria-label="保存录音">
-      <div class="save-orb">🎙</div>
-      <div class="save-title">保存本次录音？</div>
-      <div class="save-subtitle">已录下麦克风和伴奏</div>
+    <div class="save-card" role="dialog" aria-label="保存演奏录像">
+      <div class="save-orb">●</div>
+      <div class="save-title">保存本次演奏录像？</div>
+      <div class="save-subtitle">包含游戏画面、演奏混音和素材小窗</div>
       <div id="savePromptSize" class="save-size">准备文件…</div>
       <div class="save-actions">
         <button id="savePromptCancel" class="save-btn ghost">不要</button>
@@ -310,7 +321,7 @@
         <button id="toneBtn" class="btn accent" aria-label="drum pattern">鼓A</button>
         <button id="melodyToggle" class="btn active-toggle" aria-label="melody">主</button>
         <button id="drumToggle" class="btn active-toggle" aria-label="鼓机状态：智能，点击切换">智能</button>
-        <button id="saveRecBtn" class="btn save" aria-label="保存录音">录音保存</button>
+        <button id="saveRecBtn" class="btn save" aria-label="保存演奏录像">录像保存</button>
       </div>
     </header>
 
@@ -366,10 +377,12 @@
       </div>
     </section>
 
-    <div id="cameraPip" class="camera-pip front" role="button" tabindex="-1" aria-hidden="true" aria-label="摄像头预览，轻触切换摄像头，可拖动">
+    <div id="cameraPip" class="camera-pip front" role="button" tabindex="-1" aria-hidden="true" aria-label="素材预览，轻触操作，可拖动">
       <video id="cameraPreview" autoplay muted playsinline></video>
       <span class="camera-pip-hint"><b id="cameraFacingLabel">前置</b><small>轻触切换 · 拖动移动</small></span>
     </div>
+
+    <audio id="localAudioPreview" preload="metadata" hidden></audio>
 
     <div class="hidden-status" aria-hidden="true">
       <span id="midiStatus"></span>
@@ -381,15 +394,16 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="song-catalog.js?v=reset-20260712-03"></script>
-  <script src="midi-input.js?v=reset-20260712-03"></script>
-  <script src="interactive-state.js?v=reset-20260712-03"></script>
-  <script src="audio-scheduler.js?v=reset-20260712-03"></script>
-  <script src="combo-state.js?v=reset-20260712-03"></script>
-  <script src="harmony-balance.js?v=reset-20260712-03"></script>
-  <script src="guitar-manifests.js?v=reset-20260712-03"></script>
-  <script src="guitar-sampler.js?v=reset-20260712-03"></script>
-  <script src="drum-kits.js?v=reset-20260712-03"></script>
-  <script src="app.js?v=reset-20260712-03"></script>
+  <script src="song-catalog.js?v=reset-20260712-04"></script>
+  <script src="midi-input.js?v=reset-20260712-04"></script>
+  <script src="interactive-state.js?v=reset-20260712-04"></script>
+  <script src="audio-scheduler.js?v=reset-20260712-04"></script>
+  <script src="combo-state.js?v=reset-20260712-04"></script>
+  <script src="harmony-balance.js?v=reset-20260712-04"></script>
+  <script src="guitar-manifests.js?v=reset-20260712-04"></script>
+  <script src="guitar-sampler.js?v=reset-20260712-04"></script>
+  <script src="drum-kits.js?v=reset-20260712-04"></script>
+  <script src="performance-recorder.js?v=reset-20260712-04"></script>
+  <script src="app.js?v=reset-20260712-04"></script>
 </body>
 </html>

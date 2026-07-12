@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260712-03';
+const ASSET_VERSION = 'reset-20260712-04';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -50,12 +50,17 @@ let harmonyGain = 1.55;
 let drumGain = 1.55;
 let micEnabled = false;
 let cameraEnabled = false;
+let mediaSourceMode = 'off';
 // 麦克风固定 95% 防爆麦：这是内部隐藏值，不在界面暴露，也不允许用户调节。
 const FIXED_MIC_GAIN = 0.95;
 let micGain = FIXED_MIC_GAIN;
 const mic = { stream: null, source: null, gain: null, analyser: null, data: null, freqData: null, raf: 0, level: 0, ready: false };
 const cameraPreviewState = { stream: null, facingMode: 'user', switching: false, userPositioned: false };
-const recorder = { media: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, hadMic: false };
+const localMedia = {
+  url: '', kind: '', fileName: '', includeVideoAudio: true,
+  videoSource: null, videoGain: null, audioSource: null, audioGain: null,
+};
+const recorder = { media: null, compositor: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, hadMic: false, video: false };
 let drumsEnabled = false;
 let drumMode = 'auto';
 let drumModeBeforeOff = 'auto';
@@ -795,6 +800,9 @@ function returnToSongScreen() {
   resetInteractiveSequencer();
   resetHarmonyHalfSequence();
   stopCamera();
+  clearLocalMedia();
+  mediaSourceMode = 'off';
+  updateCameraMenu();
   cameraPreviewState.userPositioned = false;
   document.querySelectorAll('body > .timing-rating, body > .lyric-particle').forEach(el => el.remove());
   document.body.classList.remove('game-started', 'song-selected');
@@ -1120,22 +1128,30 @@ function stopMic() {
 }
 
 function updateCameraMenu(statusText = '') {
-  document.querySelectorAll('[data-camera]').forEach(button => {
-    button.classList.toggle('selected', (button.dataset.camera === 'on') === cameraEnabled);
+  document.querySelectorAll('[data-media-source]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.mediaSource === mediaSourceMode);
   });
-  syncLaunchSwitch('camera', cameraEnabled);
   const facing = cameraPreviewState.facingMode === 'environment' ? '后置' : '前置';
   const status = $('cameraStatus');
-  if (status) status.textContent = statusText || (cameraEnabled ? `${facing}画面` : '默认前置');
+  const defaultStatus = mediaSourceMode === 'camera' ? `${facing}画面`
+    : mediaSourceMode === 'video' ? (localMedia.fileName || '本地视频')
+      : mediaSourceMode === 'audio' ? (localMedia.fileName || '本地声音') : '未选择素材';
+  if (status) status.textContent = statusText || defaultStatus;
   const label = $('cameraFacingLabel');
-  if (label) label.textContent = facing;
+  if (label) label.textContent = mediaSourceMode === 'video' ? '视频' : facing;
   const pip = $('cameraPip');
-  const live = cameraEnabled && Boolean(cameraPreviewState.stream);
+  const live = (mediaSourceMode === 'camera' && Boolean(cameraPreviewState.stream))
+    || (mediaSourceMode === 'video' && Boolean(localMedia.url));
   document.body.classList.toggle('camera-live', live);
+  document.body.classList.toggle('media-pip-live', live);
+  if ($('videoSoundItem')) $('videoSoundItem').hidden = mediaSourceMode !== 'video';
   if (pip) {
-    pip.classList.toggle('front', cameraPreviewState.facingMode !== 'environment');
+    pip.classList.toggle('front', mediaSourceMode === 'camera' && cameraPreviewState.facingMode !== 'environment');
+    pip.classList.toggle('local-video', mediaSourceMode === 'video');
     pip.setAttribute('aria-hidden', live ? 'false' : 'true');
     pip.tabIndex = live ? 0 : -1;
+    const hint = pip.querySelector('.camera-pip-hint small');
+    if (hint) hint.textContent = mediaSourceMode === 'video' ? '轻触播放/暂停 · 拖动移动' : '轻触切换 · 拖动移动';
   }
 }
 
@@ -1147,19 +1163,26 @@ function stopCamera(disable = true) {
   releaseCameraStream();
   cameraPreviewState.stream = null;
   cameraPreviewState.switching = false;
-  if (disable) cameraEnabled = false;
+  if (disable) {
+    cameraEnabled = false;
+    if (mediaSourceMode === 'camera') mediaSourceMode = 'off';
+  }
   const video = $('cameraPreview');
   if (video) video.srcObject = null;
   updateCameraMenu();
 }
 
 async function attachCameraStream(stream, intendedFacing = 'user') {
+  clearLocalMedia(false);
+  mediaSourceMode = 'camera';
+  cameraEnabled = true;
   cameraPreviewState.stream = stream;
   const settings = stream.getVideoTracks?.()[0]?.getSettings?.() || {};
   cameraPreviewState.facingMode = settings.facingMode || intendedFacing;
   const video = $('cameraPreview');
   if (video) {
     video.srcObject = stream;
+    video.muted = true;
     await video.play?.().catch(() => {});
   }
   updateCameraMenu();
@@ -1173,7 +1196,7 @@ async function requestCamera(videoConstraints, intendedFacing = 'user') {
 }
 
 async function ensureCamera() {
-  if (!cameraEnabled) return false;
+  if (!cameraEnabled || mediaSourceMode !== 'camera') return false;
   if (cameraPreviewState.stream) return true;
   if (!navigator.mediaDevices?.getUserMedia) {
     cameraEnabled = false;
@@ -1233,10 +1256,137 @@ async function switchCamera() {
   }
 }
 
+function disconnectLocalMediaElement(element, gain) {
+  element?.pause?.();
+  if (gain) gain.gain.value = 0;
+  if (element) {
+    element.removeAttribute('src');
+    element.load?.();
+  }
+}
+
+function clearLocalMedia(resetMode = true) {
+  const video = $('cameraPreview');
+  const audioElement = $('localAudioPreview');
+  if (localMedia.kind === 'video') disconnectLocalMediaElement(video, localMedia.videoGain);
+  if (localMedia.kind === 'audio') disconnectLocalMediaElement(audioElement, localMedia.audioGain);
+  if (localMedia.url) URL.revokeObjectURL(localMedia.url);
+  localMedia.url = '';
+  localMedia.kind = '';
+  localMedia.fileName = '';
+  if (resetMode && (mediaSourceMode === 'video' || mediaSourceMode === 'audio')) mediaSourceMode = 'off';
+}
+
+function connectLocalMediaAudio(kind) {
+  ensureAudio();
+  const element = kind === 'video' ? $('cameraPreview') : $('localAudioPreview');
+  const sourceKey = kind === 'video' ? 'videoSource' : 'audioSource';
+  const gainKey = kind === 'video' ? 'videoGain' : 'audioGain';
+  if (!element || !audio.ctx || !audio.master) return;
+  if (!localMedia[sourceKey]) {
+    localMedia[sourceKey] = audio.ctx.createMediaElementSource(element);
+    localMedia[gainKey] = audio.ctx.createGain();
+    localMedia[sourceKey].connect(localMedia[gainKey]).connect(audio.master);
+  }
+  localMedia[gainKey].gain.value = kind === 'video' && !localMedia.includeVideoAudio ? 0 : 1;
+}
+
+async function useLocalMediaFile(kind, file) {
+  if (!file) return false;
+  stopCamera(false);
+  cameraEnabled = false;
+  clearLocalMedia(false);
+  mediaSourceMode = kind;
+  localMedia.kind = kind;
+  localMedia.fileName = file.name;
+  localMedia.url = URL.createObjectURL(file);
+  const element = kind === 'video' ? $('cameraPreview') : $('localAudioPreview');
+  if (!element) return false;
+  element.srcObject = null;
+  element.src = localMedia.url;
+  if (kind === 'video') element.muted = false;
+  element.loop = true;
+  element.preload = 'auto';
+  element.playsInline = true;
+  connectLocalMediaAudio(kind);
+  await new Promise(resolve => {
+    if (element.readyState >= 1) resolve();
+    else {
+      element.addEventListener('loadedmetadata', resolve, { once: true });
+      setTimeout(resolve, 1500);
+    }
+  });
+  if (kind === 'video') {
+    element.currentTime = 0;
+    element.pause();
+    positionCameraPip(!cameraPreviewState.userPositioned);
+  }
+  updateCameraMenu();
+  return true;
+}
+
+function startSelectedMediaPlayback() {
+  const element = mediaSourceMode === 'video' ? $('cameraPreview')
+    : mediaSourceMode === 'audio' ? $('localAudioPreview') : null;
+  if (!element || !localMedia.url) return;
+  connectLocalMediaAudio(mediaSourceMode);
+  if (element.ended || element.currentTime > 0.15) element.currentTime = 0;
+  element.play?.().catch(error => console.warn('Local media playback failed:', error));
+}
+
+function stopSelectedMediaPlayback(reset = false) {
+  const element = mediaSourceMode === 'video' ? $('cameraPreview')
+    : mediaSourceMode === 'audio' ? $('localAudioPreview') : null;
+  element?.pause?.();
+  if (reset && element) element.currentTime = 0;
+}
+
+function toggleLocalVideoPlayback() {
+  const video = $('cameraPreview');
+  if (mediaSourceMode !== 'video' || !video) return;
+  if (video.paused) video.play?.().catch(() => {});
+  else video.pause();
+}
+
+async function selectMediaSource(mode) {
+  if (mode === 'camera') {
+    clearLocalMedia(false);
+    mediaSourceMode = 'camera';
+    cameraEnabled = true;
+    updateCameraMenu('正在连接…');
+    await ensureCamera();
+    return;
+  }
+  if (mode === 'video') {
+    $('localVideoInput')?.click();
+    return;
+  }
+  if (mode === 'audio') {
+    $('localAudioInput')?.click();
+    return;
+  }
+  stopCamera(false);
+  cameraEnabled = false;
+  clearLocalMedia(false);
+  mediaSourceMode = 'off';
+  updateCameraMenu();
+}
+
+function setVideoSoundEnabled(enabled) {
+  localMedia.includeVideoAudio = Boolean(enabled);
+  document.querySelectorAll('[data-video-sound]').forEach(button => {
+    button.classList.toggle('selected', (button.dataset.videoSound === 'on') === localMedia.includeVideoAudio);
+  });
+  syncLaunchSwitch('video-sound', localMedia.includeVideoAudio);
+  if (localMedia.videoGain) localMedia.videoGain.gain.value = localMedia.includeVideoAudio ? 1 : 0;
+}
+
 function positionCameraPip(forceDefault = false) {
   requestAnimationFrame(() => {
     const pip = $('cameraPip');
-    if (!pip || !document.body.classList.contains('game-started') || !cameraPreviewState.stream) return;
+    const hasVisual = (mediaSourceMode === 'camera' && cameraPreviewState.stream)
+      || (mediaSourceMode === 'video' && localMedia.url);
+    if (!pip || !document.body.classList.contains('game-started') || !hasVisual) return;
     const rect = pip.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
     const margin = 10;
@@ -1260,7 +1410,7 @@ function setupCameraPip() {
   pip.dataset.ready = '1';
   let drag = null;
   pip.addEventListener('pointerdown', event => {
-    if (!cameraEnabled) return;
+    if (mediaSourceMode !== 'camera' && mediaSourceMode !== 'video') return;
     event.preventDefault();
     const rect = pip.getBoundingClientRect();
     drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moved: false };
@@ -1285,7 +1435,10 @@ function setupCameraPip() {
     pip.releasePointerCapture?.(drag.id);
     drag = null;
     pip.classList.remove('dragging');
-    if (shouldSwitch) switchCamera();
+    if (shouldSwitch) {
+      if (mediaSourceMode === 'camera') switchCamera();
+      else if (mediaSourceMode === 'video') toggleLocalVideoPlayback();
+    }
   };
   pip.addEventListener('pointerup', finish);
   pip.addEventListener('pointercancel', event => {
@@ -1297,7 +1450,8 @@ function setupCameraPip() {
   pip.addEventListener('keydown', event => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      switchCamera();
+      if (mediaSourceMode === 'camera') switchCamera();
+      else if (mediaSourceMode === 'video') toggleLocalVideoPlayback();
     }
   });
 }
@@ -1472,8 +1626,10 @@ function startMicMeter() {
   tick();
 }
 
-function recorderMimeType() {
-  const candidates = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+function recorderMimeType(video = false) {
+  const candidates = video
+    ? ['video/mp4;codecs=h264,aac', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+    : ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
   return candidates.find(t => window.MediaRecorder?.isTypeSupported?.(t)) || '';
 }
 
@@ -1481,25 +1637,57 @@ async function startRecording() {
   if (recorder.active || !window.MediaRecorder) return;
   ensureAudio();
   if (micEnabled) await ensureMic();
+  startSelectedMediaPlayback();
   recorder.hadMic = !!(micEnabled && mic.ready);
   recorder.chunks = [];
   recorder.blob = null;
   if (recorder.url) URL.revokeObjectURL(recorder.url);
   recorder.url = '';
-  recorder.mime = recorderMimeType();
+  recorder.compositor?.stop?.();
+  recorder.compositor = window.FreezaPerformanceRecorder?.create?.({
+    root: document.querySelector('.game'),
+    mediaVideo: $('cameraPreview'),
+  }) || null;
+  const videoStream = recorder.compositor?.start?.() || null;
+  recorder.video = Boolean(videoStream?.getVideoTracks?.().length);
+  recorder.mime = recorderMimeType(recorder.video);
   try {
-    recorder.media = new MediaRecorder(audio.recordDest.stream, recorder.mime ? { mimeType: recorder.mime } : undefined);
+    const recordingStream = recorder.video
+      ? new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audio.recordDest.stream.getAudioTracks(),
+      ])
+      : audio.recordDest.stream;
+    let options = recorder.mime ? { mimeType: recorder.mime } : undefined;
+    if (recorder.video && options) options.videoBitsPerSecond = 4_000_000;
+    try {
+      recorder.media = new MediaRecorder(recordingStream, options);
+    } catch (videoError) {
+      if (!recorder.video) throw videoError;
+      console.warn('Video recording unavailable, falling back to audio:', videoError);
+      recorder.compositor?.stop?.();
+      recorder.compositor = null;
+      recorder.video = false;
+      recorder.mime = recorderMimeType(false);
+      options = recorder.mime ? { mimeType: recorder.mime } : undefined;
+      recorder.media = new MediaRecorder(audio.recordDest.stream, options);
+    }
     recorder.media.ondataavailable = e => { if (e.data?.size) recorder.chunks.push(e.data); };
     recorder.media.onstop = () => {
       recorder.active = false;
-      recorder.blob = new Blob(recorder.chunks, { type: recorder.mime || recorder.chunks[0]?.type || 'audio/webm' });
+      recorder.compositor?.stop?.();
+      recorder.compositor = null;
+      stopSelectedMediaPlayback(false);
+      recorder.blob = new Blob(recorder.chunks, { type: recorder.mime || recorder.chunks[0]?.type || (recorder.video ? 'video/webm' : 'audio/webm') });
       recorder.url = URL.createObjectURL(recorder.blob);
-      if (!recorder.requestedStop && recorder.blob.size && recorder.hadMic) promptSaveRecording();
+      if (!recorder.requestedStop && recorder.blob.size) promptSaveRecording();
       recorder.requestedStop = false;
     };
     recorder.media.start(1000);
     recorder.active = true;
   } catch (err) {
+    recorder.compositor?.stop?.();
+    recorder.compositor = null;
     console.warn('MediaRecorder start failed:', err);
   }
 }
@@ -1526,7 +1714,7 @@ function downloadRecording() {
       stopRecording(false);
       setTimeout(downloadRecording, 650);
     } else {
-      alert('还没有可保存的录音');
+      alert('还没有可保存的演奏录像');
     }
     return;
   }
@@ -1544,7 +1732,7 @@ function closeSavePrompt() {
 }
 
 function promptSaveRecording() {
-  if (!recorder.hadMic || !recorder.blob?.size) return;
+  if (!recorder.blob?.size) return;
   const modal = $('savePrompt');
   const size = $('savePromptSize');
   if (size) size.textContent = `${(recorder.blob.size / 1024 / 1024).toFixed(2)} MB · ${recordingExt().toUpperCase()}`;
@@ -4549,6 +4737,8 @@ function setupStartScreen() {
   micEnabled = false;
   stopMic();
   cameraEnabled = false;
+  mediaSourceMode = 'off';
+  clearLocalMedia(false);
   stopCamera();
   // 麦克风默认必须关闭：初始化时强制 UI 和状态一致，避免浏览器缓存旧 class。
   screen.querySelectorAll('[data-mic]').forEach(b => b.classList.toggle('selected', b.dataset.mic === 'off'));
@@ -4585,13 +4775,24 @@ function setupStartScreen() {
     updateMicMenu();
     if (micEnabled) await ensureMic();
   });
-  screen.querySelector('[data-group="camera"]')?.addEventListener('click', async () => {
-    cameraEnabled = !cameraEnabled;
-    if (!cameraEnabled) stopCamera();
-    else {
-      updateCameraMenu('正在连接…');
-      await ensureCamera();
-    }
+  screen.querySelector('[data-group="media-source"]')?.addEventListener('click', async event => {
+    const button = event.target.closest('[data-media-source]');
+    if (!button) return;
+    await selectMediaSource(button.dataset.mediaSource || 'off');
+  });
+  $('localVideoInput')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    if (file) await useLocalMediaFile('video', file);
+    event.target.value = '';
+  });
+  $('localAudioInput')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    if (file) await useLocalMediaFile('audio', file);
+    event.target.value = '';
+  });
+  screen.querySelector('[data-group="video-sound"]')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-video-sound]');
+    if (button) setVideoSoundEnabled(button.dataset.videoSound === 'on');
   });
   $('menuKeyDown')?.addEventListener('click', () => applyKeyShift(-1));
   $('menuKeyUp')?.addEventListener('click', () => applyKeyShift(1));
@@ -4634,6 +4835,8 @@ function setupStartScreen() {
   $('menuMicGainRange')?.addEventListener('input', () => adjustMicGain(0));
   updateVolumeButtons();
   updateMicMenu();
+  updateCameraMenu();
+  setVideoSoundEnabled(true);
   syncMelodyGuideMenu(screen);
   syncStartDrumToneMenu(screen);
   updateGamePickControls();
@@ -4767,6 +4970,9 @@ document.addEventListener('visibilitychange', () => {
   else {
     resyncPlaybackAfterFocus();
     if (cameraPreviewState.stream) $('cameraPreview')?.play?.().catch(() => {});
+    else if (recorder.active && (mediaSourceMode === 'video' || mediaSourceMode === 'audio')) {
+      startSelectedMediaPlayback();
+    }
   }
 });
 window.addEventListener('blur', markPlaybackForFocusResync);
