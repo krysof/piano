@@ -103,10 +103,29 @@
           ctx.fillStyle = 'rgba(120,76,230,.18)';
           ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
         }
-        const computed = getComputedStyle(line);
-        const fontSize = Math.min(36 * sx, (parseFloat(computed.fontSize) || 18) * sx);
-        drawCenteredText(lineText(line), rect, fontSize, active ? '#bda5ff' : '#8b91a3', active ? 850 : 650);
+        const tokens = [...line.querySelectorAll('.lyric-base [data-kidx], .lyric-base .lyric-block')];
+        if (tokens.length) {
+          tokens.forEach(token => {
+            const tokenRect = relativeRect(token, rootRect, sx, sy);
+            const computed = getComputedStyle(token);
+            const fontSize = Math.min(36 * sx, (parseFloat(computed.fontSize) || 18) * sx);
+            drawCenteredText(token.textContent || '·', tokenRect, fontSize, computed.color || (active ? '#bda5ff' : '#8b91a3'), active ? 850 : 650);
+          });
+        } else {
+          const computed = getComputedStyle(line);
+          const fontSize = Math.min(36 * sx, (parseFloat(computed.fontSize) || 18) * sx);
+          drawCenteredText(lineText(line), rect, fontSize, active ? '#bda5ff' : '#8b91a3', active ? 850 : 650);
+        }
       });
+
+      const micCanvas = root.querySelector('#micWaveCanvas');
+      if (micCanvas?.width && micCanvas?.height) {
+        const waveRect = relativeRect(micCanvas, rootRect, sx, sy);
+        ctx.save();
+        ctx.globalAlpha = 0.7;
+        ctx.drawImage(micCanvas, waveRect.x, waveRect.y, waveRect.w, waveRect.h);
+        ctx.restore();
+      }
 
       root.querySelectorAll('.keyboard .key, .manual-keyboard .key').forEach(key => {
         const rect = relativeRect(key, rootRect, sx, sy);
@@ -146,6 +165,17 @@
       document.querySelectorAll('body > .timing-rating').forEach(rating => {
         const rect = relativeRect(rating, rootRect, sx, sy);
         drawCenteredText(rating.textContent.trim(), rect, 30 * sx, '#fff2a6', 900);
+      });
+      document.querySelectorAll('body > .lyric-particle').forEach(particle => {
+        const rect = relativeRect(particle, rootRect, sx, sy);
+        const computed = getComputedStyle(particle);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, Number(computed.opacity) || 0.55));
+        ctx.fillStyle = computed.backgroundColor || computed.color || '#bda5ff';
+        ctx.beginPath();
+        ctx.arc(rect.x + rect.w / 2, rect.y + rect.h / 2, Math.max(1.2, Math.max(rect.w, rect.h) / 2), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       });
     }
 
