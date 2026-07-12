@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260712-05';
+const ASSET_VERSION = 'reset-20260712-06';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -60,6 +60,7 @@ const localMedia = {
   url: '', kind: '', fileName: '', includeVideoAudio: true,
   videoSource: null, videoGain: null, audioSource: null, audioGain: null,
 };
+let gameRenderer = null;
 const recorder = { media: null, compositor: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, hadMic: false, video: false };
 let drumsEnabled = false;
 let drumMode = 'auto';
@@ -805,6 +806,7 @@ function returnToSongScreen() {
   updateCameraMenu();
   cameraPreviewState.userPositioned = false;
   document.querySelectorAll('body > .timing-rating, body > .lyric-particle').forEach(el => el.remove());
+  stopGameRenderer();
   document.body.classList.remove('game-started', 'song-selected');
   $('songScreen')?.setAttribute('aria-hidden', 'false');
   $('startScreen')?.setAttribute('aria-hidden', 'true');
@@ -1626,6 +1628,29 @@ function startMicMeter() {
   tick();
 }
 
+function ensureGameRenderer() {
+  if (!window.FreezaPerformanceRecorder || !document.querySelector('.game')) return null;
+  if (!gameRenderer) {
+    gameRenderer = window.FreezaPerformanceRecorder.create({
+      root: document.querySelector('.game'),
+      mediaVideo: $('cameraPreview'),
+    });
+  }
+  const stream = gameRenderer.mount();
+  if (stream) {
+    gameRenderer.drawFrame();
+    document.body.classList.add('canvas-render-active');
+  }
+  return gameRenderer;
+}
+
+function stopGameRenderer() {
+  document.body.classList.remove('canvas-render-active');
+  gameRenderer?.stop?.();
+  gameRenderer = null;
+  recorder.compositor = null;
+}
+
 function recorderMimeType(video = false) {
   const candidates = video
     ? ['video/mp4;codecs=h264,aac', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
@@ -1643,12 +1668,8 @@ async function startRecording() {
   recorder.blob = null;
   if (recorder.url) URL.revokeObjectURL(recorder.url);
   recorder.url = '';
-  recorder.compositor?.stop?.();
-  recorder.compositor = window.FreezaPerformanceRecorder?.create?.({
-    root: document.querySelector('.game'),
-    mediaVideo: $('cameraPreview'),
-  }) || null;
-  const videoStream = recorder.compositor?.start?.() || null;
+  recorder.compositor = ensureGameRenderer();
+  const videoStream = recorder.compositor?.stream || recorder.compositor?.mount?.() || null;
   recorder.video = Boolean(videoStream?.getVideoTracks?.().length);
   recorder.mime = recorderMimeType(recorder.video);
   try {
@@ -1665,8 +1686,6 @@ async function startRecording() {
     } catch (videoError) {
       if (!recorder.video) throw videoError;
       console.warn('Video recording unavailable, falling back to audio:', videoError);
-      recorder.compositor?.stop?.();
-      recorder.compositor = null;
       recorder.video = false;
       recorder.mime = recorderMimeType(false);
       options = recorder.mime ? { mimeType: recorder.mime } : undefined;
@@ -1675,8 +1694,6 @@ async function startRecording() {
     recorder.media.ondataavailable = e => { if (e.data?.size) recorder.chunks.push(e.data); };
     recorder.media.onstop = () => {
       recorder.active = false;
-      recorder.compositor?.stop?.();
-      recorder.compositor = null;
       stopSelectedMediaPlayback(false);
       recorder.blob = new Blob(recorder.chunks, { type: recorder.mime || recorder.chunks[0]?.type || (recorder.video ? 'video/webm' : 'audio/webm') });
       recorder.url = URL.createObjectURL(recorder.blob);
@@ -1686,8 +1703,6 @@ async function startRecording() {
     recorder.media.start(1000);
     recorder.active = true;
   } catch (err) {
-    recorder.compositor?.stop?.();
-    recorder.compositor = null;
     console.warn('MediaRecorder start failed:', err);
   }
 }
@@ -4869,6 +4884,7 @@ async function startGameFromMenu() {
   document.body.classList.add('game-started');
   refreshPerformanceLayout();
   positionCameraPip(!cameraPreviewState.userPositioned);
+  ensureGameRenderer();
   // 默认半自动必须有主旋律；只有用户在开始页明确点了“主旋律关”才关闭。
   if (!melodyUserTouched && playMode === 'semi' && !guideMode) melodyEnabled = true;
   drumsEnabled = drumMode !== 'off';
