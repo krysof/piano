@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260712-01';
+const ASSET_VERSION = 'reset-20260712-02';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -2740,7 +2740,8 @@ function setupSongScreen() {
 function scheduleSongMelodyNote(note, delay) {
   ensureAudio();
   const midi = shiftedMidi(note.note);
-  audioScheduler.scheduleAudio(audio.ctx, delay, when => playNote(midi, 0.65, note.velocity, when), 'song-melody');
+  const duration = Math.max(0.03, Number(note.duration) || 0.65);
+  audioScheduler.scheduleAudio(audio.ctx, delay, when => playNote(midi, duration, note.velocity, when), 'song-melody');
   timers.push(setTimeout(() => showVisualNote(midi, 'playback'), delay));
 }
 
