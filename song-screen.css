@@ -66,6 +66,12 @@ body:not(.song-selected) #startScreen { display: none; }
 .song-freeza-brand h1 { margin: 4px 0 0; font-size: clamp(23px,5vw,30px); line-height: 1; letter-spacing: -.035em; }
 .song-freeza-brand h1 em { color: #a78bfa; font-style: normal; }
 
+.song-library-summary {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+  flex: 0 0 auto;
+}
 .song-library-count {
   display: grid;
   grid-template-columns: auto auto;
@@ -214,7 +220,17 @@ body:not(.song-selected) #startScreen { display: none; }
 
 .song-footer { display: flex; align-items: center; gap: 8px; margin-top: 18px; color: #72798b; font-size: 10px; }
 .song-ready-dot { width: 6px; height: 6px; border-radius: 50%; background: #55d9a3; box-shadow: 0 0 10px rgba(85,217,163,.72); }
-.song-version { margin-left: auto; color: #646b80; font-size: 9px; font-weight: 700; letter-spacing: .04em; }
+.song-version {
+  padding: 4px 7px;
+  border: 1px solid rgba(167,139,250,.2);
+  border-radius: 999px;
+  color: #aaa0c4;
+  background: rgba(139,92,246,.08);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: .04em;
+}
 
 @media (max-width: 720px) {
   #songScreen { place-items: start center; }
