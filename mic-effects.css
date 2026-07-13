@@ -1,17 +1,25 @@
+.launch-mic-item {
+  grid-column: span 2;
+  grid-template-columns: minmax(70px, 1fr) 76px 58px;
+}
+
 .launch-mic-edit {
-  display: flex;
+  display: grid;
+  place-items: center;
   align-items: center;
-  gap: 5px;
+  gap: 1px;
   min-width: 0;
-  padding: 0;
-  border: 0;
-  color: #8e879f;
-  background: transparent;
-  font-size: 9px;
-  text-align: left;
+  min-height: 31px;
+  padding: 3px 7px;
+  border: 1px solid rgba(167,139,250,.24);
+  border-radius: 9px;
+  color: #c4b0fb;
+  background: rgba(109,74,195,.13);
+  font-size: 8px;
+  text-align: center;
 }
 .launch-mic-edit span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.launch-mic-edit i { flex: 0 0 auto; color: #ad91fa; font-style: normal; font-weight: 750; }
+.launch-mic-edit i { color: #f1ebff; font-size: 9px; font-style: normal; font-weight: 780; }
 
 .launch-mic-dialog {
   position: fixed;
@@ -99,7 +107,24 @@
 .launch-mic-range { width: 100%; min-width: 0; accent-color: #9067f4; }
 
 @media (max-width: 680px) {
-  .launch-mic-edit { justify-content: center; width: 100%; font-size: 9px; }
+  .launch-dashboard {
+    flex: 0 0 auto;
+    grid-template-rows: auto auto auto;
+  }
+  .launch-switches { overflow: visible; }
+  .launch-footer { margin-top: 12px; }
+  .launch-toggle-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .launch-toggle-item:not(.launch-media-item):not(.launch-video-sound):not(.launch-mic-item) { grid-column: span 1; }
+  .launch-mic-item {
+    grid-column: span 2;
+    grid-template-columns: minmax(48px, 1fr) 72px 46px;
+    gap: 5px;
+    min-height: 67px;
+    text-align: left;
+  }
+  .launch-mic-item > div:first-child { text-align: left; }
+  .launch-mic-item .launch-switch { width: 72px; }
+  .launch-mic-edit { width: 46px; padding-inline: 3px; font-size: 7px; }
   .launch-mic-effects { gap: 11px; padding: 14px; border-radius: 18px; }
   .launch-mic-effects-title b { font-size: 15px; }
   .launch-mic-presets { overflow-x: auto; grid-template-columns: repeat(7, minmax(58px, 1fr)); scrollbar-width: none; }
