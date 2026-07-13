@@ -1,6 +1,6 @@
 .launch-mic-item {
   grid-column: span 2;
-  grid-template-columns: minmax(70px, 1fr) 76px 58px;
+  grid-template-columns: minmax(58px, 1fr) 70px 44px;
 }
 
 .launch-mic-edit {
@@ -107,24 +107,19 @@
 .launch-mic-range { width: 100%; min-width: 0; accent-color: #9067f4; }
 
 @media (max-width: 680px) {
-  .launch-dashboard {
-    flex: 0 0 auto;
-    grid-template-rows: auto auto auto;
-  }
-  .launch-switches { overflow: visible; }
-  .launch-footer { margin-top: 12px; }
   .launch-toggle-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .launch-toggle-item:not(.launch-media-item):not(.launch-video-sound):not(.launch-mic-item) { grid-column: span 1; }
   .launch-mic-item {
     grid-column: span 2;
-    grid-template-columns: minmax(48px, 1fr) 72px 46px;
-    gap: 5px;
+    grid-template-columns: minmax(38px, 1fr) 62px 38px;
+    gap: 4px;
     min-height: 67px;
     text-align: left;
   }
   .launch-mic-item > div:first-child { text-align: left; }
-  .launch-mic-item .launch-switch { width: 72px; }
-  .launch-mic-edit { width: 46px; padding-inline: 3px; font-size: 7px; }
+  .launch-mic-item .launch-switch { width: 62px; }
+  .launch-mic-item .launch-switch button { font-size: 9px; }
+  .launch-mic-edit { width: 38px; padding-inline: 2px; }
   .launch-mic-effects { gap: 11px; padding: 14px; border-radius: 18px; }
   .launch-mic-effects-title b { font-size: 15px; }
   .launch-mic-presets { overflow-x: auto; grid-template-columns: repeat(7, minmax(58px, 1fr)); scrollbar-width: none; }

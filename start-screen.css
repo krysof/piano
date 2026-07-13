@@ -896,7 +896,7 @@ body.game-started #startScreen {
 @media (max-width: 680px) {
   #startScreen {
     display: grid;
-    place-items: center;
+    place-items: start center;
     padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   }
 
@@ -904,7 +904,7 @@ body.game-started #startScreen {
     display: flex;
     flex-direction: column;
     width: 100%;
-    min-height: calc(100dvh - 16px);
+    min-height: 0;
     padding: 13px;
     border-radius: 23px;
   }
@@ -935,13 +935,13 @@ body.game-started #startScreen {
   }
 
   .launch-dashboard {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     grid-template-columns: 1fr;
     grid-template-areas:
       "performance"
       "mixer"
       "switches";
-    grid-template-rows: minmax(0, 1.42fr) minmax(0, .92fr) minmax(0, .52fr);
+    grid-template-rows: auto auto auto;
     gap: 9px;
   }
 
@@ -957,6 +957,7 @@ body.game-started #startScreen {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow: visible;
     padding: 10px 11px 11px;
   }
 
@@ -1113,7 +1114,7 @@ body.game-started #startScreen {
   .launch-footer {
     flex: 0 0 auto;
     gap: 8px;
-    margin-top: 10px;
+    margin-top: 12px;
   }
 
   .launch-footer-signals { gap: 7px; }
