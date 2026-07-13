@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260713-03';
+const ASSET_VERSION = 'reset-20260713-04';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -1110,9 +1110,19 @@ function updateMicMenu() {
   syncLaunchSwitch('mic', micEnabled);
   const meter = $('micMeter');
   if (meter) meter.classList.toggle('off', !micEnabled);
-  const panel = $('micEffectsPanel');
-  if (panel) panel.hidden = !micEnabled;
   updateMicEffectsMenu();
+}
+
+function openMicEffectsDialog() {
+  const dialog = $('micEffectsDialog');
+  if (!dialog) return;
+  dialog.hidden = false;
+  updateMicEffectsMenu();
+}
+
+function closeMicEffectsDialog() {
+  const dialog = $('micEffectsDialog');
+  if (dialog) dialog.hidden = true;
 }
 
 function updateMicEffectsMenu() {
@@ -1124,7 +1134,7 @@ function updateMicEffectsMenu() {
     button.classList.toggle('selected', button.dataset.micPreset === micEffectState.preset);
   });
   if ($('micPresetName')) $('micPresetName').textContent = presetLabel;
-  if ($('micEffectStatus')) $('micEffectStatus').textContent = `${micEnabled ? '已开启' : '录音输入'} · ${presetLabel}`;
+  if ($('micEffectStatus')) $('micEffectStatus').textContent = presetLabel;
   const controls = [
     ['micBeautyRange', 'micBeautyValue', 'beauty', ''],
     ['micReverbRange', 'micReverbValue', 'reverb', ''],
@@ -4802,7 +4812,14 @@ function setupStartScreen() {
     micEnabled = !micEnabled;
     if (!micEnabled) stopMic();
     updateMicMenu();
-    if (micEnabled) await ensureMic();
+    if (micEnabled && await ensureMic()) openMicEffectsDialog();
+  });
+  $('micEffectsOpenBtn')?.addEventListener('click', event => {
+    event.stopPropagation();
+    openMicEffectsDialog();
+  });
+  document.querySelectorAll('[data-close-mic-effects]').forEach(button => {
+    button.addEventListener('click', closeMicEffectsDialog);
   });
   screen.querySelectorAll('[data-mic-preset]').forEach(button => {
     button.addEventListener('click', () => {

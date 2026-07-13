@@ -1,98 +1,112 @@
-.launch-mic-item {
-  grid-column: span 2;
-  grid-template-columns: minmax(88px, .7fr) minmax(220px, 1.3fr);
+.launch-mic-edit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: #8e879f;
+  background: transparent;
+  font-size: 9px;
+  text-align: left;
+}
+.launch-mic-edit span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.launch-mic-edit i { flex: 0 0 auto; color: #ad91fa; font-style: normal; font-weight: 750; }
+
+.launch-mic-dialog {
+  position: fixed;
+  z-index: 400;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+.launch-mic-dialog[hidden] { display: none; }
+.launch-mic-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(3, 4, 9, .78);
+  backdrop-filter: blur(13px);
+  -webkit-backdrop-filter: blur(13px);
 }
 
 .launch-mic-effects {
-  grid-column: 1 / -1;
+  position: relative;
+  z-index: 1;
   display: grid;
-  gap: 9px;
-  padding: 10px;
-  border: 1px solid rgba(151, 118, 245, .24);
-  border-radius: 13px;
-  background: linear-gradient(145deg, rgba(49, 35, 91, .34), rgba(7, 9, 16, .72));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.045);
+  gap: 13px;
+  width: min(560px, 100%);
+  max-height: min(620px, calc(100dvh - 36px));
+  overflow: auto;
+  padding: 17px;
+  border: 1px solid rgba(160, 126, 255, .36);
+  border-radius: 21px;
+  background: linear-gradient(145deg, rgba(31, 25, 53, .98), rgba(9, 11, 19, .98));
+  box-shadow: 0 30px 90px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.075);
+}
+.launch-mic-effects-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.launch-mic-effects-title { display: grid; gap: 3px; }
+.launch-mic-effects-title b { color: #f3efff; font-size: 17px; }
+.launch-mic-effects-title small { color: #888196; font-size: 10px; }
+.launch-mic-head-actions { display: flex; align-items: center; gap: 8px; }
+.launch-mic-preset-name { color: #c1aaff; font-size: 10px; font-weight: 850; letter-spacing: .08em; }
+.launch-mic-head-actions button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(180,151,255,.25);
+  border-radius: 10px;
+  color: #d9ccff;
+  background: rgba(110,75,200,.16);
+  font-size: 21px;
+  line-height: 1;
 }
 
-.launch-mic-effects[hidden] { display: none; }
-
-.launch-mic-effects-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.launch-mic-effects-title { display: grid; gap: 2px; }
-.launch-mic-effects-title b { color: #f0ebff; font-size: 11px; }
-.launch-mic-effects-title small { color: #807a91; font-size: 8px; }
-.launch-mic-preset-name {
-  color: #bfa8ff;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: .08em;
-}
-
-.launch-mic-presets {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
-}
-
+.launch-mic-presets { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .launch-mic-preset {
   min-width: 0;
-  min-height: 27px;
-  padding: 4px 2px;
+  min-height: 35px;
+  padding: 6px 3px;
   border: 1px solid rgba(255,255,255,.07);
-  border-radius: 8px;
-  color: #8b8797;
-  background: rgba(5,7,12,.56);
-  font-size: 9px;
-  font-weight: 720;
+  border-radius: 10px;
+  color: #9690a3;
+  background: rgba(5,7,12,.58);
+  font-size: 10px;
+  font-weight: 750;
 }
-
 .launch-mic-preset.selected {
   border-color: rgba(199,179,255,.42);
   color: #fff;
   background: linear-gradient(135deg, #8e64f5, #6744d9);
-  box-shadow: 0 5px 13px rgba(72,42,150,.28), inset 0 1px 0 rgba(255,255,255,.18);
+  box-shadow: 0 6px 16px rgba(72,42,150,.32), inset 0 1px 0 rgba(255,255,255,.18);
 }
 
-.launch-mic-controls {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-
+.launch-mic-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .launch-mic-control {
   display: grid;
-  grid-template-columns: auto minmax(0,1fr) 32px;
+  grid-template-columns: 42px minmax(0,1fr) 45px;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
-  padding: 6px 7px;
-  border: 1px solid rgba(255,255,255,.055);
-  border-radius: 9px;
-  background: rgba(5,7,12,.46);
+  min-height: 47px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+  background: rgba(5,7,12,.5);
 }
-
-.launch-mic-control span { color: #aaa5b8; font-size: 8px; font-weight: 700; white-space: nowrap; }
-.launch-mic-control output { color: #c6b5f8; font-size: 8px; font-weight: 800; text-align: right; }
+.launch-mic-control span { color: #aaa5b8; font-size: 10px; font-weight: 720; white-space: nowrap; }
+.launch-mic-control output { color: #c9b8fb; font-size: 10px; font-weight: 850; text-align: right; }
 .launch-mic-range { width: 100%; min-width: 0; accent-color: #9067f4; }
 
 @media (max-width: 680px) {
-  .launch-mic-item {
-    grid-column: 1 / -1;
-    grid-template-columns: 74px minmax(0, 1fr);
-    min-height: 54px;
-    text-align: left;
-  }
-  .launch-mic-item > div:first-child { text-align: left; }
-  .launch-mic-effects { padding: 8px; gap: 7px; }
-  .launch-mic-presets { overflow-x: auto; grid-template-columns: repeat(7, minmax(54px, 1fr)); scrollbar-width: none; }
+  .launch-mic-edit { justify-content: center; width: 100%; font-size: 9px; }
+  .launch-mic-effects { gap: 11px; padding: 14px; border-radius: 18px; }
+  .launch-mic-effects-title b { font-size: 15px; }
+  .launch-mic-presets { overflow-x: auto; grid-template-columns: repeat(7, minmax(58px, 1fr)); scrollbar-width: none; }
   .launch-mic-presets::-webkit-scrollbar { display: none; }
-  .launch-mic-controls { grid-template-columns: 1fr 1fr; }
-  .launch-mic-control { min-height: 34px; }
-  .launch-shell:has(.launch-mic-effects:not([hidden])) .launch-dashboard { flex: 0 0 auto; grid-template-rows: auto auto auto; }
-  .launch-shell:has(.launch-mic-effects:not([hidden])) .launch-switches { overflow: visible; }
+  .launch-mic-control { grid-template-columns: 36px minmax(0,1fr) 40px; min-height: 43px; padding: 7px 8px; }
+}
+
+@media (max-width: 370px) {
+  .launch-mic-controls { grid-template-columns: 1fr; }
 }
