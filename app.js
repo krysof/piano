@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260713-10';
+const ASSET_VERSION = 'reset-20260714-01';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -11,6 +11,10 @@ const audio = {
   recordDest: null,
   recordBus: null,
   recordLimiter: null,
+  recordingDiagnostics: null,
+  melodyRecordTap: null,
+  accompanimentRecordTap: null,
+  micRecordTap: null,
   gameRecordGain: null,
   toneRecorderConnected: false,
   toneRecorderAttempted: false,
@@ -72,7 +76,7 @@ const localMedia = {
   url: '', kind: '', fileName: '', includeVideoAudio: true,
   videoSource: null, videoGain: null, audioSource: null, audioGain: null,
 };
-const recorder = { media: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, downloadWhenReady: false, hadMic: false };
+const recorder = { media: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, downloadWhenReady: false, hadMic: false, diagnostics: null, actualBitsPerSecond: 0 };
 let drumsEnabled = false;
 let drumMode = 'auto';
 let drumModeBeforeOff = 'auto';
@@ -302,16 +306,29 @@ function ensureAudio() {
     audio.recordDest = audio.ctx.createMediaStreamDestination();
     audio.recordBus = audio.ctx.createGain();
     audio.recordLimiter = audio.ctx.createDynamicsCompressor();
-    audio.recordBus.gain.value = 0.94;
-    audio.recordLimiter.threshold.value = -3;
-    audio.recordLimiter.knee.value = 2;
-    audio.recordLimiter.ratio.value = 16;
-    audio.recordLimiter.attack.value = 0.002;
-    audio.recordLimiter.release.value = 0.11;
+    audio.recordBus.gain.value = 0.90;
+    // 只在接近满幅时做透明峰值保护；旧的 -3 dB 强压缩会让音符攻击相对突出。
+    audio.recordLimiter.threshold.value = -1.5;
+    audio.recordLimiter.knee.value = 1;
+    audio.recordLimiter.ratio.value = 12;
+    audio.recordLimiter.attack.value = 0.001;
+    audio.recordLimiter.release.value = 0.06;
     audio.recordBus.connect(audio.recordLimiter).connect(audio.recordDest);
+    audio.recordingDiagnostics = window.FreezaRecordingDiagnostics?.create?.(audio.ctx) || null;
+    audio.melodyRecordTap = audio.recordingDiagnostics?.createTap('melody', '主旋律') || null;
+    audio.accompanimentRecordTap = audio.recordingDiagnostics?.createTap('accompaniment', '伴奏/界面') || null;
+    audio.micRecordTap = audio.recordingDiagnostics?.createTap('mic', '麦克风') || null;
+    if (audio.melodyRecordTap) audio.melodyRecordTap.connect(audio.recordBus);
+    if (audio.micRecordTap) audio.micRecordTap.connect(audio.recordBus);
     audio.gameRecordGain = audio.ctx.createGain();
     audio.gameRecordGain.gain.value = 1;
-    audio.master.connect(audio.gameRecordGain).connect(audio.recordBus);
+    audio.master.connect(audio.gameRecordGain);
+    if (audio.accompanimentRecordTap) {
+      audio.gameRecordGain.connect(audio.accompanimentRecordTap);
+      audio.accompanimentRecordTap.connect(audio.recordBus);
+    } else {
+      audio.gameRecordGain.connect(audio.recordBus);
+    }
   }
   // iOS Safari 从后台回来时可能把 Context 标记为 suspended 或
   // interrupted。两种状态都要主动恢复，不能只处理 suspended。
@@ -441,7 +458,7 @@ function connectToneToRecorder() {
   try {
     const dest = Tone.getDestination ? Tone.getDestination() : Tone.Destination;
     if (dest?.connect) {
-      dest.connect(audio.recordBus || audio.recordDest);
+      dest.connect(audio.melodyRecordTap || audio.recordBus || audio.recordDest);
       audio.toneRecorderConnected = true;
     }
   } catch (err) {
@@ -1104,11 +1121,11 @@ async function ensureMic() {
     if (mic.effects) {
       mic.gain.connect(mic.effects.input);
       mic.effects.output.connect(mic.analyser);
-      mic.effects.output.connect(audio.recordBus || audio.recordDest);
+      mic.effects.output.connect(audio.micRecordTap || audio.recordBus || audio.recordDest);
       mic.effects.apply(micEffectState.settings);
     } else {
       mic.gain.connect(mic.analyser);
-      mic.gain.connect(audio.recordBus || audio.recordDest);
+      mic.gain.connect(audio.micRecordTap || audio.recordBus || audio.recordDest);
     }
     mic.ready = true;
     updateMicMonitorGameToggle();
@@ -1891,6 +1908,12 @@ function recorderMimeType() {
   return candidates.find(t => window.MediaRecorder?.isTypeSupported?.(t)) || '';
 }
 
+function recorderOptions() {
+  const options = { audioBitsPerSecond: 320000 };
+  if (recorder.mime) options.mimeType = recorder.mime;
+  return options;
+}
+
 async function startRecording() {
   if (recorder.active || !window.MediaRecorder) return;
   ensureAudio();
@@ -1900,15 +1923,19 @@ async function startRecording() {
   recorder.chunks = [];
   recorder.blob = null;
   recorder.downloadWhenReady = false;
+  recorder.diagnostics = null;
+  recorder.actualBitsPerSecond = 0;
   if (recorder.url) URL.revokeObjectURL(recorder.url);
   recorder.url = '';
   recorder.mime = recorderMimeType();
   try {
-    const options = recorder.mime ? { mimeType: recorder.mime } : undefined;
-    recorder.media = new MediaRecorder(audio.recordDest.stream, options);
+    recorder.media = new MediaRecorder(audio.recordDest.stream, recorderOptions());
+    recorder.actualBitsPerSecond = Number(recorder.media.audioBitsPerSecond || 0);
     recorder.media.ondataavailable = e => { if (e.data?.size) recorder.chunks.push(e.data); };
     recorder.media.onstop = () => {
       recorder.active = false;
+      recorder.diagnostics = audio.recordingDiagnostics?.stop?.() || null;
+      if (recorder.diagnostics) console.info('Recording transient diagnostics:', recorder.diagnostics);
       stopSelectedMediaPlayback(false);
       recorder.blob = new Blob(recorder.chunks, { type: recorder.mime || recorder.chunks[0]?.type || 'audio/webm' });
       recorder.url = URL.createObjectURL(recorder.blob);
@@ -1922,6 +1949,7 @@ async function startRecording() {
     // 直接拼接这些片段可能在每秒边界产生可听见的“哒”声。音频文件很小，
     // 因此整场连续录制，到 stop() 时一次性取得完整数据。
     recorder.media.start();
+    audio.recordingDiagnostics?.start?.();
     recorder.active = true;
   } catch (err) {
     console.warn('MediaRecorder start failed:', err);
@@ -1971,7 +1999,11 @@ function promptSaveRecording() {
   if (!recorder.blob?.size) return;
   const modal = $('savePrompt');
   const size = $('savePromptSize');
-  if (size) size.textContent = `${(recorder.blob.size / 1024 / 1024).toFixed(2)} MB · ${recordingExt().toUpperCase()}`;
+  if (size) {
+    const diagnostic = recorder.diagnostics?.dominantLabel
+      ? ` · 瞬态 ${recorder.diagnostics.dominantLabel}` : '';
+    size.textContent = `${(recorder.blob.size / 1024 / 1024).toFixed(2)} MB · ${recordingExt().toUpperCase()}${diagnostic}`;
+  }
   if (modal) {
     modal.classList.add('show');
     return;
