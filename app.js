@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260714-02';
+const ASSET_VERSION = 'reset-20260714-03';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -76,7 +76,11 @@ const localMedia = {
   url: '', kind: '', fileName: '', includeVideoAudio: true,
   videoSource: null, videoGain: null, audioSource: null, audioGain: null,
 };
-const recorder = { media: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, downloadWhenReady: false, hadMic: false, diagnostics: null, actualBitsPerSecond: 0 };
+const recorder = {
+  media: null, pcm: null, pcmPrepared: null, chunks: [], blob: null, url: '', mime: '',
+  active: false, starting: false, stopping: false, requestedStop: false,
+  downloadWhenReady: false, hadMic: false, diagnostics: null, actualBitsPerSecond: 0,
+};
 let drumsEnabled = false;
 let drumMode = 'auto';
 let drumModeBeforeOff = 'auto';
@@ -265,9 +269,6 @@ function initSamplePiano() {
   sampleReadyPromise = new Promise(resolve => {
     sampled.piano = new Tone.Sampler({
       urls,
-    // Salamander 原始采样前沿包含真实锤击噪声；零攻击直接触发时，
-    // 录音编码会把它表现成规律的“哒”声。18ms 淡入保留琴音但压低宽带尖峰。
-    attack: 0.018,
     release: 1.25,
     baseUrl: 'samples/salamander/',
       onload: () => {
@@ -285,7 +286,6 @@ function initSamplePiano() {
       sampled.midiPitch.connect(sampled.midiVolume);
       sampled.midiPiano = new Tone.Sampler({
         urls,
-        attack: 0.018,
         release: 1.25,
         baseUrl: 'samples/salamander/',
         onload: () => { sampled.midiReady = true; },
@@ -1918,8 +1918,45 @@ function recorderOptions() {
   return options;
 }
 
+function completeRecording(blob) {
+  recorder.active = false;
+  recorder.starting = false;
+  recorder.stopping = false;
+  recorder.media = null;
+  recorder.pcm = null;
+  recorder.diagnostics = audio.recordingDiagnostics?.stop?.() || null;
+  if (recorder.diagnostics) console.info('Recording transient diagnostics:', recorder.diagnostics);
+  stopSelectedMediaPlayback(false);
+  recorder.blob = blob;
+  if (recorder.url) URL.revokeObjectURL(recorder.url);
+  recorder.url = blob?.size ? URL.createObjectURL(blob) : '';
+  if (recorder.downloadWhenReady && blob?.size) {
+    recorder.downloadWhenReady = false;
+    queueMicrotask(downloadRecording);
+  } else if (!recorder.requestedStop && blob?.size) promptSaveRecording();
+  recorder.requestedStop = false;
+}
+
+function startMediaRecorderFallback() {
+  recorder.mime = recorderMimeType();
+  recorder.media = new MediaRecorder(audio.recordDest.stream, recorderOptions());
+  recorder.actualBitsPerSecond = Number(recorder.media.audioBitsPerSecond || 0);
+  recorder.media.ondataavailable = event => {
+    if (event.data?.size) recorder.chunks.push(event.data);
+  };
+  recorder.media.onstop = () => {
+    const blob = new Blob(recorder.chunks, {
+      type: recorder.mime || recorder.chunks[0]?.type || 'audio/webm',
+    });
+    completeRecording(blob);
+  };
+  recorder.media.start();
+  recorder.active = true;
+}
+
 async function startRecording() {
-  if (recorder.active || !window.MediaRecorder) return;
+  if (recorder.active || recorder.starting || recorder.stopping) return;
+  recorder.starting = true;
   ensureAudio();
   if (micEnabled) await ensureMic();
   startSelectedMediaPlayback();
@@ -1931,46 +1968,61 @@ async function startRecording() {
   recorder.actualBitsPerSecond = 0;
   if (recorder.url) URL.revokeObjectURL(recorder.url);
   recorder.url = '';
-  recorder.mime = recorderMimeType();
   try {
-    recorder.media = new MediaRecorder(audio.recordDest.stream, recorderOptions());
-    recorder.actualBitsPerSecond = Number(recorder.media.audioBitsPerSecond || 0);
-    recorder.media.ondataavailable = e => { if (e.data?.size) recorder.chunks.push(e.data); };
-    recorder.media.onstop = () => {
-      recorder.active = false;
-      recorder.diagnostics = audio.recordingDiagnostics?.stop?.() || null;
-      if (recorder.diagnostics) console.info('Recording transient diagnostics:', recorder.diagnostics);
-      stopSelectedMediaPlayback(false);
-      recorder.blob = new Blob(recorder.chunks, { type: recorder.mime || recorder.chunks[0]?.type || 'audio/webm' });
-      recorder.url = URL.createObjectURL(recorder.blob);
-      if (recorder.downloadWhenReady && recorder.blob.size) {
-        recorder.downloadWhenReady = false;
-        queueMicrotask(downloadRecording);
-      } else if (!recorder.requestedStop && recorder.blob.size) promptSaveRecording();
-      recorder.requestedStop = false;
-    };
-    // Safari 的 MP4 MediaRecorder 按固定 timeslice 产生多个独立媒体片段；
-    // 直接拼接这些片段可能在每秒边界产生可听见的“哒”声。音频文件很小，
-    // 因此整场连续录制，到 stop() 时一次性取得完整数据。
-    recorder.media.start();
+    recorder.pcm = recorder.pcmPrepared;
+    recorder.pcmPrepared = null;
+    if (!recorder.pcm) {
+      recorder.pcm = await window.FreezaPcmRecorder?.create?.(audio.ctx, audio.recordLimiter, {
+        moduleUrl: `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
+      });
+    }
+    if (recorder.pcm) {
+      recorder.mime = 'audio/wav';
+      recorder.actualBitsPerSecond = recorder.pcm.bitsPerSecond;
+      recorder.pcm.start();
+      recorder.active = true;
+    } else if (window.MediaRecorder) {
+      // 旧浏览器没有 AudioWorklet 时才退回有损 MediaRecorder。连续编码且不分片，
+      // 避免 Safari 在 timeslice 边界拼接出额外点击声。
+      startMediaRecorderFallback();
+    } else {
+      throw new Error('No supported audio recorder');
+    }
     audio.recordingDiagnostics?.start?.();
-    recorder.active = true;
   } catch (err) {
+    recorder.pcm?.dispose?.();
+    recorder.pcm = null;
+    recorder.active = false;
     console.warn('MediaRecorder start failed:', err);
+  } finally {
+    recorder.starting = false;
   }
 }
 
 function stopRecording(autoPrompt = false) {
-  if (recorder.active && recorder.media?.state !== 'inactive') {
-    recorder.requestedStop = !autoPrompt;
+  if (!recorder.active || recorder.stopping) {
+    if (autoPrompt && recorder.blob) promptSaveRecording();
+    return;
+  }
+  recorder.requestedStop = !autoPrompt;
+  recorder.stopping = true;
+  if (recorder.pcm?.active) {
+    recorder.pcm.stop()
+      .then(blob => completeRecording(blob))
+      .catch(error => {
+        console.warn('PCM recorder stop failed:', error);
+        completeRecording(null);
+      });
+  } else if (recorder.media?.state !== 'inactive') {
     recorder.media.stop();
-  } else if (autoPrompt && recorder.blob) {
-    promptSaveRecording();
+  } else {
+    completeRecording(null);
   }
 }
 
 function recordingExt() {
   const type = recorder.blob?.type || recorder.mime || '';
+  if (type.includes('wav')) return 'wav';
   if (type.includes('mp4')) return 'm4a';
   if (type.includes('ogg')) return 'ogg';
   return 'webm';
@@ -3676,7 +3728,7 @@ function enterPlaybackAfterCountdown() {
   }
 }
 
-function playManualGuideIntro() {
+async function playManualGuideIntro() {
   const introEnd = Math.min(song?.duration || 0, firstRealLyricStart());
   if (!Number.isFinite(introEnd) || introEnd <= 0.001) {
     playing = false;
@@ -3693,7 +3745,7 @@ function playManualGuideIntro() {
   playOffset = 0;
   playStartedAt = performance.now();
   updatePlayButton();
-  startRecording();
+  await startRecording();
   for (const note of song.melodyTrack.notes.filter(note => note.time < introEnd - 0.001)) {
     const delay = Math.max(0, note.time * 1000);
     scheduleSongMelodyNote(note, delay);
@@ -3812,6 +3864,10 @@ async function prepareStartAssets() {
   setLoadingStatus('启动音频引擎并缓存全部音色…');
   ensureAudio();
   if (window.Tone) await Promise.resolve(Tone.start()).catch(() => {});
+  recorder.pcmPrepared?.dispose?.();
+  recorder.pcmPrepared = await window.FreezaPcmRecorder?.create?.(audio.ctx, audio.recordLimiter, {
+    moduleUrl: `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
+  }) || null;
   setLoadingCategory('piano', 0.05, '等待钢琴采样解码');
   const pianoTask = Promise.resolve(sampleReadyPromise)
     .then(() => setLoadingCategory('piano', 1, '钢琴采样已缓存'))
@@ -3872,7 +3928,7 @@ function startCountdownThenPlay() {
   tick();
 }
 
-function playPlayback() {
+async function playPlayback() {
   if (!song) return;
   if (!countdownActive) interactiveSession.finishCountdown();
   if (playOffset <= 0.01 || playOffset >= song.duration) {
@@ -3881,7 +3937,7 @@ function playPlayback() {
   }
   if (window.Tone) Tone.start();
   requestWakeLock();
-  startRecording();
+  await startRecording();
   scheduleFrom(playOffset >= song.duration ? 0 : playOffset);
 }
 

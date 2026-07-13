@@ -118,11 +118,8 @@
     const peak = Math.max(0.003, Math.min(1.4, Number(velocity || 0) * Number(gainScale || 1) * regionGain));
     const hold = Math.max(0.06, Math.min(4, Number(duration || 0.75)));
     const release = Math.max(0.08, Math.min(2.5, Number(manifest.release || 1)));
-    // 真实拨片采样自带很窄的起音尖峰。原先 4ms 淡入仍会在录音中形成
-    // 宽带“哒”声；12ms 足以消除突变，同时保留拨弦触感。
-    const attack = 0.012;
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(peak, now + attack);
+    gain.gain.exponentialRampToValueAtTime(peak, now + 0.004);
     gain.gain.setTargetAtTime(peak * 0.84, now + 0.028, 0.16);
     gain.gain.setTargetAtTime(0.0001, now + hold, release / 4.6);
     source.connect(gain).connect(destination);
