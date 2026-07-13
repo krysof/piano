@@ -130,3 +130,75 @@
 @media (max-width: 370px) {
   .launch-mic-controls { grid-template-columns: 1fr; }
 }
+
+.mic-monitor-prompt {
+  position: fixed;
+  z-index: 20000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: rgba(3, 4, 9, .82);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+}
+.mic-monitor-prompt[hidden] { display: none; }
+.mic-monitor-card {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 13px;
+  width: min(430px, 100%);
+  padding: 18px;
+  border: 1px solid rgba(163, 129, 255, .4);
+  border-radius: 22px;
+  color: #f5f1ff;
+  background: linear-gradient(145deg, rgba(31,25,53,.99), rgba(9,11,19,.99));
+  box-shadow: 0 30px 90px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.mic-monitor-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(198,178,255,.35);
+  border-radius: 17px;
+  color: #fff;
+  background: linear-gradient(145deg, #966df7, #6541d0);
+  box-shadow: 0 10px 25px rgba(100,62,210,.36);
+  font-size: 25px;
+}
+.mic-monitor-copy { display: grid; gap: 4px; min-width: 0; }
+.mic-monitor-copy small { color: #a98cff; font-size: 8px; font-weight: 850; letter-spacing: .17em; }
+.mic-monitor-copy h2 { margin: 0; font-size: 18px; }
+.mic-monitor-copy p { margin: 0; color: #938ca2; font-size: 11px; line-height: 1.55; }
+.mic-monitor-safety {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(245,189,105,.16);
+  border-radius: 11px;
+  color: #b9a98d;
+  background: rgba(99,67,24,.12);
+  font-size: 9px;
+  line-height: 1.5;
+}
+.mic-monitor-safety i { flex: 0 0 auto; width: 7px; height: 7px; margin-top: 3px; border-radius: 50%; background: #f5bd69; box-shadow: 0 0 10px rgba(245,189,105,.7); }
+.mic-monitor-actions { grid-column: 1 / -1; display: grid; grid-template-columns: .8fr 1.2fr; gap: 8px; }
+.mic-monitor-actions button {
+  min-height: 42px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  color: #aaa4b8;
+  background: rgba(5,7,12,.64);
+  font-size: 10px;
+  font-weight: 760;
+}
+#micMonitorConfirm {
+  color: #fff;
+  border-color: rgba(206,187,255,.27);
+  background: linear-gradient(135deg, #9066f5, #6845da);
+  box-shadow: 0 8px 20px rgba(78,45,166,.3);
+}

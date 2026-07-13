@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260713-06';
+const ASSET_VERSION = 'reset-20260713-07';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -58,7 +58,12 @@ const micEffectState = {
   preset: 'beauty',
   settings: window.FreezaMicEffects?.preset?.('beauty') || { label: '美声', beauty: 62, reverb: 18, echo: 8, delay: 105 },
 };
-const mic = { stream: null, source: null, gain: null, effects: null, analyser: null, data: null, freqData: null, raf: 0, level: 0, ready: false };
+const mic = {
+  stream: null, source: null, gain: null, effects: null, analyser: null,
+  monitorGain: null, monitorLimiter: null, monitoring: false,
+  feedbackHotSince: 0, feedbackPromptMode: 'enable',
+  data: null, freqData: null, raf: 0, level: 0, ready: false,
+};
 const cameraPreviewState = { stream: null, facingMode: 'user', switching: false, userPositioned: false };
 const localMedia = {
   url: '', kind: '', fileName: '', includeVideoAudio: true,
@@ -1134,7 +1139,7 @@ function updateMicEffectsMenu() {
     button.classList.toggle('selected', button.dataset.micPreset === micEffectState.preset);
   });
   if ($('micPresetName')) $('micPresetName').textContent = presetLabel;
-  if ($('micEffectStatus')) $('micEffectStatus').textContent = presetLabel;
+  if ($('micEffectStatus')) $('micEffectStatus').textContent = `${presetLabel}${mic.monitoring ? ' · 回放' : ''}`;
   const controls = [
     ['micBeautyRange', 'micBeautyValue', 'beauty', ''],
     ['micReverbRange', 'micReverbValue', 'reverb', ''],
@@ -1168,9 +1173,95 @@ function setMicEffectValue(key, value) {
   applyMicEffectSettings();
 }
 
+function setMicMonitoring(enabled) {
+  if (!enabled) {
+    mic.monitoring = false;
+    document.body.classList.remove('mic-monitoring');
+    mic.feedbackHotSince = 0;
+    if (mic.monitorGain) {
+      const now = audio.ctx?.currentTime || 0;
+      mic.monitorGain.gain.cancelScheduledValues?.(now);
+      mic.monitorGain.gain.setTargetAtTime?.(0, now, 0.018);
+      if (!mic.monitorGain.gain.setTargetAtTime) mic.monitorGain.gain.value = 0;
+    }
+    updateMicEffectsMenu();
+    return false;
+  }
+  ensureAudio();
+  if (!mic.ready || !audio.ctx) return false;
+  if (!mic.monitorGain) {
+    mic.monitorGain = audio.ctx.createGain();
+    mic.monitorLimiter = audio.ctx.createDynamicsCompressor();
+    mic.monitorGain.gain.value = 0;
+    mic.monitorLimiter.threshold.value = -14;
+    mic.monitorLimiter.knee.value = 4;
+    mic.monitorLimiter.ratio.value = 20;
+    mic.monitorLimiter.attack.value = 0.003;
+    mic.monitorLimiter.release.value = 0.16;
+    const source = mic.effects?.output || mic.gain;
+    source.connect(mic.monitorGain).connect(mic.monitorLimiter).connect(audio.ctx.destination);
+  }
+  const now = audio.ctx.currentTime || 0;
+  mic.monitorGain.gain.cancelScheduledValues?.(now);
+  mic.monitorGain.gain.setTargetAtTime?.(0.42, now, 0.04);
+  if (!mic.monitorGain.gain.setTargetAtTime) mic.monitorGain.gain.value = 0.42;
+  mic.monitoring = true;
+  document.body.classList.add('mic-monitoring');
+  mic.feedbackHotSince = 0;
+  updateMicEffectsMenu();
+  return true;
+}
+
+function showMicMonitorPrompt(mode = 'enable') {
+  const prompt = $('micMonitorPrompt');
+  if (!prompt) return;
+  mic.feedbackPromptMode = mode;
+  const feedback = mode === 'feedback';
+  if ($('micMonitorTitle')) $('micMonitorTitle').textContent = feedback ? '已自动关闭回放' : '请先佩戴耳机';
+  if ($('micMonitorMessage')) $('micMonitorMessage').textContent = feedback
+    ? '检测到持续高电平，可能正在产生啸叫。麦克风录音仍然保持开启，仅关闭了耳机回放。'
+    : '确认佩戴耳机后，将立即打开人声回放，方便试听美声、混响、回声和延迟效果。';
+  if ($('micMonitorCancel')) $('micMonitorCancel').hidden = feedback;
+  if ($('micMonitorConfirm')) $('micMonitorConfirm').textContent = feedback ? '知道了' : '已戴耳机，开始回放';
+  prompt.hidden = false;
+}
+
+function closeMicMonitorPrompt() {
+  const prompt = $('micMonitorPrompt');
+  if (prompt) prompt.hidden = true;
+}
+
+function protectMicMonitoring() {
+  if (!mic.monitoring || !mic.freqData?.length) {
+    mic.feedbackHotSince = 0;
+    return;
+  }
+  let total = 0;
+  let peak = 0;
+  for (const value of mic.freqData) {
+    total += value;
+    if (value > peak) peak = value;
+  }
+  const average = total / mic.freqData.length;
+  const tonalConcentration = peak / Math.max(1, average);
+  const dangerous = mic.level > 0.96 || (mic.level > 0.76 && tonalConcentration > 6.2);
+  const now = performance.now();
+  if (!dangerous) {
+    mic.feedbackHotSince = 0;
+    return;
+  }
+  if (!mic.feedbackHotSince) mic.feedbackHotSince = now;
+  if (now - mic.feedbackHotSince >= 700) {
+    setMicMonitoring(false);
+    showMicMonitorPrompt('feedback');
+  }
+}
+
 function stopMic() {
   cancelAnimationFrame(mic.raf);
   mic.raf = 0;
+  setMicMonitoring(false);
+  closeMicMonitorPrompt();
   if (mic.stream) {
     mic.stream.getTracks().forEach(track => track.stop());
   }
@@ -1179,6 +1270,10 @@ function stopMic() {
   mic.source = null;
   mic.gain = null;
   mic.effects = null;
+  mic.monitorGain?.disconnect?.();
+  mic.monitorLimiter?.disconnect?.();
+  mic.monitorGain = null;
+  mic.monitorLimiter = null;
   mic.analyser = null;
   mic.data = null;
   mic.freqData = null;
@@ -1673,6 +1768,7 @@ function startMicMeter() {
       level = Math.min(1, Math.sqrt(sum / mic.data.length) * 4.5 * Math.max(0.25, micGain));
     }
     mic.level = mic.level * 0.72 + level * 0.28;
+    protectMicMonitoring();
     const bar = $('micMeter')?.querySelector('span');
     if (bar) bar.style.transform = `scaleY(${Math.max(0.04, micEnabled ? mic.level : 0.04)})`;
     const karaoke = document.querySelector('.karaoke');
@@ -4812,7 +4908,7 @@ function setupStartScreen() {
     micEnabled = !micEnabled;
     if (!micEnabled) stopMic();
     updateMicMenu();
-    if (micEnabled && await ensureMic()) openMicEffectsDialog();
+    if (micEnabled && await ensureMic()) showMicMonitorPrompt('enable');
   });
   $('micEffectsOpenBtn')?.addEventListener('click', event => {
     event.stopPropagation();
@@ -4820,6 +4916,14 @@ function setupStartScreen() {
   });
   document.querySelectorAll('[data-close-mic-effects]').forEach(button => {
     button.addEventListener('click', closeMicEffectsDialog);
+  });
+  $('micMonitorCancel')?.addEventListener('click', () => {
+    setMicMonitoring(false);
+    closeMicMonitorPrompt();
+  });
+  $('micMonitorConfirm')?.addEventListener('click', () => {
+    if (mic.feedbackPromptMode === 'enable') setMicMonitoring(true);
+    closeMicMonitorPrompt();
   });
   screen.querySelectorAll('[data-mic-preset]').forEach(button => {
     button.addEventListener('click', () => {
