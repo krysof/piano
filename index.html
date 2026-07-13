@@ -7,11 +7,11 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260713-01" />
-  <link rel="stylesheet" href="song-screen.css?v=reset-20260713-01" />
-  <link rel="stylesheet" href="start-screen.css?v=reset-20260713-01" />
-  <link rel="stylesheet" href="game-screen.css?v=reset-20260713-01" />
-  <link rel="stylesheet" href="chord-keys.css?v=reset-20260713-01" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260713-02" />
+  <link rel="stylesheet" href="song-screen.css?v=reset-20260713-02" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260713-02" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260713-02" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260713-02" />
 </head>
 <body>
 
@@ -56,7 +56,7 @@
         </div>
         <div class="song-library-summary">
           <div class="song-library-count"><strong id="songLibraryCount">00</strong><span>TRACKS</span></div>
-          <b id="startVersion" class="song-version">v20260713.01</b>
+          <b id="startVersion" class="song-version">v20260713.02</b>
         </div>
       </header>
 
@@ -279,10 +279,10 @@
   <div id="countdownOverlay" class="countdown-overlay" aria-hidden="true"></div>
 
   <div id="savePrompt" class="save-prompt" aria-hidden="true">
-    <div class="save-card" role="dialog" aria-label="保存演奏录像">
+    <div class="save-card" role="dialog" aria-label="保存演奏录音">
       <div class="save-orb">●</div>
-      <div class="save-title">保存本次演奏录像？</div>
-      <div class="save-subtitle">包含游戏画面、演奏混音和素材小窗</div>
+      <div class="save-title">保存本次演奏录音？</div>
+      <div class="save-subtitle">包含演奏混音；打开麦克风时同时录入人声</div>
       <div id="savePromptSize" class="save-size">准备文件…</div>
       <div class="save-actions">
         <button id="savePromptCancel" class="save-btn ghost">不要</button>
@@ -321,7 +321,7 @@
         <button id="toneBtn" class="btn accent" aria-label="drum pattern">鼓A</button>
         <button id="melodyToggle" class="btn active-toggle" aria-label="melody">主</button>
         <button id="drumToggle" class="btn active-toggle" aria-label="鼓机状态：智能，点击切换">智能</button>
-        <button id="saveRecBtn" class="btn save" aria-label="保存演奏录像">录像保存</button>
+        <button id="saveRecBtn" class="btn save" aria-label="保存演奏录音">录音保存</button>
       </div>
     </header>
 
@@ -394,16 +394,15 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="song-catalog.js?v=reset-20260713-01"></script>
-  <script src="midi-input.js?v=reset-20260713-01"></script>
-  <script src="interactive-state.js?v=reset-20260713-01"></script>
-  <script src="audio-scheduler.js?v=reset-20260713-01"></script>
-  <script src="combo-state.js?v=reset-20260713-01"></script>
-  <script src="harmony-balance.js?v=reset-20260713-01"></script>
-  <script src="guitar-manifests.js?v=reset-20260713-01"></script>
-  <script src="guitar-sampler.js?v=reset-20260713-01"></script>
-  <script src="drum-kits.js?v=reset-20260713-01"></script>
-  <script src="performance-recorder.js?v=reset-20260713-01"></script>
-  <script src="app.js?v=reset-20260713-01"></script>
+  <script src="song-catalog.js?v=reset-20260713-02"></script>
+  <script src="midi-input.js?v=reset-20260713-02"></script>
+  <script src="interactive-state.js?v=reset-20260713-02"></script>
+  <script src="audio-scheduler.js?v=reset-20260713-02"></script>
+  <script src="combo-state.js?v=reset-20260713-02"></script>
+  <script src="harmony-balance.js?v=reset-20260713-02"></script>
+  <script src="guitar-manifests.js?v=reset-20260713-02"></script>
+  <script src="guitar-sampler.js?v=reset-20260713-02"></script>
+  <script src="drum-kits.js?v=reset-20260713-02"></script>
+  <script src="app.js?v=reset-20260713-02"></script>
 </body>
 </html>

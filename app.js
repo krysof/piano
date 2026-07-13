@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260713-01';
+const ASSET_VERSION = 'reset-20260713-02';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -60,7 +60,7 @@ const localMedia = {
   url: '', kind: '', fileName: '', includeVideoAudio: true,
   videoSource: null, videoGain: null, audioSource: null, audioGain: null,
 };
-const recorder = { media: null, compositor: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, hadMic: false, video: false };
+const recorder = { media: null, chunks: [], blob: null, url: '', mime: '', active: false, requestedStop: false, hadMic: false };
 let drumsEnabled = false;
 let drumMode = 'auto';
 let drumModeBeforeOff = 'auto';
@@ -1626,10 +1626,8 @@ function startMicMeter() {
   tick();
 }
 
-function recorderMimeType(video = false) {
-  const candidates = video
-    ? ['video/mp4;codecs=h264,aac', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
-    : ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+function recorderMimeType() {
+  const candidates = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
   return candidates.find(t => window.MediaRecorder?.isTypeSupported?.(t)) || '';
 }
 
@@ -1643,42 +1641,15 @@ async function startRecording() {
   recorder.blob = null;
   if (recorder.url) URL.revokeObjectURL(recorder.url);
   recorder.url = '';
-  recorder.compositor?.stop?.();
-  recorder.compositor = window.FreezaPerformanceRecorder?.create?.({
-    root: document.querySelector('.game'),
-    mediaVideo: $('cameraPreview'),
-  }) || null;
-  const videoStream = recorder.compositor?.start?.() || null;
-  recorder.video = Boolean(videoStream?.getVideoTracks?.().length);
-  recorder.mime = recorderMimeType(recorder.video);
+  recorder.mime = recorderMimeType();
   try {
-    const recordingStream = recorder.video
-      ? new MediaStream([
-        ...videoStream.getVideoTracks(),
-        ...audio.recordDest.stream.getAudioTracks(),
-      ])
-      : audio.recordDest.stream;
-    let options = recorder.mime ? { mimeType: recorder.mime } : undefined;
-    if (recorder.video && options) options.videoBitsPerSecond = 4_000_000;
-    try {
-      recorder.media = new MediaRecorder(recordingStream, options);
-    } catch (videoError) {
-      if (!recorder.video) throw videoError;
-      console.warn('Video recording unavailable, falling back to audio:', videoError);
-      recorder.compositor?.stop?.();
-      recorder.compositor = null;
-      recorder.video = false;
-      recorder.mime = recorderMimeType(false);
-      options = recorder.mime ? { mimeType: recorder.mime } : undefined;
-      recorder.media = new MediaRecorder(audio.recordDest.stream, options);
-    }
+    const options = recorder.mime ? { mimeType: recorder.mime } : undefined;
+    recorder.media = new MediaRecorder(audio.recordDest.stream, options);
     recorder.media.ondataavailable = e => { if (e.data?.size) recorder.chunks.push(e.data); };
     recorder.media.onstop = () => {
       recorder.active = false;
-      recorder.compositor?.stop?.();
-      recorder.compositor = null;
       stopSelectedMediaPlayback(false);
-      recorder.blob = new Blob(recorder.chunks, { type: recorder.mime || recorder.chunks[0]?.type || (recorder.video ? 'video/webm' : 'audio/webm') });
+      recorder.blob = new Blob(recorder.chunks, { type: recorder.mime || recorder.chunks[0]?.type || 'audio/webm' });
       recorder.url = URL.createObjectURL(recorder.blob);
       if (!recorder.requestedStop && recorder.blob.size) promptSaveRecording();
       recorder.requestedStop = false;
@@ -1686,8 +1657,6 @@ async function startRecording() {
     recorder.media.start(1000);
     recorder.active = true;
   } catch (err) {
-    recorder.compositor?.stop?.();
-    recorder.compositor = null;
     console.warn('MediaRecorder start failed:', err);
   }
 }
@@ -1703,7 +1672,7 @@ function stopRecording(autoPrompt = false) {
 
 function recordingExt() {
   const type = recorder.blob?.type || recorder.mime || '';
-  if (type.includes('mp4')) return 'mp4';
+  if (type.includes('mp4')) return 'm4a';
   if (type.includes('ogg')) return 'ogg';
   return 'webm';
 }
@@ -1714,7 +1683,7 @@ function downloadRecording() {
       stopRecording(false);
       setTimeout(downloadRecording, 650);
     } else {
-      alert('还没有可保存的演奏录像');
+      alert('还没有可保存的演奏录音');
     }
     return;
   }
