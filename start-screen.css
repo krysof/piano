@@ -219,8 +219,9 @@ body.game-started #startScreen {
   grid-template-columns: 1.08fr 0.92fr;
   grid-template-areas:
     "performance mixer"
-    "switches mixer";
+    "switches switches";
   gap: 12px;
+  align-items: start;
 }
 
 .launch-panel {
@@ -624,8 +625,8 @@ body.game-started #startScreen {
 
 .launch-media-item,
 .launch-video-sound {
-  grid-column: span 2;
-  grid-template-columns: minmax(88px, .7fr) minmax(220px, 1.3fr);
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(110px, .3fr) minmax(260px, 1.7fr);
 }
 
 .launch-media-switch {
@@ -666,6 +667,9 @@ body.game-started #startScreen {
   padding: 2px;
   border-radius: 9px;
 }
+
+/* Four-way media selector must fill its wide desktop grid cell. */
+.launch-media-switch { width: 100%; }
 
 .launch-switch button {
   min-height: 25px;
