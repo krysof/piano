@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260714-01';
+const ASSET_VERSION = 'reset-20260714-02';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -265,6 +265,9 @@ function initSamplePiano() {
   sampleReadyPromise = new Promise(resolve => {
     sampled.piano = new Tone.Sampler({
       urls,
+    // Salamander 原始采样前沿包含真实锤击噪声；零攻击直接触发时，
+    // 录音编码会把它表现成规律的“哒”声。18ms 淡入保留琴音但压低宽带尖峰。
+    attack: 0.018,
     release: 1.25,
     baseUrl: 'samples/salamander/',
       onload: () => {
@@ -282,6 +285,7 @@ function initSamplePiano() {
       sampled.midiPitch.connect(sampled.midiVolume);
       sampled.midiPiano = new Tone.Sampler({
         urls,
+        attack: 0.018,
         release: 1.25,
         baseUrl: 'samples/salamander/',
         onload: () => { sampled.midiReady = true; },
