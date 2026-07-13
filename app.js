@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260713-02';
+const ASSET_VERSION = 'reset-20260713-03';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -54,7 +54,11 @@ let mediaSourceMode = 'off';
 // 麦克风固定 95% 防爆麦：这是内部隐藏值，不在界面暴露，也不允许用户调节。
 const FIXED_MIC_GAIN = 0.95;
 let micGain = FIXED_MIC_GAIN;
-const mic = { stream: null, source: null, gain: null, analyser: null, data: null, freqData: null, raf: 0, level: 0, ready: false };
+const micEffectState = {
+  preset: 'beauty',
+  settings: window.FreezaMicEffects?.preset?.('beauty') || { label: '美声', beauty: 62, reverb: 18, echo: 8, delay: 105 },
+};
+const mic = { stream: null, source: null, gain: null, effects: null, analyser: null, data: null, freqData: null, raf: 0, level: 0, ready: false };
 const cameraPreviewState = { stream: null, facingMode: 'user', switching: false, userPositioned: false };
 const localMedia = {
   url: '', kind: '', fileName: '', includeVideoAudio: true,
@@ -1079,8 +1083,16 @@ async function ensureMic() {
     mic.data = new Uint8Array(mic.analyser.fftSize);
     mic.freqData = new Uint8Array(mic.analyser.frequencyBinCount);
     mic.source.connect(mic.gain);
-    mic.gain.connect(mic.analyser);
-    mic.gain.connect(audio.recordDest);
+    mic.effects = window.FreezaMicEffects?.create?.(audio.ctx) || null;
+    if (mic.effects) {
+      mic.gain.connect(mic.effects.input);
+      mic.effects.output.connect(mic.analyser);
+      mic.effects.output.connect(audio.recordDest);
+      mic.effects.apply(micEffectState.settings);
+    } else {
+      mic.gain.connect(mic.analyser);
+      mic.gain.connect(audio.recordDest);
+    }
     mic.ready = true;
     startMicMeter();
     return true;
@@ -1098,6 +1110,52 @@ function updateMicMenu() {
   syncLaunchSwitch('mic', micEnabled);
   const meter = $('micMeter');
   if (meter) meter.classList.toggle('off', !micEnabled);
+  const panel = $('micEffectsPanel');
+  if (panel) panel.hidden = !micEnabled;
+  updateMicEffectsMenu();
+}
+
+function updateMicEffectsMenu() {
+  const presets = window.FreezaMicEffects?.presets || {};
+  const presetLabel = micEffectState.preset === 'custom'
+    ? '自定义'
+    : (presets[micEffectState.preset]?.label || micEffectState.settings.label || '美声');
+  document.querySelectorAll('[data-mic-preset]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.micPreset === micEffectState.preset);
+  });
+  if ($('micPresetName')) $('micPresetName').textContent = presetLabel;
+  if ($('micEffectStatus')) $('micEffectStatus').textContent = `${micEnabled ? '已开启' : '录音输入'} · ${presetLabel}`;
+  const controls = [
+    ['micBeautyRange', 'micBeautyValue', 'beauty', ''],
+    ['micReverbRange', 'micReverbValue', 'reverb', ''],
+    ['micEchoRange', 'micEchoValue', 'echo', ''],
+    ['micDelayRange', 'micDelayValue', 'delay', 'ms'],
+  ];
+  controls.forEach(([rangeId, outputId, key, suffix]) => {
+    const value = Math.round(Number(micEffectState.settings[key]) || 0);
+    const range = $(rangeId);
+    if (range && document.activeElement !== range) range.value = String(value);
+    if ($(outputId)) $(outputId).textContent = `${value}${suffix}`;
+  });
+}
+
+function applyMicEffectSettings() {
+  mic.effects?.apply?.(micEffectState.settings);
+  updateMicEffectsMenu();
+}
+
+function selectMicEffectPreset(id) {
+  const preset = window.FreezaMicEffects?.preset?.(id);
+  if (!preset) return;
+  micEffectState.preset = id;
+  micEffectState.settings = preset;
+  applyMicEffectSettings();
+}
+
+function setMicEffectValue(key, value) {
+  micEffectState.preset = 'custom';
+  micEffectState.settings = { ...micEffectState.settings, [key]: Number(value) };
+  applyMicEffectSettings();
 }
 
 function stopMic() {
@@ -1106,9 +1164,11 @@ function stopMic() {
   if (mic.stream) {
     mic.stream.getTracks().forEach(track => track.stop());
   }
+  mic.effects?.dispose?.();
   mic.stream = null;
   mic.source = null;
   mic.gain = null;
+  mic.effects = null;
   mic.analyser = null;
   mic.data = null;
   mic.freqData = null;
@@ -4743,6 +4803,19 @@ function setupStartScreen() {
     if (!micEnabled) stopMic();
     updateMicMenu();
     if (micEnabled) await ensureMic();
+  });
+  screen.querySelectorAll('[data-mic-preset]').forEach(button => {
+    button.addEventListener('click', () => {
+      selectMicEffectPreset(button.dataset.micPreset || 'beauty');
+    });
+  });
+  [
+    ['micBeautyRange', 'beauty'],
+    ['micReverbRange', 'reverb'],
+    ['micEchoRange', 'echo'],
+    ['micDelayRange', 'delay'],
+  ].forEach(([id, key]) => {
+    $(id)?.addEventListener('input', event => setMicEffectValue(key, event.target.value));
   });
   screen.querySelector('[data-group="media-source"]')?.addEventListener('click', async event => {
     const button = event.target.closest('[data-media-source]');

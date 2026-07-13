@@ -7,11 +7,12 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Freeza Live</title>
-  <link rel="stylesheet" href="styles.css?v=reset-20260713-02" />
-  <link rel="stylesheet" href="song-screen.css?v=reset-20260713-02" />
-  <link rel="stylesheet" href="start-screen.css?v=reset-20260713-02" />
-  <link rel="stylesheet" href="game-screen.css?v=reset-20260713-02" />
-  <link rel="stylesheet" href="chord-keys.css?v=reset-20260713-02" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260713-03" />
+  <link rel="stylesheet" href="song-screen.css?v=reset-20260713-03" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260713-03" />
+  <link rel="stylesheet" href="mic-effects.css?v=reset-20260713-03" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260713-03" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260713-03" />
 </head>
 <body>
 
@@ -56,7 +57,7 @@
         </div>
         <div class="song-library-summary">
           <div class="song-library-count"><strong id="songLibraryCount">00</strong><span>TRACKS</span></div>
-          <b id="startVersion" class="song-version">v20260713.02</b>
+          <b id="startVersion" class="song-version">v20260713.03</b>
         </div>
       </header>
 
@@ -212,11 +213,32 @@
                 <button class="selected" data-guide="off">关</button>
               </div>
             </div>
-            <div class="launch-toggle-item">
-              <div><b>麦克风</b><small>录音输入</small></div>
+            <div class="launch-toggle-item launch-mic-item">
+              <div><b>麦克风工作室</b><small id="micEffectStatus">录音输入 · 美声</small></div>
               <div class="launch-switch" data-group="mic">
                 <button data-mic="on">开</button>
                 <button class="selected" data-mic="off">关</button>
+              </div>
+            </div>
+            <div id="micEffectsPanel" class="launch-mic-effects" hidden>
+              <div class="launch-mic-effects-head">
+                <div class="launch-mic-effects-title"><b>人声效果</b><small>处理后写入录音，不连接扬声器</small></div>
+                <span id="micPresetName" class="launch-mic-preset-name">美声</span>
+              </div>
+              <div class="launch-mic-presets" role="group" aria-label="人声效果模板">
+                <button class="launch-mic-preset" data-mic-preset="natural">原声</button>
+                <button class="launch-mic-preset selected" data-mic-preset="beauty">美声</button>
+                <button class="launch-mic-preset" data-mic-preset="clear">清亮</button>
+                <button class="launch-mic-preset" data-mic-preset="warm">温暖</button>
+                <button class="launch-mic-preset" data-mic-preset="ktv">KTV</button>
+                <button class="launch-mic-preset" data-mic-preset="stage">舞台</button>
+                <button class="launch-mic-preset" data-mic-preset="hall">大厅</button>
+              </div>
+              <div class="launch-mic-controls">
+                <label class="launch-mic-control"><span>润色</span><input id="micBeautyRange" class="launch-mic-range" type="range" min="0" max="100" value="62" /><output id="micBeautyValue">62</output></label>
+                <label class="launch-mic-control"><span>混响</span><input id="micReverbRange" class="launch-mic-range" type="range" min="0" max="100" value="18" /><output id="micReverbValue">18</output></label>
+                <label class="launch-mic-control"><span>回声</span><input id="micEchoRange" class="launch-mic-range" type="range" min="0" max="100" value="8" /><output id="micEchoValue">8</output></label>
+                <label class="launch-mic-control"><span>延迟</span><input id="micDelayRange" class="launch-mic-range" type="range" min="40" max="320" step="5" value="105" /><output id="micDelayValue">105ms</output></label>
               </div>
             </div>
             <div class="launch-toggle-item launch-media-item">
@@ -394,15 +416,16 @@
 
   <script src="vendor/Tone.js"></script>
   <script src="vendor/soundfont-player.min.js"></script>
-  <script src="song-catalog.js?v=reset-20260713-02"></script>
-  <script src="midi-input.js?v=reset-20260713-02"></script>
-  <script src="interactive-state.js?v=reset-20260713-02"></script>
-  <script src="audio-scheduler.js?v=reset-20260713-02"></script>
-  <script src="combo-state.js?v=reset-20260713-02"></script>
-  <script src="harmony-balance.js?v=reset-20260713-02"></script>
-  <script src="guitar-manifests.js?v=reset-20260713-02"></script>
-  <script src="guitar-sampler.js?v=reset-20260713-02"></script>
-  <script src="drum-kits.js?v=reset-20260713-02"></script>
-  <script src="app.js?v=reset-20260713-02"></script>
+  <script src="song-catalog.js?v=reset-20260713-03"></script>
+  <script src="midi-input.js?v=reset-20260713-03"></script>
+  <script src="interactive-state.js?v=reset-20260713-03"></script>
+  <script src="audio-scheduler.js?v=reset-20260713-03"></script>
+  <script src="combo-state.js?v=reset-20260713-03"></script>
+  <script src="harmony-balance.js?v=reset-20260713-03"></script>
+  <script src="guitar-manifests.js?v=reset-20260713-03"></script>
+  <script src="guitar-sampler.js?v=reset-20260713-03"></script>
+  <script src="drum-kits.js?v=reset-20260713-03"></script>
+  <script src="mic-effects.js?v=reset-20260713-03"></script>
+  <script src="app.js?v=reset-20260713-03"></script>
 </body>
 </html>
