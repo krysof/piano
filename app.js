@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260713-07';
+const ASSET_VERSION = 'reset-20260713-08';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -61,6 +61,7 @@ const micEffectState = {
 const mic = {
   stream: null, source: null, gain: null, effects: null, analyser: null,
   monitorGain: null, monitorLimiter: null, monitoring: false,
+  outputRoute: 'unknown', outputDeviceId: '', outputDeviceLabel: '',
   feedbackHotSince: 0, feedbackPromptMode: 'enable',
   data: null, freqData: null, raf: 0, level: 0, ready: false,
 };
@@ -1099,6 +1100,7 @@ async function ensureMic() {
       mic.gain.connect(audio.recordDest);
     }
     mic.ready = true;
+    updateMicMonitorGameToggle();
     startMicMeter();
     return true;
   } catch (err) {
@@ -1116,6 +1118,7 @@ function updateMicMenu() {
   const meter = $('micMeter');
   if (meter) meter.classList.toggle('off', !micEnabled);
   updateMicEffectsMenu();
+  updateMicMonitorGameToggle();
 }
 
 function openMicEffectsDialog() {
@@ -1185,6 +1188,11 @@ function setMicMonitoring(enabled) {
       if (!mic.monitorGain.gain.setTargetAtTime) mic.monitorGain.gain.value = 0;
     }
     updateMicEffectsMenu();
+    updateMicMonitorGameToggle();
+    return false;
+  }
+  if (mic.outputRoute === 'speaker') {
+    updateMicMonitorGameToggle();
     return false;
   }
   ensureAudio();
@@ -1209,20 +1217,92 @@ function setMicMonitoring(enabled) {
   document.body.classList.add('mic-monitoring');
   mic.feedbackHotSince = 0;
   updateMicEffectsMenu();
+  updateMicMonitorGameToggle();
   return true;
+}
+
+function updateMicMonitorGameToggle() {
+  const button = $('micMonitorGameToggle');
+  if (!button) return;
+  button.hidden = !micEnabled || !mic.ready;
+  button.disabled = mic.outputRoute === 'speaker';
+  button.setAttribute('aria-pressed', String(mic.monitoring));
+  if (mic.outputRoute === 'speaker') button.textContent = '外放禁用';
+  else button.textContent = `人声回放 ${mic.monitoring ? '开' : '关'}`;
+  const route = mic.outputDeviceLabel ? `；输出：${mic.outputDeviceLabel}` : '';
+  button.title = mic.outputRoute === 'speaker'
+    ? `检测到扬声器外放，已禁止麦克风回放${route}`
+    : `只控制本机人声监听，不影响麦克风录音${route}`;
+}
+
+async function requestSafeMicOutput() {
+  const safety = window.FreezaAudioOutputSafety;
+  // Tone.js exposes a standardized AudioContext wrapper. Output routing lives on
+  // its native context, while all graph nodes continue using the shared wrapper.
+  const outputContext = [audio.ctx, audio.ctx?._nativeAudioContext, audio.ctx?._nativeContext]
+    .find(context => typeof context?.setSinkId === 'function') || audio.ctx;
+  const result = safety?.requestVerifiedOutput
+    ? await safety.requestVerifiedOutput(navigator.mediaDevices, outputContext)
+    : { status: 'unknown', reason: 'unsupported', deviceId: '', label: '' };
+  mic.outputRoute = result.status || 'unknown';
+  mic.outputDeviceId = result.deviceId || '';
+  mic.outputDeviceLabel = result.label || '';
+  if (mic.outputRoute === 'speaker') setMicMonitoring(false);
+  updateMicMonitorGameToggle();
+  return result;
+}
+
+async function recheckMicHeadphoneRoute() {
+  if (!mic.monitoring || mic.outputRoute !== 'headphones') return;
+  const available = await window.FreezaAudioOutputSafety?.verifyHeadphoneStillAvailable?.(
+    navigator.mediaDevices,
+    mic.outputDeviceId,
+    mic.outputDeviceLabel,
+  );
+  if (available) return;
+  setMicMonitoring(false);
+  mic.outputRoute = 'unknown';
+  mic.outputDeviceId = '';
+  mic.outputDeviceLabel = '';
+  updateMicMonitorGameToggle();
+  showMicMonitorPrompt('unknown');
 }
 
 function showMicMonitorPrompt(mode = 'enable') {
   const prompt = $('micMonitorPrompt');
   if (!prompt) return;
   mic.feedbackPromptMode = mode;
-  const feedback = mode === 'feedback';
-  if ($('micMonitorTitle')) $('micMonitorTitle').textContent = feedback ? '已自动关闭回放' : '请先佩戴耳机';
-  if ($('micMonitorMessage')) $('micMonitorMessage').textContent = feedback
-    ? '检测到持续高电平，可能正在产生啸叫。麦克风录音仍然保持开启，仅关闭了耳机回放。'
-    : '确认佩戴耳机后，将立即打开人声回放，方便试听美声、混响、回声和延迟效果。';
-  if ($('micMonitorCancel')) $('micMonitorCancel').hidden = feedback;
-  if ($('micMonitorConfirm')) $('micMonitorConfirm').textContent = feedback ? '知道了' : '已戴耳机，开始回放';
+  const states = {
+    enable: {
+      title: '请先佩戴耳机',
+      message: '确认后将检查音频输出。检测到手机扬声器时不会回放人声；无法确认时可在演奏页用“人声回放”开关手动控制。',
+      confirm: '检查耳机并继续',
+      cancel: false,
+    },
+    feedback: {
+      title: '已自动关闭回放',
+      message: '检测到持续高电平，可能正在产生啸叫。麦克风录音仍然保持开启，仅关闭了人声回放。',
+      confirm: '知道了',
+      cancel: true,
+    },
+    speaker: {
+      title: '已禁止扬声器回放',
+      message: '检测到当前输出为扬声器。为防止啸叫，人声不会外放；麦克风录音和美声处理仍然正常。',
+      confirm: '知道了',
+      cancel: true,
+    },
+    unknown: {
+      title: '无法确认输出设备',
+      message: '浏览器无法判断当前是否连接耳机，因此没有自动打开人声回放。进入演奏后可使用“人声回放”开关手动控制，麦克风录音不受影响。',
+      confirm: '知道了',
+      cancel: true,
+    },
+  };
+  const state = states[mode] || states.enable;
+  if ($('micMonitorTitle')) $('micMonitorTitle').textContent = state.title;
+  if ($('micMonitorMessage')) $('micMonitorMessage').textContent = state.message;
+  if ($('micMonitorCancel')) $('micMonitorCancel').hidden = state.cancel;
+  if ($('micMonitorConfirm')) $('micMonitorConfirm').textContent = state.confirm;
   prompt.hidden = false;
 }
 
@@ -1274,6 +1354,9 @@ function stopMic() {
   mic.monitorLimiter?.disconnect?.();
   mic.monitorGain = null;
   mic.monitorLimiter = null;
+  mic.outputRoute = 'unknown';
+  mic.outputDeviceId = '';
+  mic.outputDeviceLabel = '';
   mic.analyser = null;
   mic.data = null;
   mic.freqData = null;
@@ -4921,9 +5004,27 @@ function setupStartScreen() {
     setMicMonitoring(false);
     closeMicMonitorPrompt();
   });
-  $('micMonitorConfirm')?.addEventListener('click', () => {
-    if (mic.feedbackPromptMode === 'enable') setMicMonitoring(true);
-    closeMicMonitorPrompt();
+  $('micMonitorConfirm')?.addEventListener('click', async () => {
+    if (mic.feedbackPromptMode !== 'enable') {
+      closeMicMonitorPrompt();
+      return;
+    }
+    const result = await requestSafeMicOutput();
+    if (result.status === 'headphones') {
+      setMicMonitoring(true);
+      closeMicMonitorPrompt();
+    } else {
+      setMicMonitoring(false);
+      showMicMonitorPrompt(result.status === 'speaker' ? 'speaker' : 'unknown');
+    }
+  });
+  $('micMonitorGameToggle')?.addEventListener('click', () => {
+    if (!micEnabled || !mic.ready) return;
+    if (mic.outputRoute === 'speaker') {
+      showMicMonitorPrompt('speaker');
+      return;
+    }
+    setMicMonitoring(!mic.monitoring);
   });
   screen.querySelectorAll('[data-mic-preset]').forEach(button => {
     button.addEventListener('click', () => {
@@ -5132,11 +5233,15 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) markPlaybackForFocusResync();
   else {
     resyncPlaybackAfterFocus();
+    recheckMicHeadphoneRoute();
     if (cameraPreviewState.stream) $('cameraPreview')?.play?.().catch(() => {});
     else if (recorder.active && (mediaSourceMode === 'video' || mediaSourceMode === 'audio')) {
       startSelectedMediaPlayback();
     }
   }
+});
+navigator.mediaDevices?.addEventListener?.('devicechange', () => {
+  recheckMicHeadphoneRoute();
 });
 window.addEventListener('blur', markPlaybackForFocusResync);
 window.addEventListener('focus', resyncPlaybackAfterFocus);
