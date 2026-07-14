@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260714-03';
+const ASSET_VERSION = 'reset-20260714-04';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -77,7 +77,7 @@ const localMedia = {
   videoSource: null, videoGain: null, audioSource: null, audioGain: null,
 };
 const recorder = {
-  media: null, pcm: null, pcmPrepared: null, chunks: [], blob: null, url: '', mime: '',
+  media: null, pcm: null, chunks: [], blob: null, url: '', mime: '',
   active: false, starting: false, stopping: false, requestedStop: false,
   downloadWhenReady: false, hadMic: false, diagnostics: null, actualBitsPerSecond: 0,
 };
@@ -1969,13 +1969,9 @@ async function startRecording() {
   if (recorder.url) URL.revokeObjectURL(recorder.url);
   recorder.url = '';
   try {
-    recorder.pcm = recorder.pcmPrepared;
-    recorder.pcmPrepared = null;
-    if (!recorder.pcm) {
-      recorder.pcm = await window.FreezaPcmRecorder?.create?.(audio.ctx, audio.recordLimiter, {
-        moduleUrl: `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
-      });
-    }
+    recorder.pcm = await window.FreezaPcmRecorder?.create?.(audio.ctx, audio.recordLimiter, {
+      moduleUrl: `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
+    });
     if (recorder.pcm) {
       recorder.mime = 'audio/wav';
       recorder.actualBitsPerSecond = recorder.pcm.bitsPerSecond;
@@ -3864,10 +3860,16 @@ async function prepareStartAssets() {
   setLoadingStatus('启动音频引擎并缓存全部音色…');
   ensureAudio();
   if (window.Tone) await Promise.resolve(Tone.start()).catch(() => {});
-  recorder.pcmPrepared?.dispose?.();
-  recorder.pcmPrepared = await window.FreezaPcmRecorder?.create?.(audio.ctx, audio.recordLimiter, {
-    moduleUrl: `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
-  }) || null;
+  try {
+    await window.FreezaPcmRecorder?.prepare?.(
+      audio.ctx,
+      `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
+    );
+  } catch (error) {
+    // 录音能力不是进入演奏的前置条件。Safari/旧浏览器初始化失败时，
+    // startRecording() 会自动退回 MediaRecorder，绝不能卡住开始按钮。
+    console.warn('PCM recorder preload skipped:', error);
+  }
   setLoadingCategory('piano', 0.05, '等待钢琴采样解码');
   const pianoTask = Promise.resolve(sampleReadyPromise)
     .then(() => setLoadingCategory('piano', 1, '钢琴采样已缓存'))

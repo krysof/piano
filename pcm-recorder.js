@@ -30,8 +30,9 @@
       return Promise.resolve(false);
     }
     if (!preparedContexts.has(context)) {
-      preparedContexts.set(context, context.audioWorklet.addModule(moduleUrl)
-        .then(() => true)
+      const load = context.audioWorklet.addModule(moduleUrl).then(() => true);
+      const timeout = new Promise(resolve => setTimeout(() => resolve(false), 1500));
+      preparedContexts.set(context, Promise.race([load, timeout])
         .catch(error => {
           preparedContexts.delete(context);
           console.warn('PCM recorder worklet unavailable:', error);
@@ -45,18 +46,25 @@
     const moduleUrl = options.moduleUrl || 'pcm-recorder-worklet.js';
     if (!await prepare(context, moduleUrl)) return null;
 
-    const node = new AudioWorkletNode(context, 'freeza-pcm-recorder', {
-      numberOfInputs: 1,
-      numberOfOutputs: 1,
-      outputChannelCount: [1],
-      channelCount: 2,
-      channelCountMode: 'explicit',
-      channelInterpretation: 'speakers',
-    });
-    const silentSink = context.createGain();
-    silentSink.gain.value = 0;
-    node.connect(silentSink).connect(context.destination);
-    source.connect(node);
+    let node = null;
+    let silentSink = null;
+    try {
+      // Safari 对 outputChannelCount/channelCountMode 的组合支持不一致。
+      // 使用最小构造参数，由上游立体声总线决定输入声道数。
+      node = new AudioWorkletNode(context, 'freeza-pcm-recorder', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+      });
+      silentSink = context.createGain();
+      silentSink.gain.value = 0;
+      node.connect(silentSink).connect(context.destination);
+      source.connect(node);
+    } catch (error) {
+      try { node?.disconnect(); } catch (_) {}
+      try { silentSink?.disconnect(); } catch (_) {}
+      console.warn('PCM recorder node unavailable:', error);
+      return null;
+    }
 
     let chunks = [];
     let dataBytes = 0;
