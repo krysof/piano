@@ -1,4 +1,4 @@
-const BUILD = 'freeza-live-20260805-07';
+const BUILD = 'freeza-live-20260805-08';
 
 self.addEventListener('install', event => {
   void BUILD;

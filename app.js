@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-07';
+const ASSET_VERSION = 'reset-20260805-08';
 const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', language: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
@@ -133,6 +133,16 @@ let HARMONY_TONES = [
   { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: balancedHarmonyGain('PianoStudio_4', 0.42) },
 ];
 const soundfont = { instruments: new Map(), promises: new Map(), ready: false };
+// Salamander 是默认钢琴；部分 iOS/PWA 环境偶尔会在多文件解码阶段失败。
+// 必须准备一个同样基于真实采样的本地备用钢琴，不能退回三角波合成音。
+const MAIN_PIANO_FALLBACK = Object.freeze({
+  label: 'Piano',
+  code: 'MAIN_PIANO_FALLBACK',
+  name: 'MusyngKite Bright Acoustic Piano',
+  fallbackName: 'bright_acoustic_piano',
+  soundfont: 'MusyngKite',
+  gain: 0.82,
+});
 const drumKit = { ctx: null, noise: null };
 const NATURAL_TO_MIDI = { C: 60, D: 62, E: 64, F: 65, G: 67, A: 69, B: 71 };
 const COMPUTER_CHORD_ROOT_BY_CODE = Object.freeze({
@@ -549,6 +559,17 @@ function getSoundfontInstrument(preset) {
   return soundfont.promises.get(cacheKey);
 }
 
+function cachedMainPianoFallback() {
+  return soundfont.instruments.get('MusyngKite:bright_acoustic_piano') || null;
+}
+
+async function warmMainPianoFallback() {
+  ensureAudio();
+  const instrument = await getSoundfontInstrument(MAIN_PIANO_FALLBACK);
+  if (!instrument) throw new Error('MusyngKite piano unavailable');
+  return instrument;
+}
+
 function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5, when = null) {
   ensureAudio();
   const ctx = audio.ctx;
@@ -587,6 +608,22 @@ function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = h
     const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
     sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, toneWhen,
       Math.max(0.035, Math.min(1, velocity * (preset.gain || 0.42) * harmonyGain)));
+    return null;
+  }
+  if (preset.localPiano) {
+    const pianoFallback = cachedMainPianoFallback();
+    if (pianoFallback) {
+      return pianoFallback.play(midi, scheduledWhen, Math.max(0.08, duration), {
+        gain: Math.max(0.04, Math.min(1,
+          velocity * (preset.gain || MAIN_PIANO_FALLBACK.gain) * harmonyGain)),
+      });
+    }
+    warmMainPianoFallback().then(inst => {
+      inst.play(midi, Math.max(audio.ctx.currentTime, scheduledWhen), Math.max(0.08, duration), {
+        gain: Math.max(0.04, Math.min(1,
+          velocity * (preset.gain || MAIN_PIANO_FALLBACK.gain) * harmonyGain)),
+      });
+    }).catch(() => fallbackSoftNote(midi, duration, fallbackLevel, scheduledWhen));
     return null;
   }
   const soundfontName = preset.fallbackName || preset.name;
@@ -736,6 +773,16 @@ function playNote(midi, duration = 0.55, velocity = 0.6, when = null) {
   }
   ensureAudio();
   const now = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const pianoFallback = cachedMainPianoFallback();
+  if (pianoFallback) {
+    return pianoFallback.play(midi, now, Math.max(0.08, duration), {
+      gain: Math.max(0.04, Math.min(1,
+        velocity * melodyGain * MAIN_PIANO_FALLBACK.gain)),
+    });
+  }
+  // 还在加载时主动预热真实钢琴。仅在两套采样都不可用的极端情况下，
+  // 才允许下面的振荡器作为最后保底，避免默认音色长期变成廉价电子音。
+  warmMainPianoFallback().catch(() => {});
   const osc = audio.ctx.createOscillator();
   const gain = audio.ctx.createGain();
   osc.type = 'triangle';
@@ -4329,12 +4376,19 @@ async function prepareStartAssets() {
     // startRecording() 会自动退回 MediaRecorder，绝不能卡住开始按钮。
     console.warn('PCM recorder preload skipped:', error);
   }
-  setLoadingCategory('piano', 0.05, '等待钢琴采样解码');
-  const pianoTask = loadingTaskTimeout(Promise.resolve(sampleReadyPromise), 'piano')
-    .then(() => setLoadingCategory('piano', 1, '钢琴采样已缓存'))
+  setLoadingCategory('piano', 0.05, '缓存双路真实钢琴采样');
+  const salamanderReady = Promise.resolve(sampleReadyPromise).then(ready => {
+    if (!ready) throw new Error('Salamander piano unavailable');
+    return 'Salamander Grand Piano';
+  });
+  const pianoTask = loadingTaskTimeout(
+    Promise.any([salamanderReady, warmMainPianoFallback().then(() => 'MusyngKite Acoustic Piano')]),
+    'piano',
+  )
+    .then(name => setLoadingCategory('piano', 1, `${name} 已缓存`))
     .catch(error => {
       console.warn('Piano preload failed:', error);
-      setLoadingCategory('piano', 1, '使用 WebAudio 备用音色', 'error');
+      setLoadingCategory('piano', 1, '真实钢琴载入失败', 'error');
     });
   const categoryTasks = [
     pianoTask,
