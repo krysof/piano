@@ -1,0 +1,26 @@
+{
+  "name": "Freeza Live",
+  "short_name": "Freeza Live",
+  "description": "移动端弹唱、和弦伴奏与自由演奏播放器",
+  "lang": "zh-CN",
+  "start_url": "./?launch=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#080a11",
+  "theme_color": "#15132d",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

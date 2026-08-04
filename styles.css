@@ -1,0 +1,219 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  color: #f6f7fb;
+  background: #080a10;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+button,
+input,
+output {
+  font: inherit;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+.game {
+  display: none;
+}
+
+body.game-started .game {
+  display: grid;
+}
+
+.hidden-status {
+  display: none;
+}
+
+.countdown-overlay {
+  position: fixed;
+  z-index: 20000;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(76px, 20vw, 118px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(167, 139, 250, .5);
+  border-radius: 28px;
+  color: #fff;
+  background: linear-gradient(145deg, rgba(40, 32, 74, .94), rgba(12, 14, 23, .92));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .38), inset 0 1px 0 rgba(255,255,255,.1);
+  font-size: clamp(42px, 11vw, 70px);
+  font-weight: 900;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 160ms ease;
+}
+
+.countdown-overlay.show {
+  opacity: 1;
+}
+
+.save-prompt {
+  position: fixed;
+  z-index: 21000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(4, 6, 10, .72);
+  opacity: 0;
+  visibility: hidden;
+  backdrop-filter: blur(18px);
+  transition: opacity 180ms ease, visibility 180ms ease;
+}
+
+.save-prompt.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.save-card {
+  width: min(390px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 24px;
+  text-align: center;
+  background: linear-gradient(155deg, rgba(29,32,46,.98), rgba(13,15,23,.98));
+  box-shadow: 0 28px 80px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.save-orb {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 15px;
+  border-radius: 18px;
+  font-size: 26px;
+  background: linear-gradient(145deg, #946cff, #6341d6);
+  box-shadow: 0 14px 32px rgba(109,74,255,.35);
+}
+
+.save-title { font-size: 22px; font-weight: 800; }
+.save-subtitle { margin-top: 7px; color: #9298aa; font-size: 13px; }
+.save-size { margin: 18px 0; color: #b9a9ef; font-size: 12px; }
+.save-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.save-btn {
+  min-height: 44px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 13px;
+  color: #eef0f6;
+  background: #151823;
+}
+.save-btn.primary { border-color: transparent; background: linear-gradient(135deg, #8e64f5, #6744d9); }
+
+.result-prompt {
+  position: fixed;
+  z-index: 20000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+  background: rgba(5, 7, 15, .78);
+  opacity: 0;
+  visibility: hidden;
+  backdrop-filter: blur(20px);
+  transition: opacity 200ms ease, visibility 200ms ease;
+}
+
+.result-prompt.show { opacity: 1; visibility: visible; }
+
+.result-card {
+  width: min(520px, 100%);
+  max-height: min(760px, 94dvh);
+  overflow: auto;
+  padding: clamp(22px, 5vw, 34px);
+  border: 1px solid rgba(159, 123, 255, .34);
+  border-radius: 28px;
+  text-align: center;
+  background: linear-gradient(155deg, rgba(28, 25, 48, .98), rgba(11, 14, 26, .98));
+  box-shadow: 0 30px 90px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.09), 0 0 46px rgba(126,83,255,.14);
+}
+
+.result-eyebrow { color: #a98bff; font-size: 11px; font-weight: 850; letter-spacing: .24em; }
+.result-card h2 { margin: 7px 0 3px; color: #f7f4ff; font-size: clamp(26px, 7vw, 38px); }
+.result-summary { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 12px 0 20px; }
+.result-total { color: rgba(232,227,249,.62); font-size: 13px; }
+.result-max-combo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255,220,102,.2);
+  border-radius: 999px;
+  color: #c9b8ff;
+  background: rgba(157,116,255,.09);
+}
+.result-max-combo small { font-size: 8px; font-weight: 850; letter-spacing: .13em; }
+.result-max-combo b { color: #fff0a6; font-size: 21px; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(255,213,82,.35); }
+.result-max-combo em { color: #d7caff; font-size: 11px; font-style: normal; font-weight: 780; white-space: nowrap; }
+.result-grade-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; margin: 0; }
+.result-grade {
+  min-width: 0;
+  padding: 12px 4px 10px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+}
+.result-grade dt { overflow: hidden; font-size: clamp(12px, 3.6vw, 18px); font-weight: 950; text-overflow: ellipsis; }
+.result-grade dd { margin: 5px 0 0; color: #fff; font-size: clamp(20px, 5vw, 28px); font-weight: 850; }
+.result-grade.grade-sss dt, .result-grade.grade-ss dt { color: #fff2a3; }
+.result-grade.grade-s dt, .result-grade.grade-a dt { color: #a9ffd8; }
+.result-grade.grade-b dt, .result-grade.grade-c dt { color: #a9d8ff; }
+.result-grade.grade-d dt, .result-grade.grade-e dt { color: #e5b7ff; }
+.result-grade.grade-f dt, .result-grade.grade-miss dt { color: #ffaaa4; }
+.result-home-btn {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 850;
+  background: linear-gradient(135deg, #9567ff, #6744d9);
+  box-shadow: 0 14px 32px rgba(109,74,255,.3);
+}
+
+.lyric-particle {
+  position: fixed;
+  z-index: 12000;
+  width: var(--size, 4px);
+  height: var(--size, 4px);
+  border-radius: 2px;
+  pointer-events: none;
+  background: #a98aff;
+  box-shadow: 0 0 8px rgba(142,100,245,.85);
+  animation: lyricParticle 680ms ease-out forwards;
+}
+
+@keyframes lyricParticle {
+  to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); opacity: 0; filter: blur(1px); }
+}

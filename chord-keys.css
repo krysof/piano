@@ -1,0 +1,199 @@
+/* Chord cue/press animation layer. Layout and palette live in game-screen.css. */
+
+#manualKeyboard .chord-fill {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 100%;
+  opacity: calc(.3 + var(--chord-scale, 0) * .5);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--note-color) 44%, #fff),
+    color-mix(in srgb, var(--note-color) 88%, #11151f));
+  border-top: 1px solid color-mix(in srgb, var(--note-color) 68%, #fff);
+  box-shadow: 0 -8px 22px color-mix(in srgb, var(--note-color) 32%, transparent), inset 0 1px 0 rgba(255,255,255,.26);
+  pointer-events: none;
+  transform: scaleY(var(--chord-scale, 0)) translateZ(0);
+  transform-origin: 50% 100%;
+  will-change: transform, opacity;
+}
+
+#manualKeyboard .chord-line {
+  position: absolute;
+  z-index: 4;
+  top: 28.6%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.78) 50%, transparent);
+  box-shadow: 0 0 9px color-mix(in srgb, var(--note-color) 48%, transparent);
+}
+
+#manualKeyboard .chord-symbol {
+  position: absolute;
+  z-index: 20;
+  top: 5%;
+  left: 50%;
+  min-width: 1.35em;
+  padding: .08em .28em .13em;
+  border: 1px solid color-mix(in srgb, var(--note-color) 52%, #fff);
+  border-radius: .34em;
+  color: #fff;
+  background: color-mix(in srgb, var(--note-color) 78%, #202431);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--note-color) 26%, transparent), inset 0 1px 0 rgba(255,255,255,.25);
+  font-size: 21px;
+  font-size: min(45cqw, 18cqh);
+  font-weight: 900;
+  line-height: 1.08;
+  text-align: center;
+  text-shadow: 0 2px 5px rgba(0,0,0,.32);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(-4px);
+  transition: opacity 140ms linear, transform 160ms ease;
+}
+
+#manualKeyboard .chord-cue .chord-symbol,
+#manualKeyboard .chord-due .chord-symbol,
+#manualKeyboard .chord-press .chord-symbol,
+#manualKeyboard .countdown-cue-preview .chord-symbol,
+#manualKeyboard .manual-next-cue-preview .chord-symbol {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#manualKeyboard .countdown-cue-preview,
+#manualKeyboard .manual-next-cue-preview {
+  border-color: color-mix(in srgb, var(--note-color) 72%, #fff);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--note-color) 28%, transparent), inset 0 0 0 2px color-mix(in srgb, var(--note-color) 35%, transparent);
+}
+
+#manualKeyboard .countdown-cue-preview .chord-symbol {
+  animation: countdownCueBreathe 1.2s ease-in-out infinite;
+}
+
+#manualKeyboard .manual-next-cue-preview .chord-symbol {
+  animation: countdownCueBreathe 1.8s ease-in-out infinite;
+}
+
+@keyframes countdownCueBreathe {
+  0%, 100% { filter: brightness(.9); transform: translateX(-50%) translateY(0) scale(.96); }
+  50% { filter: brightness(1.15); transform: translateX(-50%) translateY(0) scale(1.05); }
+}
+
+#manualKeyboard .chord-symbol:empty { display: none; }
+#manualKeyboard .chord-symbol.blank {
+  display: block;
+  width: 1.4em;
+  min-width: 1.4em;
+  height: 1.18em;
+  padding: 0;
+  overflow: hidden;
+  color: transparent;
+}
+#manualKeyboard .chord-symbol.blank::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: .52em;
+  height: .52em;
+  border-radius: .14em;
+  background: var(--note-color);
+  box-shadow: 0 0 9px var(--note-color), inset 0 1px 0 rgba(255,255,255,.5);
+  content: '';
+  transform: translate(-50%, -50%);
+}
+
+#manualKeyboard .chord-symbol.fail { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.86); transition-duration: 280ms; }
+#manualKeyboard .chord-symbol.hit { color: transparent; background: transparent; border-color: transparent; box-shadow: none; text-shadow: none; }
+
+.timing-rating {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #fff;
+  font-size: clamp(36px, 11.6cqw, 60px);
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: .02em;
+  text-align: center;
+  pointer-events: none;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  animation: timingRatingFloat 1s cubic-bezier(.22,.61,.36,1) forwards;
+}
+
+.timing-rating.grade-sss { color: #fffbd0; font-size: clamp(24px, 7.74cqw, 40px); text-shadow: 0 0 8px #fff, 0 0 16px #ffe34f, 0 0 25px #ff9d00; }
+.timing-rating.grade-ss { color: #fff7a8; text-shadow: 0 0 7px #ffe96b, 0 0 19px #ffc21c; }
+.timing-rating.grade-s { color: #dfffb2; text-shadow: 0 0 7px #aaff5e, 0 0 18px #50cf40; }
+.timing-rating.grade-a { color: #9fffe1; text-shadow: 0 0 7px #35e8b2, 0 0 16px #1bbf91; }
+.timing-rating.grade-b { color: #a9d8ff; text-shadow: 0 0 7px #5eaaff, 0 0 16px #426cff; }
+.timing-rating.grade-c { color: #e2bdff; text-shadow: 0 0 7px #b96dff, 0 0 16px #8047d7; }
+.timing-rating.grade-d { color: #ffc5f0; text-shadow: 0 0 7px #ff73cf, 0 0 16px #ce3c9c; }
+.timing-rating.grade-e { color: #ffc49f; text-shadow: 0 0 7px #ff8b48, 0 0 16px #d75a26; }
+.timing-rating.grade-f { color: #ffaaa4; text-shadow: 0 0 7px #ff665c, 0 0 16px #c73535; }
+.timing-rating.grade-miss { color: #ff9b9b; text-shadow: 0 0 7px #ff4f5f, 0 0 16px #b91e3b; font-size: clamp(28px, 9cqw, 46px); }
+.timing-rating .timing-combo {
+  display: block;
+  margin-top: .2em;
+  color: currentColor;
+  font-size: .34em;
+  font-weight: 850;
+  letter-spacing: .08em;
+  opacity: .76;
+  text-shadow: inherit;
+}
+
+@keyframes timingRatingFloat {
+  0% { opacity: 0; transform: translate3d(-50%, 4px, 0) scale(.96); }
+  16% { opacity: .68; transform: translate3d(-50%, 0, 0) scale(1); }
+  55% { opacity: .52; transform: translate3d(-50%, -20px, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(-50%, -40px, 0) scale(.98); }
+}
+
+#manualKeyboard .chord-shard {
+  position: absolute;
+  z-index: 21;
+  top: 10%;
+  left: 50%;
+  width: var(--s, 5px);
+  height: var(--s, 5px);
+  border-radius: 2px;
+  background: linear-gradient(180deg, #fff, var(--note-color));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--note-color) 68%, transparent);
+  pointer-events: none;
+  animation: chordShardBurst .58s ease-out var(--delay, 0s) forwards;
+}
+
+@keyframes chordShardBurst {
+  from { opacity: 1; transform: translate(-50%, -50%) rotate(0) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(.42); filter: blur(2px); }
+}
+
+#manualKeyboard .key.chord-hit .chord-fill { opacity: 0; transition: opacity 450ms ease; }
+#manualKeyboard .key.chord-press { transform: translateY(2px); filter: brightness(1.08) saturate(1.12); }
+#manualKeyboard .key.chord-release { transform: translateY(0); filter: none; transition-duration: 240ms; }
+#manualKeyboard .key.chord-miss { animation: chordKeyMissShake .78s ease-out both; }
+#manualKeyboard .key.chord-early-reject { animation: chordKeyEarlyReject .42s cubic-bezier(.36,.07,.19,.97) both; }
+
+@keyframes chordKeyMissShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-3px); }
+  40%, 80% { transform: translateX(3px); }
+}
+
+@keyframes chordKeyEarlyReject {
+  0%, 100% { transform: translateX(0); filter: none; }
+  18%, 54% { transform: translateX(-5px); filter: brightness(.92) saturate(.72); }
+  36%, 72% { transform: translateX(5px); filter: brightness(.92) saturate(.72); }
+}
+
+.chord-float-shatter,
+.cue-float-shatter,
+.particle { display: none; }

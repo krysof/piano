@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <meta name="theme-color" content="#15132d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Freeza Live" />
+  <title>Freeza Live</title>
+  <link rel="manifest" href="manifest.webmanifest?v=reset-20260805-07" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png?v=reset-20260805-07" />
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png?v=reset-20260805-07" />
+  <link rel="stylesheet" href="styles.css?v=reset-20260805-07" />
+  <link rel="stylesheet" href="song-screen.css?v=reset-20260805-07" />
+  <link rel="stylesheet" href="start-screen.css?v=reset-20260805-07" />
+  <link rel="stylesheet" href="mic-effects.css?v=reset-20260805-07" />
+  <link rel="stylesheet" href="game-screen.css?v=reset-20260805-07" />
+  <link rel="stylesheet" href="chord-keys.css?v=reset-20260805-07" />
+</head>
+<body>
+
+  <section id="songScreen" class="song-screen" aria-label="选择歌曲" aria-hidden="false">
+    <div class="song-shell">
+      <header class="song-header">
+        <div class="song-freeza-brand">
+          <div class="song-freeza-logo" role="button" tabindex="0" data-ui-sound="brand" aria-label="播放 Freeza Live 标志音效">
+            <svg viewBox="0 0 64 64" role="img" aria-hidden="true">
+              <defs>
+                <linearGradient id="launchFace" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#ffffff"/>
+                  <stop offset="1" stop-color="#cbd4e7"/>
+                </linearGradient>
+                <linearGradient id="launchCrest" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#d9bbff"/>
+                  <stop offset="0.45" stop-color="#9e66ff"/>
+                  <stop offset="1" stop-color="#6232c7"/>
+                </linearGradient>
+              </defs>
+              <path d="M17 24C10 20 5 13 3 7c8 2 15 6 20 12Z" fill="#171927" stroke="#aca0d4" stroke-width="1.5"/>
+              <path d="M47 24c7-4 12-11 14-17-8 2-15 6-20 12Z" fill="#171927" stroke="#aca0d4" stroke-width="1.5"/>
+              <path d="M16 23c0-10 7-17 16-17s16 7 16 17v21c0 10-7 16-16 16S16 54 16 44Z" fill="url(#launchFace)" stroke="#242638" stroke-width="2"/>
+              <path d="M21 25c-5 1-8 5-8 10 0 4 2 7 6 8Z" fill="#dce3ef" stroke="#242638" stroke-width="1.5"/>
+              <path d="M43 25c5 1 8 5 8 10 0 4-2 7-6 8Z" fill="#dce3ef" stroke="#242638" stroke-width="1.5"/>
+              <path d="M22 18C23 10 27 6 32 6s9 4 10 12c-2 4-5 7-10 7s-8-3-10-7Z" fill="url(#launchCrest)" stroke="#2b2345" stroke-width="2"/>
+              <path d="M20 31c4-4 8-5 12-2-3 1-6 4-10 5Z" fill="#2a2c3c"/>
+              <path d="M44 31c-4-4-8-5-12-2 3 1 6 4 10 5Z" fill="#2a2c3c"/>
+              <path d="M21 34c4-2 8-2 11 0-3 4-7 5-11 2Z" fill="#ffe876" stroke="#242638" stroke-width="1.2"/>
+              <path d="M43 34c-4-2-8-2-11 0 3 4 7 5 11 2Z" fill="#ffe876" stroke="#242638" stroke-width="1.2"/>
+              <circle cx="27" cy="35" r="1.4" fill="#171927"/>
+              <circle cx="37" cy="35" r="1.4" fill="#171927"/>
+              <path d="M32 37v7" stroke="#727b91" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M26 49c4 2 8 2 12 0" fill="none" stroke="#242638" stroke-width="2" stroke-linecap="round"/>
+              <path d="M23 56c5 5 13 5 18 0" fill="#9e66ff" opacity=".9"/>
+            </svg>
+          </div>
+          <div>
+            <div class="song-freeza-eyebrow">LIVE PERFORMANCE</div>
+            <h1>Freeza <em>Live</em></h1>
+          </div>
+        </div>
+        <div class="song-library-summary">
+          <div class="song-library-count"><strong id="songLibraryCount">00</strong><span>TRACKS</span></div>
+          <b id="startVersion" class="song-version">v20260805.07</b>
+        </div>
+      </header>
+
+      <div class="song-intro">
+        <span>PERFORMANCE LIBRARY</span>
+        <h1>今晚想演奏哪一首？</h1>
+        <p>选择自由演奏，或搜索歌曲和歌手进入演奏设置。</p>
+      </div>
+
+      <button id="songFreePerformance" class="song-free-performance" type="button">
+        <span class="song-free-performance-art" aria-hidden="true">
+          <i></i><i></i><b>∞</b>
+        </span>
+        <span class="song-free-performance-content">
+          <small>FREE PERFORMANCE</small>
+          <strong>自由演奏</strong>
+          <em>不限时间 · BPM 自由调节 · 单音与和弦伴奏</em>
+        </span>
+        <span class="song-free-performance-action"><b>进入设置</b><i>→</i></span>
+      </button>
+
+      <section class="song-browser" aria-label="曲库搜索与筛选">
+        <label class="song-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/></svg>
+          <input id="songSearchInput" type="search" inputmode="search" autocomplete="off" placeholder="搜索歌曲或歌手" aria-label="搜索歌曲或歌手" />
+          <button id="songSearchClear" type="button" aria-label="清除搜索">×</button>
+        </label>
+        <div id="songArtistChips" class="song-artist-chips" aria-label="歌手快捷筛选"></div>
+        <div class="song-filter-row">
+          <label><span>歌手</span><select id="songArtistFilter" aria-label="按歌手筛选"></select></label>
+          <label><span>语言</span><select id="songLanguageFilter" aria-label="按语言筛选"><option value="all">全部语言</option><option value="zh">中文</option><option value="ja">日文</option><option value="instrumental">纯音乐</option></select></label>
+          <label><span>版本</span><select id="songVersionFilter" aria-label="按版本筛选"><option value="all">全部版本</option><option value="standard">标准版</option><option value="advanced">进阶版</option></select></label>
+          <label><span>排序</span><select id="songSortFilter" aria-label="歌曲排序"><option value="recommended">推荐</option><option value="popular">热度</option><option value="title">歌名</option><option value="artist">歌手</option></select></label>
+          <output id="songResultCount" class="song-result-count">0 首</output>
+        </div>
+      </section>
+
+      <div id="songGrid" class="song-grid" aria-live="polite"></div>
+      <div id="songEmptyState" class="song-empty" hidden><b>没有找到歌曲</b><span>试试缩短关键词或切换筛选条件</span></div>
+      <button id="songLoadMore" class="song-load-more" type="button" hidden><span>显示更多</span><b></b></button>
+
+      <footer class="song-footer">
+        <span class="song-ready-dot"></span>
+        <span id="songSelectStatus">请选择一首歌曲</span>
+      </footer>
+    </div>
+  </section>
+
+  <section id="startScreen" class="launch-screen" aria-label="演奏设置" aria-hidden="true">
+    <div class="launch-glow launch-glow-a" aria-hidden="true"></div>
+    <div class="launch-glow launch-glow-b" aria-hidden="true"></div>
+    <div class="launch-shell">
+      <header class="launch-header">
+        <button id="changeSongBtn" class="launch-status" type="button" aria-label="返回选歌">
+          <span class="launch-status-dot"></span>
+          <span id="selectedSongStatus">当前歌曲</span>
+        </button>
+      </header>
+
+      <div class="launch-dashboard">
+        <section class="launch-panel launch-performance">
+          <div class="launch-panel-heading">
+            <div>
+              <span class="launch-kicker">PERFORMANCE</span>
+              <h2>演奏方式</h2>
+            </div>
+            <span class="launch-heading-icon" role="button" tabindex="0" data-ui-sound="panel" aria-label="播放演奏方式提示音">⌁</span>
+          </div>
+
+          <div class="launch-performance-grid">
+            <div class="launch-control-group">
+              <div class="launch-control-label"><span>模式</span><small>和弦触发</small></div>
+              <div class="launch-choice-stack" data-group="mode">
+                <button class="launch-choice" data-mode="auto"><b>自动</b><span>全自动和弦</span></button>
+                <button class="launch-choice" data-mode="one-key"><b>一键</b><span>任意键演奏</span></button>
+                <button class="launch-choice selected" data-mode="semi"><b>辅助</b><span>半自动和弦</span></button>
+                <button class="launch-choice" data-mode="manual"><b>手动</b><span>自由触发</span></button>
+                <button class="launch-choice" data-mode="free"><b>自由</b><span>不限时间演奏</span></button>
+              </div>
+            </div>
+
+            <div class="launch-control-group">
+              <div class="launch-control-label"><span>鼓机</span><small>节奏跟随</small></div>
+              <div class="launch-choice-stack" data-group="drum">
+                <button class="launch-choice selected" data-drum="auto"><b>智能</b><span>跟随风格</span></button>
+                <button class="launch-choice" data-drum="on"><b>开启</b><span>持续伴奏</span></button>
+                <button class="launch-choice" data-drum="off"><b>关闭</b><span>纯净演奏</span></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="launch-tone-stack">
+            <div class="launch-pick-row">
+              <div>
+                <span>拨片音色</span>
+                <small>切换当前伴奏触感</small>
+              </div>
+              <div class="launch-segment" data-group="pick">
+                <button class="launch-segment-btn selected" data-pick="A">A</button>
+                <button class="launch-segment-btn" data-pick="B">B</button>
+              </div>
+            </div>
+            <div class="launch-pick-row launch-drum-tone-row">
+              <div>
+                <span>鼓机音色</span>
+                <small>切换当前节奏鼓组</small>
+              </div>
+              <div class="launch-segment" data-group="drum-tone">
+                <button class="launch-segment-btn selected" data-drum-tone="A">A</button>
+                <button class="launch-segment-btn" data-drum-tone="B">B</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="launch-panel launch-mixer">
+          <div class="launch-panel-heading">
+            <div>
+              <span class="launch-kicker">MIXER</span>
+              <h2>声音控制</h2>
+            </div>
+            <span class="launch-heading-icon launch-level-icon" role="button" tabindex="0" data-ui-sound="panel" aria-label="播放混音器提示音"><i></i><i></i><i></i></span>
+          </div>
+          <div class="launch-mixer-rows">
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">主旋律</span>
+              <input id="menuMelodyVolRange" class="launch-range" type="range" min="25" max="200" step="5" value="100" aria-label="主旋律音量" />
+              <output id="menuMelodyVolValue" class="launch-readout">100%</output>
+            </label>
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">伴奏</span>
+              <input id="menuHarmonyVolRange" class="launch-range" type="range" min="25" max="200" step="5" value="155" aria-label="伴奏音量" />
+              <output id="menuHarmonyVolValue" class="launch-readout">155%</output>
+            </label>
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">鼓机</span>
+              <input id="menuDrumVolRange" class="launch-range" type="range" min="25" max="200" step="5" value="155" aria-label="鼓机音量" />
+              <output id="menuDrumVolValue" class="launch-readout">155%</output>
+            </label>
+            <label class="launch-fader-row">
+              <span class="launch-fader-name">Key</span>
+              <input id="menuKeyRange" class="launch-range" type="range" min="-14" max="14" step="1" value="0" aria-label="Key" />
+              <output id="menuKeyValue" class="launch-readout">0</output>
+            </label>
+            <label id="freeBpmRow" class="launch-fader-row launch-free-bpm-row" hidden>
+              <span class="launch-fader-name">BPM</span>
+              <input id="menuBpmRange" class="launch-range" type="range" min="40" max="240" step="1" value="120" aria-label="自由模式 BPM" />
+              <span class="launch-bpm-actions">
+                <button id="menuBpmDown" type="button" aria-label="降低 BPM">−</button>
+                <input id="menuBpmValue" class="launch-bpm-number" type="number" inputmode="numeric" min="40" max="240" step="1" value="120" aria-label="直接输入 BPM" />
+                <button id="menuBpmUp" type="button" aria-label="提高 BPM">＋</button>
+                <button id="menuTapBpm" type="button">TAP</button>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section class="launch-panel launch-switches">
+          <div class="launch-panel-heading launch-panel-heading-compact">
+            <div>
+              <span class="launch-kicker">SIGNAL</span>
+              <h2>演奏信号</h2>
+            </div>
+          </div>
+          <div class="launch-toggle-grid">
+            <div class="launch-toggle-item">
+              <div><b>主旋律</b><small>旋律声部</small></div>
+              <div class="launch-switch" data-group="melody">
+                <button class="selected" data-melody="on">开</button>
+                <button data-melody="off">关</button>
+              </div>
+            </div>
+            <div class="launch-toggle-item">
+              <div><b>引导</b><small>歌词前主旋律</small></div>
+              <div class="launch-switch" data-group="guide">
+                <button data-guide="on">开</button>
+                <button class="selected" data-guide="off">关</button>
+              </div>
+            </div>
+            <div class="launch-toggle-item launch-mic-item">
+              <div><b>麦克风</b><small id="micEffectStatus">美声</small></div>
+              <div class="launch-switch" data-group="mic">
+                <button data-mic="on">开</button>
+                <button class="selected" data-mic="off">关</button>
+              </div>
+              <button id="micEffectsOpenBtn" class="launch-mic-edit" type="button" aria-label="打开麦克风效果设置"><i>设置</i></button>
+            </div>
+            <div class="launch-toggle-item launch-media-item">
+              <div><b>素材来源</b><small id="cameraStatus">未选择素材</small></div>
+              <div class="launch-switch launch-media-switch" data-group="media-source">
+                <button data-media-source="camera">摄像头</button>
+                <button data-media-source="video">视频</button>
+                <button data-media-source="audio">声音</button>
+                <button class="selected" data-media-source="off">关</button>
+              </div>
+              <input id="localVideoInput" type="file" accept="video/*" hidden />
+              <input id="localAudioInput" type="file" accept="audio/*" hidden />
+            </div>
+            <div id="videoSoundItem" class="launch-toggle-item launch-video-sound" hidden>
+              <div><b>视频声音</b><small>是否加入演奏与录像</small></div>
+              <div class="launch-switch" data-group="video-sound">
+                <button class="selected" data-video-sound="on">开</button>
+                <button data-video-sound="off">关</button>
+              </div>
+            </div>
+            <div id="cameraFacingItem" class="launch-toggle-item launch-camera-facing" hidden>
+              <div><b>摄像头方向</b><small>进入演奏前选择镜头</small></div>
+              <div class="launch-switch" data-group="camera-facing">
+                <button class="selected" data-camera-facing="user">前置</button>
+                <button data-camera-facing="environment">后置</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div id="micEffectsDialog" class="launch-mic-dialog" hidden>
+        <button class="launch-mic-dialog-backdrop" type="button" data-close-mic-effects aria-label="关闭人声效果"></button>
+        <section id="micEffectsPanel" class="launch-mic-effects" role="dialog" aria-modal="true" aria-label="麦克风人声效果">
+          <div class="launch-mic-effects-head">
+            <div class="launch-mic-effects-title"><b>麦克风工作室</b><small>处理后写入录音，不连接扬声器</small></div>
+            <div class="launch-mic-head-actions"><span id="micPresetName" class="launch-mic-preset-name">美声</span><button type="button" data-close-mic-effects aria-label="关闭">×</button></div>
+          </div>
+          <div class="launch-mic-presets" role="group" aria-label="人声效果模板">
+            <button class="launch-mic-preset" data-mic-preset="natural">原声</button>
+            <button class="launch-mic-preset selected" data-mic-preset="beauty">美声</button>
+            <button class="launch-mic-preset" data-mic-preset="clear">清亮</button>
+            <button class="launch-mic-preset" data-mic-preset="warm">温暖</button>
+            <button class="launch-mic-preset" data-mic-preset="ktv">KTV</button>
+            <button class="launch-mic-preset" data-mic-preset="stage">舞台</button>
+            <button class="launch-mic-preset" data-mic-preset="hall">大厅</button>
+          </div>
+          <div class="launch-mic-controls">
+            <label class="launch-mic-control"><span>润色</span><input id="micBeautyRange" class="launch-mic-range" type="range" min="0" max="100" value="62" /><output id="micBeautyValue">62</output></label>
+            <label class="launch-mic-control"><span>混响</span><input id="micReverbRange" class="launch-mic-range" type="range" min="0" max="100" value="18" /><output id="micReverbValue">18</output></label>
+            <label class="launch-mic-control"><span>回声</span><input id="micEchoRange" class="launch-mic-range" type="range" min="0" max="100" value="8" /><output id="micEchoValue">8</output></label>
+            <label class="launch-mic-control"><span>延迟</span><input id="micDelayRange" class="launch-mic-range" type="range" min="40" max="320" step="5" value="105" /><output id="micDelayValue">105ms</output></label>
+          </div>
+        </section>
+      </div>
+
+      <footer class="launch-footer">
+        <div class="launch-footer-signals">
+          <button id="midiConnectBtn" class="launch-midi-status" type="button" aria-label="连接 MIDI 键盘">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4zM7 7v6m3-6v6m4-6v6m3-6v6M6 17v-4h12v4" /></svg>
+            <span><b>MIDI 键盘</b><small id="midiStartStatus">点击连接 USB / 蓝牙</small></span>
+          </button>
+          <div class="launch-footnote"><span></span>设置会同步到演奏画面</div>
+        </div>
+        <button id="startGameBtn" class="launch-start-btn">
+          <span>进入演奏</span>
+          <i aria-hidden="true">→</i>
+        </button>
+      </footer>
+
+      <div id="loadingFrame" class="launch-loading" aria-live="polite">
+        <div class="launch-loading-card">
+          <header class="launch-loading-head">
+            <span class="launch-loading-mark"><i></i><i></i><i></i><i></i></span>
+            <div><small>PERFORMANCE SETUP</small><strong>正在准备演奏</strong></div>
+            <b id="loadingPercent">0%</b>
+          </header>
+          <div class="launch-loading-overall"><i id="loadingOverallBar"></i></div>
+          <div class="launch-loading-groups">
+            <div class="launch-loading-item" data-load-id="core"><span>核心谱面</span><small>MIDI · WASM · 风格包</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="piano"><span>主旋律钢琴</span><small>动态采样音色</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="pickA"><span>拨片 A</span><small>本曲所需音色与采样</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="pickB"><span>拨片 B</span><small>本曲所需音色与采样</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="drums"><span>鼓机音色</span><small>歌曲所需 A/B 鼓组</small><i></i><b>等待</b></div>
+            <div class="launch-loading-item" data-load-id="mic"><span>麦克风</span><small>录音输入</small><i></i><b>等待</b></div>
+          </div>
+          <div id="loadingText" class="launch-loading-text">准备载入…</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="micMonitorPrompt" class="mic-monitor-prompt" hidden>
+    <div class="mic-monitor-card" role="dialog" aria-modal="true" aria-labelledby="micMonitorTitle">
+      <div class="mic-monitor-icon" aria-hidden="true">♬</div>
+      <div class="mic-monitor-copy">
+        <small>MIC MONITOR</small>
+        <h2 id="micMonitorTitle">请先佩戴耳机</h2>
+        <p id="micMonitorMessage">确认佩戴耳机后，将立即打开人声回放，方便试听美声、混响、回声和延迟效果。</p>
+      </div>
+      <div class="mic-monitor-safety"><i></i><span>扬声器外放可能产生啸叫；系统会在检测到持续自激时自动关闭回放。</span></div>
+      <div class="mic-monitor-actions">
+        <button id="micMonitorCancel" type="button">暂不回放</button>
+        <button id="micMonitorConfirm" type="button">已戴耳机，开始回放</button>
+      </div>
+    </div>
+  </div>
+  <div id="countdownOverlay" class="countdown-overlay" aria-hidden="true"></div>
+
+  <div id="savePrompt" class="save-prompt" aria-hidden="true">
+    <div class="save-card" role="dialog" aria-label="保存演奏录音">
+      <div class="save-orb">●</div>
+      <div class="save-title">保存本次演奏录音？</div>
+      <div class="save-subtitle">包含演奏混音；打开麦克风时同时录入人声</div>
+      <div id="savePromptSize" class="save-size">准备文件…</div>
+      <div class="save-actions">
+        <button id="savePromptCancel" class="save-btn ghost">不要</button>
+        <button id="savePromptDownload" class="save-btn primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultPrompt" class="result-prompt" aria-hidden="true">
+    <div class="result-card" role="dialog" aria-label="演奏结算">
+      <div class="result-eyebrow">PERFORMANCE RESULT</div>
+      <h2>演奏结算</h2>
+      <div class="result-summary">
+        <div id="resultTotal" class="result-total">总判定 0</div>
+        <div id="resultMaxCombo" class="result-max-combo"><small>MAX COMBO</small><b>0</b><em>尚未连击</em></div>
+      </div>
+      <dl id="resultGradeGrid" class="result-grade-grid"></dl>
+      <button id="resultHomeBtn" class="result-home-btn">返回选歌</button>
+    </div>
+  </div>
+  <main class="game">
+    <header class="hud">
+      <div class="game-title-row">
+        <button id="gameSongBackBtn" class="game-song-back" type="button" aria-label="返回选歌" title="返回选歌">‹</button>
+        <div id="gameSongTitle" class="game-song-title">当前歌曲</div>
+        <button id="gameMidiStatus" class="game-midi-status" type="button" aria-hidden="true" tabindex="-1" aria-label="MIDI 键盘已连接">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v10H4zM7 7v6m3-6v6m4-6v6m3-6v6M6 17v-4h12v4" /></svg>
+          <span id="gameMidiLabel">MIDI</span>
+        </button>
+      </div>
+      <div class="game-controls">
+        <button id="playBtn" class="btn primary" aria-label="play">▶</button>
+        <button id="restartBtn" class="btn" aria-label="restart" title="重唱">↻</button>
+        <button id="keyDownBtn" class="btn" aria-label="key down">降</button>
+        <button id="keyUpBtn" class="btn" aria-label="key up">升</button>
+        <button id="pickToneBtn" class="btn accent pick-select" aria-label="pick pattern">拨A</button>
+        <button id="toneBtn" class="btn accent" aria-label="drum pattern">鼓A</button>
+        <button id="melodyToggle" class="btn active-toggle" aria-label="melody">主</button>
+        <button id="drumToggle" class="btn active-toggle" aria-label="鼓机状态：智能，点击切换">智能</button>
+        <button id="freeExitBtn" class="btn free-exit" type="button" hidden>结束</button>
+        <button id="saveRecBtn" class="btn save" aria-label="保存演奏录音">录音保存</button>
+      </div>
+    </header>
+
+    <section class="karaoke" aria-label="karaoke lyrics">
+      <div class="karaoke-panel-title">
+        <span><small>PERFORMANCE</small></span>
+        <button id="micMonitorGameToggle" class="mic-monitor-game-toggle" type="button" hidden aria-pressed="false">人声回放 关</button>
+      </div>
+      <div id="micWave" class="mic-wave" aria-hidden="true">
+        <div class="wave-line wave-left"></div>
+        <div class="wave-line wave-right"></div>
+        <div class="eq eq-left"></div>
+        <div class="eq eq-right"></div>
+      </div>
+      <div id="lyricLine1" class="karaoke-line active"></div>
+      <div id="lyricLine2" class="karaoke-line next"></div>
+      <div id="lyricLine3" class="karaoke-line next"></div>
+      <div id="lyricLine4" class="karaoke-line next"></div>
+      <div id="lyricLine5" class="karaoke-line next"></div>
+      <div id="lyricLine6" class="karaoke-line next"></div>
+      <div id="lyricLine7" class="karaoke-line next"></div>
+      <div id="lyricLine8" class="karaoke-line next"></div>
+      <div id="lyricLine9" class="karaoke-line next"></div>
+      <div id="lyricLine10" class="karaoke-line next"></div>
+      <div id="lyricLine11" class="karaoke-line next"></div>
+      <div id="lyricLine12" class="karaoke-line next"></div>
+      <div id="lyricLine13" class="karaoke-line next"></div>
+      <div id="lyricLine14" class="karaoke-line next"></div>
+      <div id="lyricLine15" class="karaoke-line next"></div>
+      <div id="lyricLine16" class="karaoke-line next"></div>
+      <div id="lyricLine17" class="karaoke-line next"></div>
+      <div id="lyricLine18" class="karaoke-line next"></div>
+      <div id="lyricLine19" class="karaoke-line next"></div>
+      <div id="lyricLine20" class="karaoke-line next"></div>
+      <div id="freePerformancePanel" class="free-performance-panel" hidden>
+        <span>FREE PERFORMANCE</span>
+        <strong>自由演奏</strong>
+        <p>点击上方琴键弹单音，使用下方和弦键的 A / B 区域自由伴奏。</p>
+        <div class="free-performance-stats">
+          <span><small>BPM</small><b id="freePanelBpm">120</b></span>
+          <span><small>和弦</small><b id="freeChordCount">0</b></span>
+          <span><small>风格</small><b id="freeStyleName">A</b></span>
+        </div>
+      </div>
+      <div class="karaoke-status">
+        <div id="keyStatus" class="key-status"><small>KEY</small><b>C</b></div>
+        <div id="comboStatus" class="combo-status" aria-label="当前连击"><small>COMBO</small><b>0</b><em>尚未连击</em></div>
+        <div id="freeBpmGame" class="free-bpm-game" hidden>
+          <button id="freeBpmDownBtn" type="button" aria-label="降低 BPM">−</button>
+          <input id="freeBpmValue" type="number" inputmode="numeric" min="40" max="240" step="1" value="120" aria-label="直接输入 BPM" />
+          <button id="freeBpmUpBtn" type="button" aria-label="提高 BPM">＋</button>
+          <button id="freeTapBpm" type="button" aria-label="点击测速">TAP</button>
+          <input id="freeBpmRange" type="range" min="40" max="240" step="1" value="120" aria-label="自由模式 BPM 拉动条" />
+        </div>
+        <div id="timeStatus" class="meter">00:00 - 00:00</div>
+        <div id="micMeter" class="mic-meter" aria-label="microphone level"><span></span></div>
+      </div>
+    </section>
+
+    <section class="piano-slot top-slot" aria-label="playback piano">
+      <div class="slot-heading"><span><small>MELODY</small><b>主旋律键盘</b></span></div>
+      <div class="shine"></div>
+      <div id="playbackScroller" class="piano-scroll">
+        <div id="playbackKeyboard" class="keyboard playback-keyboard"></div>
+      </div>
+    </section>
+
+    <section class="piano-slot bottom-slot" aria-label="manual piano">
+      <div class="slot-heading"><span><small>CHORD DECK</small><b>和弦触发键盘</b></span><div class="pick-legend"><i>A 左下</i><i>B 右上</i></div></div>
+      <div class="shine"></div>
+      <div id="manualScroller" class="piano-scroll">
+        <div id="manualKeyboard" class="manual-keyboard"></div>
+      </div>
+    </section>
+
+    <div id="cameraPip" class="camera-pip front" role="button" tabindex="-1" aria-hidden="true" aria-label="素材预览，轻触操作，可拖动">
+      <video id="cameraPreview" autoplay muted playsinline></video>
+      <span class="camera-pip-hint"><b id="cameraFacingLabel">前置</b><small>轻触切换 · 拖动移动</small></span>
+    </div>
+
+    <audio id="localAudioPreview" preload="metadata" hidden></audio>
+
+    <div class="hidden-status" aria-hidden="true">
+      <span id="midiStatus"></span>
+      <span id="sampleStatus"></span>
+      <span id="trackStatus"></span>
+      <span id="nowPlaying"></span>
+    </div>
+  </main>
+
+  <script src="vendor/Tone.js"></script>
+  <script src="vendor/soundfont-player.min.js"></script>
+  <script src="instrument-library.js?v=reset-20260805-07"></script>
+  <script src="song-search.js?v=reset-20260805-07"></script>
+  <script src="song-catalog.js?v=reset-20260805-07"></script>
+  <script src="midi-input.js?v=reset-20260805-07"></script>
+  <script src="interactive-state.js?v=reset-20260805-07"></script>
+  <script src="audio-focus-recovery.js?v=reset-20260805-07"></script>
+  <script src="audio-scheduler.js?v=reset-20260805-07"></script>
+  <script src="camera-controller.js?v=reset-20260805-07"></script>
+  <script src="free-mode.js?v=reset-20260805-07"></script>
+  <script src="combo-state.js?v=reset-20260805-07"></script>
+  <script src="harmony-balance.js?v=reset-20260805-07"></script>
+  <script src="harmony-continuity.js?v=reset-20260805-07"></script>
+  <script src="drum-mode.js?v=reset-20260805-07"></script>
+  <script src="guitar-manifests.js?v=reset-20260805-07"></script>
+  <script src="pwa.js?v=reset-20260805-07"></script>
+  <script src="guitar-sampler.js?v=reset-20260805-07"></script>
+  <script src="drum-kits.js?v=reset-20260805-07"></script>
+  <script src="mic-effects.js?v=reset-20260805-07"></script>
+  <script src="audio-output-safety.js?v=reset-20260805-07"></script>
+  <script src="recording-diagnostics.js?v=reset-20260805-07"></script>
+  <script src="pcm-recorder.js?v=reset-20260805-07"></script>
+  <script src="lyric-layout.js?v=reset-20260805-07"></script>
+  <script src="karaoke-performance.js?v=reset-20260805-07"></script>
+  <script src="app.js?v=reset-20260805-07"></script>
+</body>
+</html>

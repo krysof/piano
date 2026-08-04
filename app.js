@@ -1,0 +1,6056 @@
+const $ = (id) => document.getElementById(id);
+const ASSET_VERSION = 'reset-20260805-07';
+const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
+const SONG_PAGE_SIZE = 24;
+const songLibraryState = { query: '', artist: 'all', language: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+const audio = {
+  ctx: null,
+  master: null,
+  recordDest: null,
+  recordBus: null,
+  recordLimiter: null,
+  recordingDiagnostics: null,
+  melodyRecordTap: null,
+  accompanimentRecordTap: null,
+  micRecordTap: null,
+  gameRecordGain: null,
+  toneRecorderConnected: false,
+  toneRecorderAttempted: false,
+};
+const sampled = {
+  piano: null,
+  ready: false,
+  midiPiano: null,
+  midiReady: false,
+  midiPitch: null,
+  midiVibrato: null,
+  midiVolume: null,
+};
+const wasmParser = { promise: null, exports: null };
+const patterns = { manifest: null, byCode: new Map(), promise: null };
+const audioScheduler = window.FreezaAudioScheduler.create({ lookaheadMs: 90 });
+const comboState = window.FreezaComboState.create();
+const freeModeState = window.FreezaFreeMode.create(120);
+const karaokePerformance = window.FreezaKaraokePerformance.create();
+const lyricParticlePool = [];
+let song = null;
+let lyricLines = [];
+let lastLyricIndex = -1;
+let lastLyricParticleAt = 0;
+let timers = [];
+let cueTimers = [];
+let harmonyTimers = [];
+let cueRuntimeRaf = null;
+let activeCue = null;
+let nextCueIndex = 0;
+let currentDrumCode = null;
+let playStartedAt = 0;
+let playOffset = 0;
+let playing = false;
+let clockTimer = null;
+let lastTrack2Index = -1;
+let wakeLock = null;
+let melodyEnabled = true;
+let melodyUserTouched = false;
+let melodyGain = 1.0;
+let harmonyGain = 1.55;
+let drumGain = 1.55;
+let micEnabled = false;
+let cameraEnabled = false;
+let mediaSourceMode = 'off';
+// 麦克风固定 95% 防爆麦：这是内部隐藏值，不在界面暴露，也不允许用户调节。
+const FIXED_MIC_GAIN = 0.95;
+let micGain = FIXED_MIC_GAIN;
+const micEffectState = {
+  preset: 'beauty',
+  settings: window.FreezaMicEffects?.preset?.('beauty') || { label: '美声', beauty: 62, reverb: 18, echo: 8, delay: 105 },
+};
+const mic = {
+  stream: null, source: null, gain: null, effects: null, analyser: null,
+  monitorGain: null, monitorLimiter: null, monitoring: false,
+  outputRoute: 'unknown', outputDeviceId: '', outputDeviceLabel: '',
+  feedbackHotSince: 0, feedbackPromptMode: 'enable',
+  data: null, freqData: null, raf: 0, level: 0, ready: false,
+};
+const cameraPreviewState = {
+  stream: null,
+  facingMode: 'user',
+  preferredFacing: 'user',
+  switching: false,
+  userPositioned: false,
+};
+const localMedia = {
+  url: '', kind: '', fileName: '', includeVideoAudio: true,
+  videoSource: null, videoGain: null, audioSource: null, audioGain: null,
+};
+const recorder = {
+  media: null, pcm: null, chunks: [], blob: null, url: '', mime: '',
+  active: false, starting: false, stopping: false, requestedStop: false,
+  downloadWhenReady: false, hadMic: false, diagnostics: null, actualBitsPerSecond: 0,
+};
+let drumsEnabled = false;
+let drumMode = 'auto';
+let drumModeBeforeOff = 'auto';
+let drumPatternSlot = 0;
+let playMode = 'semi';
+let freeDrumTimer = null;
+let freeDrumStarted = false;
+let freeDrumNextBarAt = 0;
+let freeChordCount = 0;
+let guideMode = false;
+let nextManualMelodyIndex = 0;
+let oneKeyNextCueIndex = -1;
+let oneKeyLastBarEndAt = 0;
+let oneKeyLastBarDurationMs = 0;
+let manualMelodyTimers = [];
+const interactiveSession = window.FreezaInteractiveState.create(playMode);
+let midiReady = false;
+let midiReadyPromise = null;
+let sampleReadyPromise = Promise.resolve(false);
+let startRequested = false;
+let selectedSongId = null;
+let songSelectionPending = false;
+let freeLibraryEntrySelected = false;
+let countdownTimer = null;
+let countdownActive = false;
+let harmonyAutoTimers = [];
+let harmonyToneMode = 1;
+let userPickEvents = [];
+let initialPickSlot = null;
+let userKeyShift = 0;
+let keyPreviewTimer = null;
+let keyPreviewGeneration = 0;
+let playbackNeedsFocusResync = false;
+let focusResyncing = false;
+let focusResumePosition = null;
+let focusResyncRetryTimer = null;
+let focusGestureUnlockPending = false;
+const balancedHarmonyGain = (code, fallback) => window.FreezaHarmonyBalance?.gainForCode(code, fallback) ?? fallback;
+let HARMONY_TONES = [
+  { label: 'A', code: 'GS_3', name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: balancedHarmonyGain('GS_3', 0.70), fallbackGain: 0.65 },
+  { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: balancedHarmonyGain('PianoStudio_4', 0.42) },
+];
+const soundfont = { instruments: new Map(), promises: new Map(), ready: false };
+const drumKit = { ctx: null, noise: null };
+const NATURAL_TO_MIDI = { C: 60, D: 62, E: 64, F: 65, G: 67, A: 69, B: 71 };
+const COMPUTER_CHORD_ROOT_BY_CODE = Object.freeze({
+  KeyZ: 'C', KeyX: 'D', KeyC: 'E', KeyV: 'F', KeyB: 'G', KeyN: 'A', KeyM: 'B',
+});
+const COMPUTER_CHORD_KEY_BY_ROOT = Object.freeze({
+  C: 'Z', D: 'X', E: 'C', F: 'V', G: 'B', A: 'N', B: 'M',
+});
+const heldComputerChordKeys = new Set();
+const NOTE_PC = { C: 0, 'C#': 1, Db: 1, D: 2, 'D#': 3, Eb: 3, E: 4, F: 5, 'F#': 6, Gb: 6, G: 7, 'G#': 8, Ab: 8, A: 9, 'A#': 10, Bb: 10, B: 11 };
+const PC_NOTE_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const cueState = new Map();
+const harmonyRepeat = new Map();
+const TIMING_GRADES = ['SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E', 'F', 'MISS'];
+const timingRatingCounts = new Map(TIMING_GRADES.map(grade => [grade, 0]));
+
+function setPill(id, text, type = '') {
+  const el = $(id);
+  el.textContent = text;
+  el.className = `${id === 'timeStatus' ? 'meter' : 'pill'} ${type}`.trim();
+}
+function labelOf(midi) { return NOTE_NAMES[midi % 12].replace('#', '♯') + Math.floor(midi / 12 - 1); }
+function toneNoteOf(midi) { return NOTE_NAMES[midi % 12] + Math.floor(midi / 12 - 1); }
+function fmt(sec) {
+  sec = Math.max(0, sec || 0);
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = Math.floor(sec % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+function updatePlayButton() {
+  const btn = $('playBtn');
+  if (!btn) return;
+  btn.textContent = playing ? '⏸' : '▶';
+  btn.classList.toggle('playing', !!playing);
+  btn.setAttribute('aria-label', playing ? 'pause' : 'play/resume');
+}
+
+function updateClock() {
+  if (!song) { setPill('timeStatus', '00:00 - 00:00'); updatePlayButton(); updateGamePickControls(); return; }
+  const now = playing ? playOffset + (performance.now() - playStartedAt) / 1000 : playOffset;
+  setPill('timeStatus', isFreeMode()
+    ? `${fmt(now)} · ${freeModeState.bpm} BPM`
+    : `${fmt(Math.min(now, song.duration))} - ${fmt(song.duration)}`);
+  updatePlayButton();
+  updateGamePickControls(now);
+}
+
+function stopClockLoop() {
+  if (clockTimer != null) cancelAnimationFrame(clockTimer);
+  clockTimer = null;
+}
+
+function startClockLoop(includeLyrics = false, fps = 30) {
+  stopClockLoop();
+  const frameMs = 1000 / Math.max(1, fps);
+  let previous = -Infinity;
+  const tick = timestamp => {
+    if (timestamp - previous >= frameMs - 1) {
+      previous = timestamp;
+      updateClock();
+      if (includeLyrics) updateLyrics();
+    }
+    clockTimer = requestAnimationFrame(tick);
+  };
+  clockTimer = requestAnimationFrame(tick);
+}
+
+async function loadPatternManifest() {
+  if (patterns.promise) return patterns.promise;
+  patterns.promise = fetch(`patterns/player_bundle/catalog/player_patterns_manifest.json?v=${ASSET_VERSION}`, { cache: 'no-store' })
+    .then(res => {
+      if (!res.ok) throw new Error(`pattern manifest HTTP ${res.status}`);
+      return res.json();
+    })
+    .then(manifest => {
+      patterns.manifest = manifest;
+      patterns.byCode = new Map((manifest.patterns || []).map(p => [p.code, p]));
+      return manifest;
+    });
+  return patterns.promise;
+}
+
+async function loadWasmParser() {
+  if (wasmParser.promise) return wasmParser.promise;
+  const url = `pkg/piano_wasm.wasm?v=${ASSET_VERSION}`;
+  wasmParser.promise = WebAssembly.instantiateStreaming(fetch(url, { cache: 'no-store' }), {})
+    .catch(async () => {
+      const res = await fetch(url, { cache: 'no-store' });
+      const bytes = await res.arrayBuffer();
+      return WebAssembly.instantiate(bytes, {});
+    })
+    .then(result => {
+      wasmParser.exports = result.instance.exports;
+      return wasmParser.exports;
+    });
+  return wasmParser.promise;
+}
+
+function withTimeout(promise, timeoutMs, label = 'operation') {
+  let timer = null;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+async function parseEncryptedSongWithWasm(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const wasm = await loadWasmParser();
+  const cap = wasm.input_capacity ? wasm.input_capacity() : 0;
+  if (!wasm.memory || !wasm.input_ptr || !wasm.parse_flm_bytes || bytes.length > cap) {
+    throw new Error('WASM encrypted-song parser unavailable');
+  }
+  const ptr = wasm.input_ptr();
+  new Uint8Array(wasm.memory.buffer, ptr, bytes.length).set(bytes);
+  const len = wasm.parse_flm_bytes(bytes.length);
+  const outPtr = wasm.output_ptr();
+  const json = new TextDecoder().decode(new Uint8Array(wasm.memory.buffer, outPtr, len));
+  const parsed = JSON.parse(json);
+  if (parsed.error) throw new Error(parsed.error);
+  parsed.parsedBy = 'wasm';
+  return parsed;
+}
+
+function runWasmCommand(command) {
+  const wasm = wasmParser.exports;
+  if (!wasm?.memory || !wasm.input_ptr || !wasm.input_capacity || !wasm.process_command) {
+    throw new Error('WASM playback core unavailable');
+  }
+  const bytes = new TextEncoder().encode(JSON.stringify(command));
+  if (bytes.length > wasm.input_capacity()) throw new Error('WASM command exceeds input capacity');
+  new Uint8Array(wasm.memory.buffer, wasm.input_ptr(), bytes.length).set(bytes);
+  const len = wasm.process_command(bytes.length);
+  const json = new TextDecoder().decode(new Uint8Array(wasm.memory.buffer, wasm.output_ptr(), len));
+  const result = JSON.parse(json);
+  if (result.error) throw new Error(result.error);
+  return result;
+}
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    if (!wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (err) {
+    console.warn('Wake Lock unavailable:', err);
+  }
+}
+
+async function releaseWakeLock() {
+  try {
+    if (wakeLock) await wakeLock.release();
+  } catch {}
+  wakeLock = null;
+}
+
+function initSamplePiano() {
+  if (!window.Tone) {
+    setPill('sampleStatus', '⚠️ Tone.js 未加载，使用内置音色', 'warn');
+    sampleReadyPromise = Promise.resolve(false);
+    return sampleReadyPromise;
+  }
+  const urls = {
+      A0: 'A0.mp3', C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3', A1: 'A1.mp3',
+      C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
+      C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
+      C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+      C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3',
+      C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', A6: 'A6.mp3',
+      C7: 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3', A7: 'A7.mp3', C8: 'C8.mp3',
+  };
+  sampleReadyPromise = new Promise(resolve => {
+    sampled.piano = new Tone.Sampler({
+      urls,
+    release: 1.25,
+    baseUrl: 'samples/salamander/',
+      onload: () => {
+        sampled.ready = true;
+        setPill('sampleStatus', '✅ Salamander Grand Piano 采样音色', 'ok');
+        resolve(true);
+      },
+    }).toDestination();
+    Tone.Destination.volume.value = -5;
+    try {
+      sampled.midiVolume = new Tone.Volume(0).toDestination();
+      sampled.midiPitch = new Tone.PitchShift({ pitch: 0, windowSize: 0.055 });
+      sampled.midiVibrato = new Tone.Vibrato({ frequency: 5.25, depth: 0 });
+      sampled.midiVibrato.connect(sampled.midiPitch);
+      sampled.midiPitch.connect(sampled.midiVolume);
+      sampled.midiPiano = new Tone.Sampler({
+        urls,
+        release: 1.25,
+        baseUrl: 'samples/salamander/',
+        onload: () => { sampled.midiReady = true; },
+      }).connect(sampled.midiVibrato);
+    } catch (error) {
+      console.warn('MIDI piano preview effects unavailable:', error);
+      sampled.midiPiano = null;
+    }
+  });
+  return sampleReadyPromise;
+}
+function ensureAudio() {
+  if (!audio.ctx) {
+    // Tone.js 和原生 WebAudio 必须共用同一个 AudioContext；否则
+    // Tone.Destination 无法连接到原生 MediaStreamDestination，录音会丢掉钢琴声。
+    const toneContext = window.Tone?.getContext?.();
+    const toneRawContext = toneContext?.rawContext || toneContext?._context || null;
+    audio.ctx = toneRawContext || new (window.AudioContext || window.webkitAudioContext)();
+    audio.master = audio.ctx.createGain();
+    audio.master.gain.value = 0.48;
+    audio.master.connect(audio.ctx.destination);
+    audio.recordDest = audio.ctx.createMediaStreamDestination();
+    audio.recordBus = audio.ctx.createGain();
+    audio.recordLimiter = audio.ctx.createDynamicsCompressor();
+    audio.recordBus.gain.value = 0.90;
+    // 只在接近满幅时做透明峰值保护；旧的 -3 dB 强压缩会让音符攻击相对突出。
+    audio.recordLimiter.threshold.value = -1.5;
+    audio.recordLimiter.knee.value = 1;
+    audio.recordLimiter.ratio.value = 12;
+    audio.recordLimiter.attack.value = 0.001;
+    audio.recordLimiter.release.value = 0.06;
+    audio.recordBus.connect(audio.recordLimiter).connect(audio.recordDest);
+    audio.recordingDiagnostics = window.FreezaRecordingDiagnostics?.create?.(audio.ctx) || null;
+    audio.melodyRecordTap = audio.recordingDiagnostics?.createTap('melody', '主旋律') || null;
+    audio.accompanimentRecordTap = audio.recordingDiagnostics?.createTap('accompaniment', '伴奏/界面') || null;
+    audio.micRecordTap = audio.recordingDiagnostics?.createTap('mic', '麦克风') || null;
+    if (audio.melodyRecordTap) audio.melodyRecordTap.connect(audio.recordBus);
+    if (audio.micRecordTap) audio.micRecordTap.connect(audio.recordBus);
+    audio.gameRecordGain = audio.ctx.createGain();
+    audio.gameRecordGain.gain.value = 1;
+    audio.master.connect(audio.gameRecordGain);
+    if (audio.accompanimentRecordTap) {
+      audio.gameRecordGain.connect(audio.accompanimentRecordTap);
+      audio.accompanimentRecordTap.connect(audio.recordBus);
+    } else {
+      audio.gameRecordGain.connect(audio.recordBus);
+    }
+  }
+  // iOS Safari 从后台回来时可能把 Context 标记为 suspended 或
+  // interrupted。两种状态都要主动恢复，不能只处理 suspended。
+  if (audio.ctx.state !== 'running' && audio.ctx.state !== 'closed') {
+    audio.ctx.resume().catch(() => {});
+  }
+  connectToneToRecorder();
+}
+
+function playLaunchTone(frequency, delay = 0, duration = 0.09, level = 0.055, type = 'sine') {
+  ensureAudio();
+  const ctx = audio.ctx;
+  if (!ctx || !audio.master) return;
+  const start = ctx.currentTime + Math.max(0, delay);
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(Math.max(60, frequency), start);
+  oscillator.frequency.exponentialRampToValueAtTime(Math.max(60, frequency * 1.025), start + duration);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(level, start + Math.min(0.012, duration * 0.28));
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  oscillator.connect(gain).connect(audio.master);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function playLaunchUiSound(kind = 'select', value = 0.5) {
+  try {
+    const position = Math.max(0, Math.min(1, Number(value) || 0));
+    if (kind === 'brand') {
+      playLaunchTone(392, 0, 0.12, 0.052, 'triangle');
+      playLaunchTone(523.25, 0.055, 0.14, 0.047, 'sine');
+      playLaunchTone(783.99, 0.12, 0.18, 0.038, 'sine');
+    } else if (kind === 'panel') {
+      playLaunchTone(493.88, 0, 0.075, 0.037, 'triangle');
+      playLaunchTone(659.25, 0.045, 0.095, 0.032, 'sine');
+    } else if (kind === 'start') {
+      playLaunchTone(392, 0, 0.11, 0.05, 'triangle');
+      playLaunchTone(523.25, 0.045, 0.14, 0.048, 'triangle');
+      playLaunchTone(659.25, 0.09, 0.18, 0.044, 'sine');
+    } else if (kind === 'toggle') {
+      playLaunchTone(330, 0, 0.055, 0.034, 'square');
+      playLaunchTone(494, 0.032, 0.07, 0.027, 'sine');
+    } else if (kind === 'slider') {
+      playLaunchTone(360 + position * 520, 0, 0.036, 0.022, 'sine');
+    } else {
+      playLaunchTone(440, 0, 0.06, 0.034, 'triangle');
+      playLaunchTone(587.33, 0.028, 0.075, 0.026, 'sine');
+    }
+  } catch (err) {
+    console.warn('Launch UI sound unavailable:', err);
+  }
+}
+
+function playRaceCountdownSound(step) {
+  try {
+    if (step > 0) {
+      // 赛车发车灯式短提示：3/2/1 使用同一低音脉冲，避免被误听成歌曲旋律。
+      playLaunchTone(293.66, 0, 0.13, 0.052, 'square');
+      playLaunchTone(440, 0.012, 0.105, 0.026, 'sine');
+    } else {
+      // 倒数完成用更高、更明亮的双音明确表示 GO。
+      playLaunchTone(587.33, 0, 0.16, 0.058, 'square');
+      playLaunchTone(880, 0.035, 0.21, 0.046, 'sine');
+    }
+  } catch (err) {
+    console.warn('Countdown sound unavailable:', err);
+  }
+}
+
+function setupLaunchUiSounds(screen) {
+  let lastSliderSoundAt = 0;
+  const soundKindFor = (target) => {
+    if (target?.dataset?.uiSound) return target.dataset.uiSound;
+    if (target?.id === 'startGameBtn') return 'start';
+    if (target?.closest?.('.launch-switch')) return 'toggle';
+    return 'select';
+  };
+  screen.addEventListener('pointerdown', (event) => {
+    const target = event.target.closest('button, [data-ui-sound]');
+    if (target && screen.contains(target)) playLaunchUiSound(soundKindFor(target));
+  });
+  screen.addEventListener('click', (event) => {
+    if (event.detail !== 0) return;
+    const target = event.target.closest('button, [data-ui-sound]');
+    if (target && screen.contains(target)) playLaunchUiSound(soundKindFor(target));
+  });
+  screen.querySelectorAll('[data-ui-sound]').forEach(target => {
+    target.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        playLaunchUiSound(soundKindFor(target));
+      }
+    });
+  });
+  screen.querySelectorAll('.launch-range').forEach(range => {
+    range.addEventListener('input', () => {
+      if (range.id === 'menuKeyRange') return; // Key 已播放实际变调试听音。
+      const now = performance.now();
+      if (now - lastSliderSoundAt < 42) return;
+      lastSliderSoundAt = now;
+      const min = Number(range.min) || 0;
+      const max = Number(range.max) || 1;
+      playLaunchUiSound('slider', (Number(range.value) - min) / Math.max(1, max - min));
+    });
+  });
+}
+
+function setupGameUiSounds() {
+  const controls = document.querySelector('.game-controls');
+  if (!controls || controls.dataset.soundReady === 'true') return;
+  controls.dataset.soundReady = 'true';
+  controls.addEventListener('pointerdown', event => {
+    const button = event.target.closest('.btn');
+    if (!button) return;
+    const kind = button.id === 'saveRecBtn' ? 'panel'
+      : ['melodyToggle', 'drumToggle', 'toneBtn'].includes(button.id) ? 'toggle'
+      : 'select';
+    playLaunchUiSound(kind);
+  });
+}
+
+function connectToneToRecorder() {
+  if (!window.Tone || !audio.recordDest || audio.toneRecorderConnected || audio.toneRecorderAttempted) return;
+  audio.toneRecorderAttempted = true;
+  try {
+    const dest = Tone.getDestination ? Tone.getDestination() : Tone.Destination;
+    if (dest?.connect) {
+      dest.connect(audio.melodyRecordTap || audio.recordBus || audio.recordDest);
+      audio.toneRecorderConnected = true;
+    }
+  } catch (err) {
+    console.warn('Tone recorder connect failed:', err);
+  }
+}
+function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+function localSoundfontUrl(name, soundfont, format) {
+  const fmt = format === 'ogg' ? 'ogg' : 'mp3';
+  const bank = soundfont === 'MusyngKite' ? 'MusyngKite' : 'FluidR3_GM';
+  return `soundfonts/${bank}/${name}-${fmt}.js`;
+}
+
+function getSoundfontInstrument(preset) {
+  if (preset.localPiano) return Promise.resolve(null);
+  if (!window.Soundfont || !audio.ctx) return Promise.resolve(null);
+  const soundfontName = preset.fallbackName || preset.name;
+  const soundfontBank = preset.soundfont || 'FluidR3_GM';
+  const cacheKey = `${soundfontBank}:${soundfontName}`;
+  if (soundfont.instruments.has(cacheKey)) return Promise.resolve(soundfont.instruments.get(cacheKey));
+  if (!soundfont.promises.has(cacheKey)) {
+    const p = Soundfont.instrument(audio.ctx, soundfontName, {
+      soundfont: soundfontBank,
+      format: 'mp3',
+      nameToUrl: localSoundfontUrl,
+      destination: audio.master,
+      // 每个 Note On 已按音色设置 gain；instrument 层不能再乘一次，否则
+      // 本地采样回退 SoundFont 时会被双重衰减。
+      gain: 1,
+    }).then(inst => {
+      soundfont.instruments.set(cacheKey, inst);
+      return inst;
+    }).catch(err => {
+      console.warn('SoundFont load failed:', soundfontName, err);
+      return null;
+    });
+    soundfont.promises.set(cacheKey, p);
+  }
+  return soundfont.promises.get(cacheKey);
+}
+
+function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5, when = null) {
+  ensureAudio();
+  const ctx = audio.ctx;
+  const now = Math.max(ctx.currentTime, Number(when) || ctx.currentTime);
+  const freq = midiToFreq(midi);
+  const osc = ctx.createOscillator();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = freq;
+  filter.type = 'lowpass';
+  filter.frequency.value = 1200;
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.025, velocity * 0.16), now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.15, duration));
+  osc.connect(filter).connect(gain).connect(audio.master);
+  osc.start(now);
+  osc.stop(now + Math.max(0.15, duration) + 0.04);
+  return osc;
+}
+
+function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = harmonyToneMode, when = null) {
+  const preset = HARMONY_TONES[(toneMode - 1 + HARMONY_TONES.length) % HARMONY_TONES.length];
+  ensureAudio();
+  const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const fallbackLevel = Math.max(0.05, Math.min(1,
+    velocity * (preset.fallbackGain || preset.gain || 0.65) * harmonyGain));
+  const sampleCode = preset.sampleCode || preset.code;
+  const guitarSource = preset.guitarLibrary && window.FreezaGuitarSampler?.play(
+    audio.ctx, audio.master, sampleCode, midi, duration, velocity,
+    (preset.gain || 0.78) * harmonyGain, scheduledWhen,
+  );
+  if (guitarSource) return guitarSource;
+  if (preset.localPiano && sampled.ready && sampled.piano && window.Tone) {
+    Tone.start();
+    const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
+    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, toneWhen,
+      Math.max(0.035, Math.min(1, velocity * (preset.gain || 0.42) * harmonyGain)));
+    return null;
+  }
+  const soundfontName = preset.fallbackName || preset.name;
+  const soundfontBank = preset.soundfont || 'FluidR3_GM';
+  const cachedInstrument = soundfont.instruments.get(`${soundfontBank}:${soundfontName}`);
+  if (cachedInstrument) {
+    const note = preset.drum ? Math.min(81, Math.max(35, midi)) : midi;
+    return cachedInstrument.play(note, scheduledWhen, Math.max(0.08, duration), {
+      gain: fallbackLevel,
+    });
+  }
+  withTimeout(getSoundfontInstrument(preset), 1400, `SoundFont ${preset.name}`).then(inst => {
+    if (!inst) return fallbackSoftNote(midi, duration, fallbackLevel, scheduledWhen);
+    const note = preset.drum ? Math.min(81, Math.max(35, midi)) : midi;
+    inst.play(note, Math.max(audio.ctx.currentTime, scheduledWhen), Math.max(0.08, duration), {
+      gain: fallbackLevel,
+    });
+  }).catch(() => fallbackSoftNote(midi, duration, fallbackLevel, scheduledWhen));
+  return null;
+}
+
+function drumPitchToMidi(pitch) {
+  const p = Math.round(Number(pitch));
+  // C2 drum pattern 使用 GM percussion note - 12 的模板编号。
+  // 不能把 25/26、41 等压成同一种鼓，否则整套 pattern 只剩“咚咚”声。
+  return Math.max(35, Math.min(81, p + 12));
+}
+
+function drumVoiceForMidi(midi) {
+  if (midi === 35 || midi === 36) return 'kick';
+  if (midi === 37) return 'rim';
+  if (midi === 38 || midi === 40) return 'snare';
+  if (midi === 39) return 'clap';
+  if (midi === 42 || midi === 44) return 'closed-hat';
+  if (midi === 46) return 'open-hat';
+  if ([41, 43, 45, 47, 48, 50].includes(midi)) return 'tom';
+  if ([49, 51, 52, 53, 55, 57, 59].includes(midi)) return 'cymbal';
+  return 'percussion';
+}
+
+function drumNoiseBuffer() {
+  const ctx = audio.ctx;
+  if (drumKit.ctx === ctx && drumKit.noise) return drumKit.noise;
+  const length = Math.ceil(ctx.sampleRate * 1.2);
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+  drumKit.ctx = ctx;
+  drumKit.noise = buffer;
+  return buffer;
+}
+
+function playDrumNoise(when, duration, peak, filterType, frequency, q = 0.7) {
+  const ctx = audio.ctx;
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  source.buffer = drumNoiseBuffer();
+  filter.type = filterType;
+  filter.frequency.setValueAtTime(frequency, when);
+  filter.Q.value = q;
+  gain.gain.setValueAtTime(Math.max(0.0001, peak), when);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+  source.connect(filter).connect(gain).connect(audio.master);
+  source.start(when, Math.random() * 0.12);
+  source.stop(when + duration + 0.02);
+}
+
+function playDrumOsc(when, duration, peak, type, startFrequency, endFrequency = startFrequency) {
+  const ctx = audio.ctx;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(startFrequency, when);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFrequency), when + duration);
+  gain.gain.setValueAtTime(Math.max(0.0001, peak), when);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + duration);
+  osc.connect(gain).connect(audio.master);
+  osc.start(when);
+  osc.stop(when + duration + 0.02);
+}
+
+function playDrumKitNote(midi, velocity, patternDuration, when = null) {
+  ensureAudio();
+  const now = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const level = Math.min(1.6, (0.035 + Math.max(0, velocity) * 1.05) * drumGain);
+  const voice = drumVoiceForMidi(midi);
+  if (voice === 'kick') {
+    playDrumOsc(now, 0.34, level * 0.95, 'sine', 155, 46);
+  } else if (voice === 'rim') {
+    playDrumNoise(now, 0.055, level * 0.62, 'bandpass', 1850, 5.5);
+    playDrumOsc(now, 0.045, level * 0.28, 'square', 540, 410);
+  } else if (voice === 'snare') {
+    playDrumNoise(now, 0.18, level * 0.78, 'highpass', 1050, 0.8);
+    playDrumOsc(now, 0.13, level * 0.30, 'triangle', 210, 125);
+  } else if (voice === 'clap') {
+    [0, 0.018, 0.038].forEach((delay, i) => {
+      playDrumNoise(now + delay, 0.075, level * (0.50 - i * 0.08), 'bandpass', 1450, 1.1);
+    });
+  } else if (voice === 'closed-hat') {
+    playDrumNoise(now, 0.065, level * 0.42, 'highpass', 7200, 0.7);
+  } else if (voice === 'open-hat') {
+    playDrumNoise(now, Math.max(0.24, Math.min(0.72, patternDuration)), level * 0.46, 'highpass', 6500, 0.6);
+  } else if (voice === 'tom') {
+    const tomFrequency = 82 + (midi - 41) * 13;
+    playDrumOsc(now, 0.28, level * 0.72, 'sine', tomFrequency * 1.45, tomFrequency);
+  } else if (voice === 'cymbal') {
+    playDrumNoise(now, Math.max(0.34, Math.min(1.05, patternDuration)), level * 0.44, 'highpass', midi === 53 ? 4200 : 5200, 1.0);
+    if (midi === 53) playDrumOsc(now, 0.22, level * 0.16, 'square', 860, 790);
+  } else {
+    playDrumNoise(now, 0.13, level * 0.46, 'bandpass', 2100 + (midi - 54) * 85, 2.2);
+  }
+}
+
+function prepareDrumPattern(pattern, drumCode = pattern?.code, onProgress = null) {
+  if (!pattern?.notes?.length || !window.FreezaDrumKits) return Promise.resolve();
+  ensureAudio();
+  return window.FreezaDrumKits.preload(
+    audio.ctx,
+    drumCode,
+    pattern.notes.map(note => drumPitchToMidi(note.pitch)),
+    onProgress,
+  );
+}
+
+function playDrumPatternNote(patternNote, drumCode = currentDrumCode, when = null) {
+  ensureAudio();
+  const midi = drumPitchToMidi(patternNote.pitch);
+  const velocity = Math.max(0, Math.min(1, Number(patternNote.velocity || 0) / 127));
+  const duration = Math.max(0.05, Number(patternNote.duration || 0.2) * beatMs() / 1000);
+  const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const sampledSource = window.FreezaDrumKits?.play(
+    audio.ctx, audio.master, drumCode, midi, velocity, drumGain, scheduledWhen,
+  );
+  if (sampledSource) return sampledSource;
+  return playDrumKitNote(midi, velocity, duration, scheduledWhen);
+}
+
+function playNote(midi, duration = 0.55, velocity = 0.6, when = null) {
+  if (sampled.ready && sampled.piano && window.Tone) {
+    Tone.start();
+    ensureAudio();
+    const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+    const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
+    sampled.piano.triggerAttackRelease(toneNoteOf(midi), duration, toneWhen, Math.max(0.04, Math.min(1, velocity * melodyGain)));
+    return;
+  }
+  ensureAudio();
+  const now = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const osc = audio.ctx.createOscillator();
+  const gain = audio.ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.value = midiToFreq(midi);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.04, Math.min(1, velocity * melodyGain)), now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.connect(gain).connect(audio.master);
+  osc.start(now); osc.stop(now + duration + 0.05);
+  return osc;
+}
+
+function flash(keyboardId, midi, ms = 520, mode = 'active') {
+  document.querySelectorAll(`#${keyboardId} .key[data-midi="${midi}"]`).forEach(k => {
+    k.classList.add(mode);
+    setTimeout(() => {
+      k.classList.remove(mode);
+      k.classList.add('release');
+      setTimeout(() => k.classList.remove('release'), 360);
+    }, ms);
+  });
+}
+
+function cueProgressForKey(key) {
+  const state = cueState.get(key.dataset.root);
+  if (!state) return null;
+  const now = performance.now();
+  if (now < state.start || now > state.end) return null;
+  const duration = Math.max(1, Number(state.due) - Number(state.start));
+  return ((now - state.start) / duration) * 100;
+}
+
+function isGoodTiming(key) {
+  const p = cueProgressForKey(key);
+  return p !== null && p >= 90 && p <= 110;
+}
+
+function timingGrade(progress, correctKey = true) {
+  if (!correctKey || !Number.isFinite(progress)) return 'MISS';
+  const error = Math.abs(progress - 100);
+  if (error <= 1) return 'SSS';
+  if (error <= 2) return 'SS';
+  if (error <= 3) return 'S';
+  if (error <= 4) return 'A';
+  if (error <= 5) return 'B';
+  if (error <= 6) return 'C';
+  if (error <= 7) return 'D';
+  if (error <= 8) return 'E';
+  if (error <= 10) return 'F';
+  return 'MISS';
+}
+
+function resetTimingRatings() {
+  TIMING_GRADES.forEach(grade => timingRatingCounts.set(grade, 0));
+  comboState.reset();
+  updateComboStatus();
+}
+
+function recordTimingGrade(grade) {
+  const normalized = TIMING_GRADES.includes(grade) ? grade : 'MISS';
+  timingRatingCounts.set(normalized, (timingRatingCounts.get(normalized) || 0) + 1);
+  comboState.record(normalized);
+  updateComboStatus();
+  return normalized;
+}
+
+function comboTargetCount() {
+  // 每个 chord cue 对应本曲一次应按节点；错误重试会增加总判定次数，
+  // 但不能扩大称号分母，否则同一首歌会因乱按而改变难度基准。
+  return song?.chordCues?.length || 0;
+}
+
+function updateComboStatus() {
+  const status = $('comboStatus');
+  if (!status) return;
+  const { current } = comboState.snapshot();
+  const target = comboTargetCount();
+  const ratio = window.FreezaComboState.ratioFor(current, target);
+  const label = window.FreezaComboState.commentFor(current, target);
+  const value = status.querySelector('b');
+  const comment = status.querySelector('em');
+  if (value) value.textContent = String(current);
+  if (comment) comment.textContent = label;
+  status.classList.toggle('active', current > 0);
+  status.setAttribute('aria-label', `当前连击 ${current} / ${target}，完成度 ${Math.round(ratio * 100)}%，${label}`);
+}
+
+function showTimingRating(key, grade, count = true) {
+  if (!key) return;
+  const normalized = count ? recordTimingGrade(grade) : grade;
+  key._timingRating?.remove();
+  const rect = key.getBoundingClientRect();
+  const rating = document.createElement('span');
+  rating.className = `timing-rating grade-${String(normalized).toLowerCase()}`;
+  rating.textContent = normalized;
+  const { current } = comboState.snapshot();
+  if (normalized !== 'MISS' && current >= 2) {
+    const combo = document.createElement('small');
+    combo.className = 'timing-combo';
+    combo.textContent = `×${current}`;
+    rating.appendChild(combo);
+  }
+  rating.style.left = `${rect.left + rect.width / 2}px`;
+  // 出现点比和弦文字再高约 1/3 个现有上移行程（40 / 3 ≈ 13.3px）。
+  rating.style.top = `${rect.top + rect.height * 0.06 - 14}px`;
+  document.body.appendChild(rating);
+  key._timingRating = rating;
+  rating.addEventListener('animationend', () => {
+    if (key._timingRating === rating) key._timingRating = null;
+    rating.remove();
+  }, { once: true });
+}
+
+function showPerformanceResults() {
+  const modal = $('resultPrompt');
+  const grid = $('resultGradeGrid');
+  if (!modal || !grid) return;
+  grid.innerHTML = TIMING_GRADES.map(grade => `
+    <div class="result-grade grade-${grade.toLowerCase()}">
+      <dt>${grade}</dt><dd>${timingRatingCounts.get(grade) || 0}</dd>
+    </div>`).join('');
+  const total = TIMING_GRADES.reduce((sum, grade) => sum + (timingRatingCounts.get(grade) || 0), 0);
+  const totalEl = $('resultTotal');
+  if (totalEl) totalEl.textContent = `总判定 ${total}`;
+  const combo = $('resultMaxCombo');
+  if (combo) {
+    const maximum = comboState.snapshot().maximum;
+    const target = comboTargetCount();
+    const percent = window.FreezaComboState.ratioFor(maximum, target) * 100;
+    const value = combo.querySelector('b');
+    const comment = combo.querySelector('em');
+    if (value) value.textContent = String(maximum);
+    if (comment) comment.textContent = `${window.FreezaComboState.commentFor(maximum, target)} · ${percent.toFixed(1)}%`;
+  }
+  modal.classList.add('show');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePerformanceResults() {
+  const modal = $('resultPrompt');
+  modal?.classList.remove('show');
+  modal?.setAttribute('aria-hidden', 'true');
+}
+
+function returnToSongScreen() {
+  closePerformanceResults();
+  closeSavePrompt();
+  playing = false;
+  freeDrumStarted = false;
+  playOffset = 0;
+  nextManualMelodyIndex = 0;
+  startRequested = false;
+  clearTimers();
+  if (recorder.active) stopRecording(false);
+  resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
+  stopCamera();
+  clearLocalMedia();
+  mediaSourceMode = 'off';
+  updateCameraMenu();
+  cameraPreviewState.userPositioned = false;
+  document.querySelectorAll('body > .timing-rating, body > .lyric-particle').forEach(el => el.remove());
+  document.body.classList.remove('game-started', 'song-selected', 'free-performance');
+  $('songScreen')?.setAttribute('aria-hidden', 'false');
+  $('startScreen')?.setAttribute('aria-hidden', 'true');
+  $('startScreen')?.classList.remove('loading');
+  updatePlayButton();
+  updateClock();
+  updateLyrics();
+  releaseWakeLock();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function playVisualNote(midi, velocity, source) {
+  playNote(midi, 0.65, velocity);
+  showVisualNote(midi, source);
+}
+
+function showVisualNote(midi, source) {
+  flash(source === 'manual' ? 'manualKeyboard' : 'playbackKeyboard', midi);
+  $('nowPlaying').textContent = source === 'manual' ? `手动弹奏：${labelOf(midi)}` : `主旋律：${labelOf(midi)}`;
+}
+
+function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42, toneMode = harmonyToneMode) {
+  ensureAudio();
+  const event = {
+    midi, duration, velocity, toneMode,
+    dueAt: performance.now() + Math.max(0, delay),
+    fired: false,
+    timer: null,
+  };
+  event.audioTask = audioScheduler.scheduleAudio(audio.ctx, delay, when => {
+    event.fired = true;
+    return playHarmonyToneNote(midi, duration, velocity, toneMode, when);
+  }, 'harmony');
+  const timer = setTimeout(() => {
+    flash('playbackKeyboard', midi, Math.max(360, duration * 720), 'harmony');
+  }, delay);
+  event.timer = timer;
+  harmonyTimers.push(timer);
+  return event;
+}
+
+function clearHarmonyTimers(stopCommitted = false) {
+  harmonyTimers.forEach(clearTimeout);
+  harmonyTimers = [];
+  // 换和弦只撤销尚未发声的事件，保留已经发声的自然 release；暂停/切歌
+  // 才停止已提前提交的 AudioNode，避免尾音硬切或残留到下个页面。
+  audioScheduler.cancelGroup('harmony', { includeCommitted: stopCommitted });
+}
+
+// 前后半相位属于“连续演奏的和弦根音”，不属于 A/B 音色。A 前半后切 B
+// 再按同根音，B 必须接后半；B→A 也相同。换根音后从前半重新开始。
+function nextHarmonyHalfForRoot(root) {
+  const previous = harmonyRepeat.get('last');
+  const half = previous?.root === root ? (previous.half === 0 ? 1 : 0) : 0;
+  harmonyRepeat.set('last', { root, half });
+  return half;
+}
+
+function resetHarmonyHalfSequence() {
+  harmonyRepeat.clear();
+}
+
+function updateToneButton() {
+  const btn = $('toneBtn');
+  if (!btn) return;
+  const label = drumPatternSlot > 0 ? 'B' : 'A';
+  btn.textContent = `鼓${label}`;
+  btn.dataset.drumSlot = label;
+  btn.setAttribute('aria-label', `切换鼓机节奏，当前 ${label}`);
+  btn.setAttribute('aria-pressed', drumPatternSlot > 0 ? 'true' : 'false');
+}
+
+function availableDrumCodes() {
+  const style = song?.styleInfo;
+  return [...new Set([
+    ...(style?.midiPrograms?.drumCodes || []),
+    style?.topLevel?.rhythmicDrumA,
+    style?.topLevel?.rhythmicDrumB,
+    ...(style?.configPack?.drums || []).map(item => item?.code),
+  ].filter(Boolean))];
+}
+
+function syncStartDrumToneMenu(screen = $('startScreen')) {
+  if (!screen) return;
+  const codes = availableDrumCodes();
+  const hasLoadedChoice = Boolean(song);
+  screen.querySelectorAll('[data-drum-tone]').forEach(button => {
+    const slot = button.dataset.drumTone === 'B' ? 1 : 0;
+    const unavailable = hasLoadedChoice && slot > 0 && codes.length < 2;
+    button.disabled = unavailable;
+    button.classList.toggle('selected', !unavailable && slot === drumPatternSlot);
+    button.setAttribute('aria-pressed', !unavailable && slot === drumPatternSlot ? 'true' : 'false');
+    button.title = unavailable
+      ? '当前歌曲只提供一套鼓机音色'
+      : `鼓机音色 ${button.dataset.drumTone}${codes[slot] ? ` · ${codes[slot]}` : ''}`;
+  });
+}
+
+function selectDrumPatternSlot(slot, reschedule = true) {
+  const codes = availableDrumCodes();
+  const requestedSlot = Number(slot) > 0 ? 1 : 0;
+  // MIDI 尚未载入时保留首页选择；载入后若歌曲只有一套鼓组才回落到 A。
+  drumPatternSlot = codes.length === 1 ? 0 : requestedSlot;
+  currentDrumCode = codes[drumPatternSlot] || codes[0] || currentDrumCode;
+  updateToneButton();
+  syncStartDrumToneMenu();
+  updatePlaybackToggles();
+  const pattern = currentDrumPattern();
+  if (pattern) prepareDrumPattern(pattern, currentDrumCode);
+  if (reschedule && playing && drumsEnabled) {
+    if (isFreeMode()) restartFreeDrumLoop();
+    else scheduleFrom(currentPlayTime());
+  }
+}
+
+function selectGameDrumPatternSlot(slot) {
+  const previousMode = drumMode;
+  const wasPowered = drumsEnabled;
+  // 鼓 A/B 是纯 pattern 选择器，绝不能改变“智能 / 开 / 关”状态。
+  selectDrumPatternSlot(slot, false);
+  drumMode = previousMode;
+  drumsEnabled = wasPowered;
+  updatePlaybackToggles();
+  // 强制开启模式使用玩家选择的 A/B，需要立即重排；智能模式继续完全
+  // 服从歌曲 LLDRUM 事件，切 A/B 只保存下一次“开”模式所用的鼓组。
+  if (playing && wasPowered && (drumMode === 'on' || (isFreeMode() && freeDrumStarted))) {
+    if (isFreeMode()) restartFreeDrumLoop();
+    else rescheduleDrumsOnly();
+  }
+}
+
+function percentLabel(v) {
+  return `${Math.round(v * 100)}%`;
+}
+
+function updateVolumeButtons() {
+  const mv = $('menuMelodyVolValue');
+  const hv = $('menuHarmonyVolValue');
+  const dv = $('menuDrumVolValue');
+  const micv = $('menuMicGainValue');
+  const mr = $('menuMelodyVolRange');
+  const hr = $('menuHarmonyVolRange');
+  const dr = $('menuDrumVolRange');
+  const mir = $('menuMicGainRange');
+  if (mv) mv.textContent = percentLabel(melodyGain);
+  if (hv) hv.textContent = percentLabel(harmonyGain);
+  if (dv) dv.textContent = percentLabel(drumGain);
+  if (micv) micv.textContent = percentLabel(micGain);
+  if (mr) { mr.value = String(Math.round(melodyGain * 100)); mr.style.setProperty('--pct', `${Math.round((melodyGain * 100 - 25) / 175 * 100)}%`); }
+  if (hr) { hr.value = String(Math.round(harmonyGain * 100)); hr.style.setProperty('--pct', `${Math.round((harmonyGain * 100 - 25) / 175 * 100)}%`); }
+  if (dr) { dr.value = String(Math.round(drumGain * 100)); dr.style.setProperty('--pct', `${Math.round((drumGain * 100 - 25) / 175 * 100)}%`); }
+  if (mir) { mir.value = String(Math.round(micGain * 100)); mir.style.setProperty('--pct', `${Math.round((micGain * 100 - 25) / 175 * 100)}%`); }
+}
+
+function adjustMelodyGain(delta) {
+  melodyGain = Math.max(0.25, Math.min(2.0, Math.round((melodyGain + delta) * 20) / 20));
+  updateVolumeButtons();
+}
+
+function adjustHarmonyGain(delta) {
+  harmonyGain = Math.max(0.25, Math.min(2.5, Math.round((harmonyGain + delta) * 20) / 20));
+  updateVolumeButtons();
+}
+
+function adjustMicGain(delta) {
+  micGain = FIXED_MIC_GAIN;
+  if (mic.gain) mic.gain.gain.value = FIXED_MIC_GAIN;
+  updateVolumeButtons();
+}
+function updateKeyButtons() {
+  const label = userKeyShift === 0 ? '0' : `${userKeyShift > 0 ? '+' : ''}${userKeyShift}`;
+  const down = $('keyDownBtn');
+  const up = $('keyUpBtn');
+  if (down) {
+    down.textContent = '降';
+    down.title = `整首降Key · 当前 ${label}`;
+    down.dataset.shift = label;
+  }
+  if (up) {
+    up.textContent = '升';
+    up.title = `整首升Key · 当前 ${label}`;
+    up.dataset.shift = label;
+  }
+  const menuValue = $('menuKeyValue');
+  if (menuValue) {
+    menuValue.textContent = label;
+    menuValue.title = `当前 Key ${label}`;
+  }
+  const menuRange = $('menuKeyRange');
+  if (menuRange) {
+    menuRange.value = String(userKeyShift);
+    // Key 和音量条同款：--pct 只表示滑块位置，不做中线特殊填充。
+    menuRange.style.setProperty('--pct', `${((userKeyShift + 14) / 28) * 100}%`);
+  }
+  updateCurrentKeyStatus();
+}
+
+function updateCurrentKeyStatus() {
+  const status = $('keyStatus');
+  if (!status) return;
+  const key = songKeyDescriptor();
+  const pitchClass = ((key.pitchClass + userKeyShift) % 12 + 12) % 12;
+  const keyName = `${PC_NOTE_SHARP[pitchClass].replace('#', '♯')}${key.minor ? 'm' : ''}`;
+  const value = status.querySelector('b');
+  if (value) value.textContent = keyName;
+  status.title = `当前 Key：${keyName}（升降 ${userKeyShift >= 0 ? '+' : ''}${userKeyShift}）`;
+}
+
+function songKeyDescriptor() {
+  if (isFreeMode()) return { pitchClass: 0, minor: false };
+  let tone = String(song?.styleInfo?.tone || '').trim().replace('♯', '#').replace('♭', 'b');
+  // LiberLive historically serializes D-sharp as "#D" rather than "D#".
+  if (tone.startsWith('#') && tone.length >= 2) tone = `${tone[1].toUpperCase()}#${tone.slice(2)}`;
+  const match = tone.match(/^([A-G](?:#|b)?)(m)?$/i);
+  const root = match ? match[1][0].toUpperCase() + match[1].slice(1) : '';
+  const pitchClass = NOTE_PC[root];
+  if (Number.isFinite(pitchClass)) return { pitchClass, minor: Boolean(match?.[2]) };
+  return { pitchClass: songTransposeSemitones(), minor: false };
+}
+
+function previewKeyShift() {
+  ensureAudio();
+  // 试听“歌曲原调 + 用户升降”后的实际主音。此前这里只叠加 userKeyShift，
+  // 非 C 调歌曲调回 0 时会错误试听 C，听起来像没有真正调回原调。
+  const key = songKeyDescriptor();
+  const pitchClass = ((key.pitchClass + userKeyShift) % 12 + 12) % 12;
+  let root = 60 + pitchClass;
+  if (root > 66) root -= 12;
+  root = Math.max(21, Math.min(108, root));
+  const generation = ++keyPreviewGeneration;
+  playNote(root, 0.38, 0.72);
+  setTimeout(() => {
+    if (generation === keyPreviewGeneration) playHarmonyToneNote(Math.min(108, root + (key.minor ? 3 : 4)), 0.32, 0.42, harmonyToneMode);
+  }, 70);
+  setTimeout(() => {
+    if (generation === keyPreviewGeneration) playHarmonyToneNote(Math.min(108, root + 7), 0.32, 0.40, harmonyToneMode);
+  }, 115);
+}
+
+function queueKeyPreview(delay = 0) {
+  clearTimeout(keyPreviewTimer);
+  // 立即使上一次试听的后续和弦音失效，避免快速升降后旧 Key 仍补响。
+  keyPreviewGeneration += 1;
+  keyPreviewTimer = setTimeout(() => {
+    keyPreviewTimer = null;
+    previewKeyShift();
+  }, delay);
+}
+
+function setKeyShift(nextShift, { previewDelay = 0, reschedule = true, warm = true } = {}) {
+  const next = Math.max(-14, Math.min(14, Math.round(Number(nextShift) || 0)));
+  if (next === userKeyShift) return false;
+  const activeRuntime = activeCue?.cue?.root ? cueState.get(activeCue.cue.root) : null;
+  userKeyShift = next;
+  updateKeyButtons();
+  renderManualKeyboard();
+  renderPlaybackForMelody();
+  updateLyrics();
+  if (activeCue) {
+    const midi = NATURAL_TO_MIDI[activeCue.cue.root];
+    // 重建变调后的键盘时保留当前提示的原始时间轴，不能从 0 重新计时。
+    startCue(midi, activeCue.cue, activeRuntime || undefined);
+    if (activeCue.hit) hitCue(midi, activeCue.cue);
+  }
+  if (warm && wasmParser.exports) warmHarmonyTones(true);
+  queueKeyPreview(previewDelay);
+  if (playing && reschedule) {
+    if (isFreeMode()) restartFreeDrumLoop();
+    else scheduleFrom(currentPlayTime());
+  }
+  return true;
+}
+
+function applyKeyShift(delta) {
+  setKeyShift(userKeyShift + delta);
+}
+
+async function ensureMic() {
+  if (!micEnabled) return false;
+  ensureAudio();
+  if (mic.ready && mic.stream) return true;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    alert('这个浏览器不支持麦克风录音');
+    micEnabled = false;
+    updateMicMenu();
+    return false;
+  }
+  try {
+    mic.stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+    });
+    mic.source = audio.ctx.createMediaStreamSource(mic.stream);
+    micGain = FIXED_MIC_GAIN;
+    mic.gain = audio.ctx.createGain();
+    mic.gain.gain.value = FIXED_MIC_GAIN;
+    mic.analyser = audio.ctx.createAnalyser();
+    mic.analyser.fftSize = 512;
+    mic.analyser.smoothingTimeConstant = 0.68;
+    mic.data = new Uint8Array(mic.analyser.fftSize);
+    mic.freqData = new Uint8Array(mic.analyser.frequencyBinCount);
+    mic.source.connect(mic.gain);
+    mic.effects = window.FreezaMicEffects?.create?.(audio.ctx) || null;
+    if (mic.effects) {
+      mic.gain.connect(mic.effects.input);
+      mic.effects.output.connect(mic.analyser);
+      mic.effects.output.connect(audio.micRecordTap || audio.recordBus || audio.recordDest);
+      mic.effects.apply(micEffectState.settings);
+    } else {
+      mic.gain.connect(mic.analyser);
+      mic.gain.connect(audio.micRecordTap || audio.recordBus || audio.recordDest);
+    }
+    mic.ready = true;
+    updateMicMonitorGameToggle();
+    startMicMeter();
+    return true;
+  } catch (err) {
+    console.warn('Mic permission failed:', err);
+    alert('麦克风没有授权，录音里不会有人声');
+    micEnabled = false;
+    updateMicMenu();
+    return false;
+  }
+}
+
+function updateMicMenu() {
+  document.querySelectorAll('[data-mic]').forEach(b => b.classList.toggle('selected', (b.dataset.mic === 'on') === micEnabled));
+  syncLaunchSwitch('mic', micEnabled);
+  const meter = $('micMeter');
+  if (meter) meter.classList.toggle('off', !micEnabled);
+  updateMicEffectsMenu();
+  updateMicMonitorGameToggle();
+}
+
+function openMicEffectsDialog() {
+  const dialog = $('micEffectsDialog');
+  if (!dialog) return;
+  dialog.hidden = false;
+  updateMicEffectsMenu();
+}
+
+function closeMicEffectsDialog() {
+  const dialog = $('micEffectsDialog');
+  if (dialog) dialog.hidden = true;
+}
+
+function updateMicEffectsMenu() {
+  const presets = window.FreezaMicEffects?.presets || {};
+  const presetLabel = micEffectState.preset === 'custom'
+    ? '自定义'
+    : (presets[micEffectState.preset]?.label || micEffectState.settings.label || '美声');
+  document.querySelectorAll('[data-mic-preset]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.micPreset === micEffectState.preset);
+  });
+  if ($('micPresetName')) $('micPresetName').textContent = presetLabel;
+  if ($('micEffectStatus')) $('micEffectStatus').textContent = `${presetLabel}${mic.monitoring ? ' · 回放' : ''}`;
+  const controls = [
+    ['micBeautyRange', 'micBeautyValue', 'beauty', ''],
+    ['micReverbRange', 'micReverbValue', 'reverb', ''],
+    ['micEchoRange', 'micEchoValue', 'echo', ''],
+    ['micDelayRange', 'micDelayValue', 'delay', 'ms'],
+  ];
+  controls.forEach(([rangeId, outputId, key, suffix]) => {
+    const value = Math.round(Number(micEffectState.settings[key]) || 0);
+    const range = $(rangeId);
+    if (range && document.activeElement !== range) range.value = String(value);
+    if ($(outputId)) $(outputId).textContent = `${value}${suffix}`;
+  });
+}
+
+function applyMicEffectSettings() {
+  mic.effects?.apply?.(micEffectState.settings);
+  updateMicEffectsMenu();
+}
+
+function selectMicEffectPreset(id) {
+  const preset = window.FreezaMicEffects?.preset?.(id);
+  if (!preset) return;
+  micEffectState.preset = id;
+  micEffectState.settings = preset;
+  applyMicEffectSettings();
+}
+
+function setMicEffectValue(key, value) {
+  micEffectState.preset = 'custom';
+  micEffectState.settings = { ...micEffectState.settings, [key]: Number(value) };
+  applyMicEffectSettings();
+}
+
+function setMicMonitoring(enabled) {
+  if (!enabled) {
+    mic.monitoring = false;
+    document.body.classList.remove('mic-monitoring');
+    mic.feedbackHotSince = 0;
+    if (mic.monitorGain) {
+      const now = audio.ctx?.currentTime || 0;
+      mic.monitorGain.gain.cancelScheduledValues?.(now);
+      mic.monitorGain.gain.setTargetAtTime?.(0, now, 0.018);
+      if (!mic.monitorGain.gain.setTargetAtTime) mic.monitorGain.gain.value = 0;
+    }
+    updateMicEffectsMenu();
+    updateMicMonitorGameToggle();
+    return false;
+  }
+  if (mic.outputRoute === 'speaker') {
+    updateMicMonitorGameToggle();
+    return false;
+  }
+  ensureAudio();
+  if (!mic.ready || !audio.ctx) return false;
+  if (!mic.monitorGain) {
+    mic.monitorGain = audio.ctx.createGain();
+    mic.monitorLimiter = audio.ctx.createDynamicsCompressor();
+    mic.monitorGain.gain.value = 0;
+    mic.monitorLimiter.threshold.value = -14;
+    mic.monitorLimiter.knee.value = 4;
+    mic.monitorLimiter.ratio.value = 20;
+    mic.monitorLimiter.attack.value = 0.003;
+    mic.monitorLimiter.release.value = 0.16;
+    const source = mic.effects?.output || mic.gain;
+    source.connect(mic.monitorGain).connect(mic.monitorLimiter).connect(audio.ctx.destination);
+  }
+  const now = audio.ctx.currentTime || 0;
+  mic.monitorGain.gain.cancelScheduledValues?.(now);
+  mic.monitorGain.gain.setTargetAtTime?.(0.42, now, 0.04);
+  if (!mic.monitorGain.gain.setTargetAtTime) mic.monitorGain.gain.value = 0.42;
+  mic.monitoring = true;
+  document.body.classList.add('mic-monitoring');
+  mic.feedbackHotSince = 0;
+  updateMicEffectsMenu();
+  updateMicMonitorGameToggle();
+  return true;
+}
+
+function updateMicMonitorGameToggle() {
+  const button = $('micMonitorGameToggle');
+  if (!button) return;
+  button.hidden = !micEnabled || !mic.ready;
+  button.disabled = mic.outputRoute === 'speaker';
+  button.setAttribute('aria-pressed', String(mic.monitoring));
+  if (mic.outputRoute === 'speaker') button.textContent = '外放禁用';
+  else button.textContent = `人声回放 ${mic.monitoring ? '开' : '关'}`;
+  const route = mic.outputDeviceLabel ? `；输出：${mic.outputDeviceLabel}` : '';
+  button.title = mic.outputRoute === 'speaker'
+    ? `检测到扬声器外放，已禁止麦克风回放${route}`
+    : `只控制本机人声监听，不影响麦克风录音${route}`;
+}
+
+async function requestSafeMicOutput() {
+  const safety = window.FreezaAudioOutputSafety;
+  // Tone.js exposes a standardized AudioContext wrapper. Output routing lives on
+  // its native context, while all graph nodes continue using the shared wrapper.
+  const outputContext = [audio.ctx, audio.ctx?._nativeAudioContext, audio.ctx?._nativeContext]
+    .find(context => typeof context?.setSinkId === 'function') || audio.ctx;
+  const result = safety?.requestVerifiedOutput
+    ? await safety.requestVerifiedOutput(navigator.mediaDevices, outputContext)
+    : { status: 'unknown', reason: 'unsupported', deviceId: '', label: '' };
+  mic.outputRoute = result.status || 'unknown';
+  mic.outputDeviceId = result.deviceId || '';
+  mic.outputDeviceLabel = result.label || '';
+  if (mic.outputRoute === 'speaker') setMicMonitoring(false);
+  updateMicMonitorGameToggle();
+  return result;
+}
+
+async function recheckMicHeadphoneRoute() {
+  if (!mic.monitoring || mic.outputRoute !== 'headphones') return;
+  const available = await window.FreezaAudioOutputSafety?.verifyHeadphoneStillAvailable?.(
+    navigator.mediaDevices,
+    mic.outputDeviceId,
+    mic.outputDeviceLabel,
+  );
+  if (available) return;
+  setMicMonitoring(false);
+  mic.outputRoute = 'unknown';
+  mic.outputDeviceId = '';
+  mic.outputDeviceLabel = '';
+  updateMicMonitorGameToggle();
+  showMicMonitorPrompt('unknown');
+}
+
+function showMicMonitorPrompt(mode = 'enable') {
+  const prompt = $('micMonitorPrompt');
+  if (!prompt) return;
+  mic.feedbackPromptMode = mode;
+  const states = {
+    enable: {
+      title: '请先佩戴耳机',
+      message: '确认后将检查音频输出。检测到手机扬声器时不会回放人声；无法确认时可在演奏页用“人声回放”开关手动控制。',
+      confirm: '检查耳机并继续',
+      cancel: false,
+    },
+    feedback: {
+      title: '已自动关闭回放',
+      message: '检测到持续高电平，可能正在产生啸叫。麦克风录音仍然保持开启，仅关闭了人声回放。',
+      confirm: '知道了',
+      cancel: true,
+    },
+    speaker: {
+      title: '已禁止扬声器回放',
+      message: '检测到当前输出为扬声器。为防止啸叫，人声不会外放；麦克风录音和美声处理仍然正常。',
+      confirm: '知道了',
+      cancel: true,
+    },
+    unknown: {
+      title: '无法确认输出设备',
+      message: '浏览器无法判断当前是否连接耳机，因此没有自动打开人声回放。进入演奏后可使用“人声回放”开关手动控制，麦克风录音不受影响。',
+      confirm: '知道了',
+      cancel: true,
+    },
+  };
+  const state = states[mode] || states.enable;
+  if ($('micMonitorTitle')) $('micMonitorTitle').textContent = state.title;
+  if ($('micMonitorMessage')) $('micMonitorMessage').textContent = state.message;
+  if ($('micMonitorCancel')) $('micMonitorCancel').hidden = state.cancel;
+  if ($('micMonitorConfirm')) $('micMonitorConfirm').textContent = state.confirm;
+  prompt.hidden = false;
+}
+
+function closeMicMonitorPrompt() {
+  const prompt = $('micMonitorPrompt');
+  if (prompt) prompt.hidden = true;
+}
+
+function protectMicMonitoring() {
+  if (!mic.monitoring || !mic.freqData?.length) {
+    mic.feedbackHotSince = 0;
+    return;
+  }
+  let total = 0;
+  let peak = 0;
+  for (const value of mic.freqData) {
+    total += value;
+    if (value > peak) peak = value;
+  }
+  const average = total / mic.freqData.length;
+  const tonalConcentration = peak / Math.max(1, average);
+  const dangerous = mic.level > 0.96 || (mic.level > 0.76 && tonalConcentration > 6.2);
+  const now = performance.now();
+  if (!dangerous) {
+    mic.feedbackHotSince = 0;
+    return;
+  }
+  if (!mic.feedbackHotSince) mic.feedbackHotSince = now;
+  if (now - mic.feedbackHotSince >= 700) {
+    setMicMonitoring(false);
+    showMicMonitorPrompt('feedback');
+  }
+}
+
+function stopMic() {
+  cancelAnimationFrame(mic.raf);
+  mic.raf = 0;
+  setMicMonitoring(false);
+  closeMicMonitorPrompt();
+  if (mic.stream) {
+    mic.stream.getTracks().forEach(track => track.stop());
+  }
+  mic.effects?.dispose?.();
+  mic.stream = null;
+  mic.source = null;
+  mic.gain = null;
+  mic.effects = null;
+  mic.monitorGain?.disconnect?.();
+  mic.monitorLimiter?.disconnect?.();
+  mic.monitorGain = null;
+  mic.monitorLimiter = null;
+  mic.outputRoute = 'unknown';
+  mic.outputDeviceId = '';
+  mic.outputDeviceLabel = '';
+  mic.analyser = null;
+  mic.data = null;
+  mic.freqData = null;
+  mic.ready = false;
+  mic.level = 0;
+  const wave = $('micWave');
+  if (wave) {
+    wave.classList.remove('live');
+    wave.style.setProperty('--mic-level', '0');
+    drawMicWave(false);
+  }
+  const karaoke = document.querySelector('.karaoke');
+  if (karaoke) {
+    karaoke.classList.remove('mic-live');
+    karaoke.style.setProperty('--mic-level', '0');
+  }
+}
+
+function updateCameraMenu(statusText = '') {
+  document.querySelectorAll('[data-media-source]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.mediaSource === mediaSourceMode);
+  });
+  document.querySelectorAll('[data-camera-facing]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.cameraFacing === cameraPreviewState.preferredFacing);
+  });
+  const facingControl = document.querySelector('[data-group="camera-facing"]');
+  facingControl?.classList.toggle('state-off', cameraPreviewState.preferredFacing === 'environment');
+  const facing = cameraPreviewState.facingMode === 'environment' ? '后置' : '前置';
+  const status = $('cameraStatus');
+  const defaultStatus = mediaSourceMode === 'camera' ? `${facing}画面`
+    : mediaSourceMode === 'video' ? (localMedia.fileName || '本地视频')
+      : mediaSourceMode === 'audio' ? (localMedia.fileName || '本地声音') : '未选择素材';
+  if (status) status.textContent = statusText || defaultStatus;
+  const label = $('cameraFacingLabel');
+  if (label) label.textContent = mediaSourceMode === 'video' ? '视频' : facing;
+  const pip = $('cameraPip');
+  const live = (mediaSourceMode === 'camera' && Boolean(cameraPreviewState.stream))
+    || (mediaSourceMode === 'video' && Boolean(localMedia.url));
+  document.body.classList.toggle('camera-live', live);
+  document.body.classList.toggle('media-pip-live', live);
+  if ($('videoSoundItem')) $('videoSoundItem').hidden = mediaSourceMode !== 'video';
+  if ($('cameraFacingItem')) $('cameraFacingItem').hidden = mediaSourceMode !== 'camera';
+  if (pip) {
+    pip.classList.toggle('front', mediaSourceMode === 'camera' && cameraPreviewState.facingMode !== 'environment');
+    pip.classList.toggle('local-video', mediaSourceMode === 'video');
+    pip.setAttribute('aria-hidden', live ? 'false' : 'true');
+    pip.tabIndex = live ? 0 : -1;
+    const hint = pip.querySelector('.camera-pip-hint small');
+    if (hint) hint.textContent = mediaSourceMode === 'video' ? '轻触播放/暂停 · 拖动移动' : '轻触切换 · 拖动移动';
+  }
+}
+
+function releaseCameraStream(stream = cameraPreviewState.stream) {
+  const video = $('cameraPreview');
+  if (window.FreezaCameraController) {
+    window.FreezaCameraController.detachAndStop(video, stream);
+    return;
+  }
+  if (video?.srcObject === stream) video.srcObject = null;
+  stream?.getTracks?.().forEach(track => track.stop());
+}
+
+function setCameraSwitching(active, statusText = '') {
+  cameraPreviewState.switching = Boolean(active);
+  const item = $('cameraFacingItem');
+  item?.setAttribute('aria-busy', active ? 'true' : 'false');
+  document.querySelectorAll('[data-camera-facing]').forEach(button => {
+    button.disabled = Boolean(active);
+  });
+  if (statusText) updateCameraMenu(statusText);
+}
+
+function stopCamera(disable = true) {
+  releaseCameraStream();
+  cameraPreviewState.stream = null;
+  cameraPreviewState.switching = false;
+  if (disable) {
+    cameraEnabled = false;
+    if (mediaSourceMode === 'camera') mediaSourceMode = 'off';
+  }
+  const video = $('cameraPreview');
+  if (video) video.srcObject = null;
+  updateCameraMenu();
+}
+
+async function attachCameraStream(stream, intendedFacing = 'user') {
+  clearLocalMedia(false);
+  mediaSourceMode = 'camera';
+  cameraEnabled = true;
+  cameraPreviewState.stream = stream;
+  const settings = stream.getVideoTracks?.()[0]?.getSettings?.() || {};
+  cameraPreviewState.facingMode = settings.facingMode || intendedFacing;
+  cameraPreviewState.preferredFacing = intendedFacing;
+  const video = $('cameraPreview');
+  if (video) {
+    video.srcObject = stream;
+    video.muted = true;
+    // WebKit may show the new lens but never settle play(); UI switching must
+    // complete independently from that browser Promise.
+    try { video.play?.()?.catch?.(() => {}); } catch {}
+  }
+  updateCameraMenu();
+  positionCameraPip(!cameraPreviewState.userPositioned);
+  return true;
+}
+
+async function requestCamera(videoConstraints, intendedFacing = 'user') {
+  const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
+  return attachCameraStream(stream, intendedFacing);
+}
+
+async function ensureCamera() {
+  if (!cameraEnabled || mediaSourceMode !== 'camera') return false;
+  if (cameraPreviewState.stream) return true;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraEnabled = false;
+    updateCameraMenu('浏览器不支持');
+    alert('这个浏览器不支持摄像头预览');
+    return false;
+  }
+  try {
+    const preferredFacing = cameraPreviewState.preferredFacing === 'environment' ? 'environment' : 'user';
+    return await requestCamera({
+      facingMode: { ideal: preferredFacing },
+      width: { ideal: 1280 },
+      height: { ideal: 720 },
+    }, preferredFacing);
+  } catch (error) {
+    console.warn('Camera permission failed:', error);
+    cameraEnabled = false;
+    updateCameraMenu('未授权');
+    alert('摄像头没有授权，演奏画面不会显示预览');
+    return false;
+  }
+}
+
+async function switchCamera() {
+  if (!cameraEnabled || cameraPreviewState.switching) return false;
+  const currentFacing = cameraPreviewState.preferredFacing || cameraPreviewState.facingMode;
+  return selectCameraFacing(currentFacing === 'environment' ? 'user' : 'environment');
+}
+
+async function selectCameraFacing(facing) {
+  const intendedFacing = facing === 'environment' ? 'environment' : 'user';
+  const previousFacing = cameraPreviewState.facingMode === 'environment' ? 'environment' : 'user';
+  const previousPreferred = cameraPreviewState.preferredFacing;
+  cameraPreviewState.preferredFacing = intendedFacing;
+  updateCameraMenu();
+  if (!cameraEnabled || mediaSourceMode !== 'camera' || !cameraPreviewState.stream) return true;
+  if (cameraPreviewState.switching || previousFacing === intendedFacing) return true;
+  setCameraSwitching(true, `正在切换至${intendedFacing === 'environment' ? '后置' : '前置'}…`);
+  const previousStream = cameraPreviewState.stream;
+  const video = $('cameraPreview');
+  try {
+    if (!window.FreezaCameraController) throw new Error('Camera controller unavailable');
+    cameraPreviewState.stream = null;
+    const result = await window.FreezaCameraController.replace({
+      mediaDevices: navigator.mediaDevices,
+      video,
+      currentStream: previousStream,
+      facing: intendedFacing,
+    });
+    await attachCameraStream(result.stream, intendedFacing);
+    cameraPreviewState.facingMode = result.facingMode;
+    updateCameraMenu();
+    playLaunchUiSound('select');
+    return true;
+  } catch (error) {
+    console.warn('Camera facing selection failed:', error);
+    cameraPreviewState.preferredFacing = previousPreferred || previousFacing;
+    try {
+      const restored = await window.FreezaCameraController.replace({
+        mediaDevices: navigator.mediaDevices,
+        video,
+        currentStream: null,
+        facing: previousFacing,
+      });
+      await attachCameraStream(restored.stream, previousFacing);
+      cameraPreviewState.facingMode = restored.facingMode;
+      updateCameraMenu('该方向不可用');
+    } catch (restoreError) {
+      console.warn('Camera restore failed:', restoreError);
+      stopCamera();
+    }
+    return false;
+  } finally {
+    setCameraSwitching(false);
+  }
+}
+
+function disconnectLocalMediaElement(element, gain) {
+  element?.pause?.();
+  if (gain) gain.gain.value = 0;
+  if (element) {
+    element.removeAttribute('src');
+    element.load?.();
+  }
+}
+
+function clearLocalMedia(resetMode = true) {
+  const video = $('cameraPreview');
+  const audioElement = $('localAudioPreview');
+  if (localMedia.kind === 'video') disconnectLocalMediaElement(video, localMedia.videoGain);
+  if (localMedia.kind === 'audio') disconnectLocalMediaElement(audioElement, localMedia.audioGain);
+  if (localMedia.url) URL.revokeObjectURL(localMedia.url);
+  localMedia.url = '';
+  localMedia.kind = '';
+  localMedia.fileName = '';
+  if (resetMode && (mediaSourceMode === 'video' || mediaSourceMode === 'audio')) mediaSourceMode = 'off';
+}
+
+function connectLocalMediaAudio(kind) {
+  ensureAudio();
+  const element = kind === 'video' ? $('cameraPreview') : $('localAudioPreview');
+  const sourceKey = kind === 'video' ? 'videoSource' : 'audioSource';
+  const gainKey = kind === 'video' ? 'videoGain' : 'audioGain';
+  if (!element || !audio.ctx || !audio.master) return;
+  if (!localMedia[sourceKey]) {
+    localMedia[sourceKey] = audio.ctx.createMediaElementSource(element);
+    localMedia[gainKey] = audio.ctx.createGain();
+    localMedia[sourceKey].connect(localMedia[gainKey]).connect(audio.master);
+  }
+  localMedia[gainKey].gain.value = kind === 'video' && !localMedia.includeVideoAudio ? 0 : 1;
+}
+
+async function useLocalMediaFile(kind, file) {
+  if (!file) return false;
+  stopCamera(false);
+  cameraEnabled = false;
+  clearLocalMedia(false);
+  mediaSourceMode = kind;
+  localMedia.kind = kind;
+  localMedia.fileName = file.name;
+  localMedia.url = URL.createObjectURL(file);
+  const element = kind === 'video' ? $('cameraPreview') : $('localAudioPreview');
+  if (!element) return false;
+  element.srcObject = null;
+  element.src = localMedia.url;
+  if (kind === 'video') element.muted = false;
+  element.loop = true;
+  element.preload = 'auto';
+  element.playsInline = true;
+  connectLocalMediaAudio(kind);
+  await new Promise(resolve => {
+    if (element.readyState >= 1) resolve();
+    else {
+      element.addEventListener('loadedmetadata', resolve, { once: true });
+      setTimeout(resolve, 1500);
+    }
+  });
+  if (kind === 'video') {
+    element.currentTime = 0;
+    element.pause();
+    positionCameraPip(!cameraPreviewState.userPositioned);
+  }
+  updateCameraMenu();
+  return true;
+}
+
+function startSelectedMediaPlayback() {
+  const element = mediaSourceMode === 'video' ? $('cameraPreview')
+    : mediaSourceMode === 'audio' ? $('localAudioPreview') : null;
+  if (!element || !localMedia.url) return;
+  connectLocalMediaAudio(mediaSourceMode);
+  if (element.ended || element.currentTime > 0.15) element.currentTime = 0;
+  element.play?.().catch(error => console.warn('Local media playback failed:', error));
+}
+
+function stopSelectedMediaPlayback(reset = false) {
+  const element = mediaSourceMode === 'video' ? $('cameraPreview')
+    : mediaSourceMode === 'audio' ? $('localAudioPreview') : null;
+  element?.pause?.();
+  if (reset && element) element.currentTime = 0;
+}
+
+function toggleLocalVideoPlayback() {
+  const video = $('cameraPreview');
+  if (mediaSourceMode !== 'video' || !video) return;
+  if (video.paused) video.play?.().catch(() => {});
+  else video.pause();
+}
+
+async function selectMediaSource(mode) {
+  if (mode === 'camera') {
+    clearLocalMedia(false);
+    mediaSourceMode = 'camera';
+    cameraEnabled = true;
+    updateCameraMenu('正在连接…');
+    await ensureCamera();
+    return;
+  }
+  if (mode === 'video') {
+    $('localVideoInput')?.click();
+    return;
+  }
+  if (mode === 'audio') {
+    $('localAudioInput')?.click();
+    return;
+  }
+  stopCamera(false);
+  cameraEnabled = false;
+  clearLocalMedia(false);
+  mediaSourceMode = 'off';
+  updateCameraMenu();
+}
+
+function setVideoSoundEnabled(enabled) {
+  localMedia.includeVideoAudio = Boolean(enabled);
+  document.querySelectorAll('[data-video-sound]').forEach(button => {
+    button.classList.toggle('selected', (button.dataset.videoSound === 'on') === localMedia.includeVideoAudio);
+  });
+  syncLaunchSwitch('video-sound', localMedia.includeVideoAudio);
+  if (localMedia.videoGain) localMedia.videoGain.gain.value = localMedia.includeVideoAudio ? 1 : 0;
+}
+
+function positionCameraPip(forceDefault = false) {
+  requestAnimationFrame(() => {
+    const pip = $('cameraPip');
+    const hasVisual = (mediaSourceMode === 'camera' && cameraPreviewState.stream)
+      || (mediaSourceMode === 'video' && localMedia.url);
+    if (!pip || !document.body.classList.contains('game-started') || !hasVisual) return;
+    const rect = pip.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const margin = 10;
+    const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+    let left = parseFloat(pip.style.left);
+    let top = parseFloat(pip.style.top);
+    if (forceDefault || !cameraPreviewState.userPositioned || !Number.isFinite(left) || !Number.isFinite(top)) {
+      const karaokeRect = document.querySelector('.karaoke')?.getBoundingClientRect();
+      left = karaokeRect ? karaokeRect.right - rect.width - 12 : maxLeft;
+      top = karaokeRect ? karaokeRect.bottom - rect.height - 12 : maxTop;
+    }
+    pip.style.left = `${Math.max(margin, Math.min(maxLeft, left))}px`;
+    pip.style.top = `${Math.max(margin, Math.min(maxTop, top))}px`;
+  });
+}
+
+function setupCameraPip() {
+  const pip = $('cameraPip');
+  if (!pip || pip.dataset.ready === '1') return;
+  pip.dataset.ready = '1';
+  let drag = null;
+  pip.addEventListener('pointerdown', event => {
+    if (mediaSourceMode !== 'camera' && mediaSourceMode !== 'video') return;
+    event.preventDefault();
+    const rect = pip.getBoundingClientRect();
+    drag = { id: event.pointerId, x: event.clientX, y: event.clientY, left: rect.left, top: rect.top, moved: false };
+    pip.setPointerCapture?.(event.pointerId);
+    pip.classList.add('dragging');
+  });
+  pip.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    if (Math.hypot(dx, dy) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    cameraPreviewState.userPositioned = true;
+    const rect = pip.getBoundingClientRect();
+    const margin = 8;
+    pip.style.left = `${Math.max(margin, Math.min(window.innerWidth - rect.width - margin, drag.left + dx))}px`;
+    pip.style.top = `${Math.max(margin, Math.min(window.innerHeight - rect.height - margin, drag.top + dy))}px`;
+  });
+  const finish = event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const shouldSwitch = !drag.moved;
+    pip.releasePointerCapture?.(drag.id);
+    drag = null;
+    pip.classList.remove('dragging');
+    if (shouldSwitch) {
+      if (mediaSourceMode === 'camera') switchCamera();
+      else if (mediaSourceMode === 'video') toggleLocalVideoPlayback();
+    }
+  };
+  pip.addEventListener('pointerup', finish);
+  pip.addEventListener('pointercancel', event => {
+    if (drag && event.pointerId === drag.id) {
+      drag = null;
+      pip.classList.remove('dragging');
+    }
+  });
+  pip.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (mediaSourceMode === 'camera') switchCamera();
+      else if (mediaSourceMode === 'video') toggleLocalVideoPlayback();
+    }
+  });
+}
+
+function setupMicWave() {
+  const wave = $('micWave');
+  if (!wave || wave.dataset.ready === '1') return;
+  if (!$('micWaveCanvas')) {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'micWaveCanvas';
+    canvas.className = 'mic-wave-canvas';
+    wave.prepend(canvas);
+  }
+  wave.querySelectorAll('.eq').forEach((eq, sideIndex) => {
+    for (let i = 0; i < 34; i += 1) {
+      const bar = document.createElement('span');
+      const h = 18 + Math.round(Math.abs(Math.sin((i + 1.25) * (sideIndex ? 0.77 : 0.64))) * 62 + (i % 4) * 5);
+      bar.style.setProperty('--i', i);
+      bar.style.setProperty('--h', h);
+      eq.appendChild(bar);
+    }
+  });
+  wave.dataset.ready = '1';
+}
+
+function drawMicWave(live) {
+  const canvas = $('micWaveCanvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+  const width = Math.max(1, Math.round(rect.width * dpr));
+  const height = Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  if (!live || !mic.data || !mic.freqData) return;
+
+  const level = Math.max(0.02, mic.level);
+  const horizon = h * 0.64;
+  const barBase = h * 0.78;
+  const barMax = h * 0.42;
+
+  const drawBars = (side) => {
+    const leftSide = side === 'left';
+    const count = 42;
+    const startX = leftSide ? w * 0.035 : w * 0.56;
+    const endX = leftSide ? w * 0.44 : w * 0.965;
+    const gap = 2 * dpr;
+    const bw = Math.max(2 * dpr, (endX - startX) / count - gap);
+    const grad = ctx.createLinearGradient(0, barBase - barMax, 0, barBase);
+    if (leftSide) {
+      grad.addColorStop(0, 'rgba(205,242,255,.92)');
+      grad.addColorStop(.22, 'rgba(0,178,255,.82)');
+      grad.addColorStop(1, 'rgba(0,85,255,.12)');
+      ctx.shadowColor = 'rgba(0,146,255,.72)';
+    } else {
+      grad.addColorStop(0, 'rgba(255,226,255,.92)');
+      grad.addColorStop(.22, 'rgba(235,48,255,.82)');
+      grad.addColorStop(1, 'rgba(147,48,255,.12)');
+      ctx.shadowColor = 'rgba(221,45,255,.70)';
+    }
+    ctx.shadowBlur = 8 * dpr;
+    ctx.fillStyle = grad;
+    for (let i = 0; i < count; i += 1) {
+      const logical = leftSide ? i : count - 1 - i;
+      const bin = Math.min(mic.freqData.length - 1, Math.floor((logical / count) * mic.freqData.length * 0.72));
+      const raw = mic.freqData[bin] / 255;
+      const shaped = Math.pow(raw, 1.25);
+      const bh = Math.max(2 * dpr, (0.03 + shaped * 0.97) * barMax * (0.38 + level * 0.92));
+      const x = startX + i * (bw + gap);
+      const y = barBase - bh;
+      const step = 7 * dpr;
+      for (let yy = y; yy < barBase; yy += step) {
+        ctx.globalAlpha = Math.max(0.16, Math.min(0.82, 1 - (yy - y) / Math.max(1, bh)));
+        ctx.fillRect(x, yy, bw, Math.min(step * 0.72, barBase - yy));
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  };
+
+  const drawWave = (side) => {
+    const leftSide = side === 'left';
+    const x0 = leftSide ? 0 : w * 0.52;
+    const x1 = leftSide ? w * 0.48 : w;
+    const amp = (10 + level * 46) * dpr;
+    const grad = ctx.createLinearGradient(x0, 0, x1, 0);
+    if (leftSide) {
+      grad.addColorStop(0, 'rgba(0,96,255,.04)');
+      grad.addColorStop(.35, 'rgba(0,213,255,.95)');
+      grad.addColorStop(1, 'rgba(58,119,255,.02)');
+      ctx.shadowColor = 'rgba(0,196,255,.9)';
+    } else {
+      grad.addColorStop(0, 'rgba(165,74,255,.02)');
+      grad.addColorStop(.65, 'rgba(255,55,235,.95)');
+      grad.addColorStop(1, 'rgba(255,62,206,.04)');
+      ctx.shadowColor = 'rgba(255,54,229,.88)';
+    }
+    ctx.lineWidth = 1.35 * dpr;
+    ctx.strokeStyle = grad;
+    ctx.shadowBlur = 11 * dpr;
+    ctx.beginPath();
+    const steps = 150;
+    for (let i = 0; i <= steps; i += 1) {
+      const p = i / steps;
+      const idx = Math.min(mic.data.length - 1, Math.floor(p * (mic.data.length - 1)));
+      const sample = (mic.data[idx] - 128) / 128;
+      const x = x0 + (x1 - x0) * p;
+      const y = horizon + sample * amp;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 0.26;
+    ctx.lineWidth = 1 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(x0, horizon);
+    ctx.lineTo(x1, horizon);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  };
+
+  drawBars('left');
+  drawBars('right');
+  drawWave('left');
+  drawWave('right');
+}
+
+function startMicMeter() {
+  cancelAnimationFrame(mic.raf);
+  const tick = () => {
+    let level = 0;
+    if (mic.analyser && mic.data) {
+      mic.analyser.getByteTimeDomainData(mic.data);
+      if (mic.freqData) mic.analyser.getByteFrequencyData(mic.freqData);
+      let sum = 0;
+      for (const v of mic.data) {
+        const x = (v - 128) / 128;
+        sum += x * x;
+      }
+      level = Math.min(1, Math.sqrt(sum / mic.data.length) * 4.5 * Math.max(0.25, micGain));
+    }
+    mic.level = mic.level * 0.72 + level * 0.28;
+    protectMicMonitoring();
+    const bar = $('micMeter')?.querySelector('span');
+    if (bar) bar.style.transform = `scaleY(${Math.max(0.04, micEnabled ? mic.level : 0.04)})`;
+    const karaoke = document.querySelector('.karaoke');
+    if (karaoke) {
+      const live = micEnabled && mic.ready;
+      karaoke.classList.toggle('mic-live', live);
+      karaoke.style.setProperty('--mic-level', live ? mic.level.toFixed(3) : '0');
+      karaoke.style.setProperty('--mic-fountain-h', `${Math.round(18 + mic.level * 64)}%`);
+      karaoke.style.setProperty('--mic-fountain-o', `${Math.min(0.72, 0.08 + mic.level * 0.78).toFixed(3)}`);
+    }
+    const wave = $('micWave');
+    if (wave) {
+      const live = micEnabled && mic.ready;
+      wave.classList.toggle('live', live);
+      wave.style.setProperty('--mic-level', live ? mic.level.toFixed(3) : '0');
+      wave.style.setProperty('--mic-height', `${Math.round(18 + mic.level * 82)}%`);
+      drawMicWave(live);
+    }
+    mic.raf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+function recorderMimeType() {
+  const candidates = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+  return candidates.find(t => window.MediaRecorder?.isTypeSupported?.(t)) || '';
+}
+
+function recorderOptions() {
+  const options = { audioBitsPerSecond: 320000 };
+  if (recorder.mime) options.mimeType = recorder.mime;
+  return options;
+}
+
+function completeRecording(blob) {
+  recorder.active = false;
+  recorder.starting = false;
+  recorder.stopping = false;
+  recorder.media = null;
+  recorder.pcm = null;
+  recorder.diagnostics = audio.recordingDiagnostics?.stop?.() || null;
+  if (recorder.diagnostics) console.info('Recording transient diagnostics:', recorder.diagnostics);
+  stopSelectedMediaPlayback(false);
+  recorder.blob = blob;
+  if (recorder.url) URL.revokeObjectURL(recorder.url);
+  recorder.url = blob?.size ? URL.createObjectURL(blob) : '';
+  if (recorder.downloadWhenReady && blob?.size) {
+    recorder.downloadWhenReady = false;
+    queueMicrotask(downloadRecording);
+  } else if (!recorder.requestedStop && blob?.size) promptSaveRecording();
+  recorder.requestedStop = false;
+}
+
+function startMediaRecorderFallback() {
+  recorder.mime = recorderMimeType();
+  recorder.media = new MediaRecorder(audio.recordDest.stream, recorderOptions());
+  recorder.actualBitsPerSecond = Number(recorder.media.audioBitsPerSecond || 0);
+  recorder.media.ondataavailable = event => {
+    if (event.data?.size) recorder.chunks.push(event.data);
+  };
+  recorder.media.onstop = () => {
+    const blob = new Blob(recorder.chunks, {
+      type: recorder.mime || recorder.chunks[0]?.type || 'audio/webm',
+    });
+    completeRecording(blob);
+  };
+  recorder.media.start();
+  recorder.active = true;
+}
+
+async function startRecording() {
+  if (recorder.active || recorder.starting || recorder.stopping) return;
+  recorder.starting = true;
+  ensureAudio();
+  if (micEnabled) await ensureMic();
+  startSelectedMediaPlayback();
+  recorder.hadMic = !!(micEnabled && mic.ready);
+  recorder.chunks = [];
+  recorder.blob = null;
+  recorder.downloadWhenReady = false;
+  recorder.diagnostics = null;
+  recorder.actualBitsPerSecond = 0;
+  if (recorder.url) URL.revokeObjectURL(recorder.url);
+  recorder.url = '';
+  try {
+    recorder.pcm = await window.FreezaPcmRecorder?.create?.(audio.ctx, audio.recordLimiter, {
+      moduleUrl: `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
+    });
+    if (recorder.pcm) {
+      recorder.mime = 'audio/wav';
+      recorder.actualBitsPerSecond = recorder.pcm.bitsPerSecond;
+      recorder.pcm.start();
+      recorder.active = true;
+    } else if (window.MediaRecorder) {
+      // 旧浏览器没有 AudioWorklet 时才退回有损 MediaRecorder。连续编码且不分片，
+      // 避免 Safari 在 timeslice 边界拼接出额外点击声。
+      startMediaRecorderFallback();
+    } else {
+      throw new Error('No supported audio recorder');
+    }
+    audio.recordingDiagnostics?.start?.();
+  } catch (err) {
+    recorder.pcm?.dispose?.();
+    recorder.pcm = null;
+    recorder.active = false;
+    console.warn('MediaRecorder start failed:', err);
+  } finally {
+    recorder.starting = false;
+  }
+}
+
+function stopRecording(autoPrompt = false) {
+  if (!recorder.active || recorder.stopping) {
+    if (autoPrompt && recorder.blob) promptSaveRecording();
+    return;
+  }
+  recorder.requestedStop = !autoPrompt;
+  recorder.stopping = true;
+  if (recorder.pcm?.active) {
+    recorder.pcm.stop()
+      .then(blob => completeRecording(blob))
+      .catch(error => {
+        console.warn('PCM recorder stop failed:', error);
+        completeRecording(null);
+      });
+  } else if (recorder.media?.state !== 'inactive') {
+    recorder.media.stop();
+  } else {
+    completeRecording(null);
+  }
+}
+
+function recordingExt() {
+  const type = recorder.blob?.type || recorder.mime || '';
+  if (type.includes('wav')) return 'wav';
+  if (type.includes('mp4')) return 'm4a';
+  if (type.includes('ogg')) return 'ogg';
+  return 'webm';
+}
+
+function downloadRecording() {
+  if (!recorder.blob) {
+    if (recorder.active) {
+      recorder.downloadWhenReady = true;
+      stopRecording(false);
+    } else {
+      alert('还没有可保存的演奏录音');
+    }
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = recorder.url || URL.createObjectURL(recorder.blob);
+  a.download = `freeza-live-${new Date().toISOString().replace(/[:.]/g, '-')}.${recordingExt()}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function closeSavePrompt() {
+  const modal = $('savePrompt');
+  if (modal) modal.classList.remove('show');
+}
+
+function promptSaveRecording() {
+  if (!recorder.blob?.size) return;
+  const modal = $('savePrompt');
+  const size = $('savePromptSize');
+  if (size) {
+    const diagnostic = recorder.diagnostics?.dominantLabel
+      ? ` · 瞬态 ${recorder.diagnostics.dominantLabel}` : '';
+    size.textContent = `${(recorder.blob.size / 1024 / 1024).toFixed(2)} MB · ${recordingExt().toUpperCase()}${diagnostic}`;
+  }
+  if (modal) {
+    modal.classList.add('show');
+    return;
+  }
+  downloadRecording();
+}
+
+function songPlaybackTransposeSemitones() {
+  // 和弦/分解伴奏统一使用原曲调号 + 用户升降 Key。
+  return (isFreeMode() ? 0 : songTransposeSemitones()) + userKeyShift;
+}
+
+function shiftedMidi(midi) {
+  return Math.max(21, Math.min(108, Math.round(midi + userKeyShift)));
+}
+
+function shiftedRootLabel(root) {
+  return transposeRootName(root, userKeyShift).replace('#', '♯');
+}
+
+function shiftedRootClass(root) {
+  return noteClassForRoot(root);
+}
+
+function updatePlaybackToggles() {
+  const melodyBtn = $('melodyToggle');
+  const drumBtn = $('drumToggle');
+  if (melodyBtn) {
+    melodyBtn.classList.toggle('active-toggle', melodyEnabled);
+    melodyBtn.setAttribute('aria-pressed', melodyEnabled ? 'true' : 'false');
+  }
+  if (drumBtn) {
+    const drumLabel = drumMode === 'auto' ? '智能' : drumMode === 'on' ? '开' : '关';
+    drumBtn.textContent = drumLabel;
+    drumBtn.classList.toggle('active-toggle', drumMode !== 'off');
+    drumBtn.setAttribute('aria-pressed', drumMode !== 'off' ? 'true' : 'false');
+    drumBtn.setAttribute('aria-label', `鼓机状态：${drumLabel}，点击切换`);
+    drumBtn.title = `鼓机：${drumLabel} · ${drumMode === 'auto' ? '跟随歌曲事件' : `鼓组 ${drumPatternSlot > 0 ? 'B' : 'A'}`}`;
+  }
+  updateToneButton();
+  updateGamePickControls();
+}
+
+function syncMelodyGuideMenu(screen = $('startScreen')) {
+  if (!screen) return;
+  screen.querySelectorAll('[data-melody]').forEach(button => {
+    button.classList.toggle('selected', (button.dataset.melody === 'on') === melodyEnabled);
+  });
+  screen.querySelectorAll('[data-guide]').forEach(button => {
+    button.classList.toggle('selected', (button.dataset.guide === 'on') === guideMode);
+  });
+  syncLaunchSwitch('melody', melodyEnabled, guideMode, screen);
+  syncLaunchSwitch('guide', guideMode, false, screen);
+}
+
+function syncLaunchSwitch(group, enabled, locked = false, root = document) {
+  const control = root?.querySelector?.(`[data-group="${group}"]`);
+  if (!control?.classList.contains('launch-switch')) return;
+  control.classList.toggle('state-off', !enabled);
+  control.classList.toggle('is-locked', locked);
+  control.setAttribute('aria-disabled', locked ? 'true' : 'false');
+  control.closest('.launch-toggle-item')?.classList.toggle('is-locked', locked);
+  control.querySelectorAll('button').forEach(button => {
+    button.disabled = locked;
+  });
+}
+
+function firstRealLyricStart() {
+  const line = lyricLines.find(l => !l.prelude && String(l.text || '').trim());
+  return Number.isFinite(line?.start) ? line.start : Infinity;
+}
+
+function shouldAutoPlayMelodyAt(time) {
+  if (isFreeMode()) return false;
+  if (guideMode) return time < firstRealLyricStart() - 0.001;
+  return melodyEnabled && !isManualMode();
+}
+
+function isAutoChordMode() { return playMode === 'auto'; }
+function isSemiAutoMode() { return playMode === 'semi'; }
+function isOneKeyMode() { return playMode === 'one-key'; }
+function isFreeMode() { return playMode === 'free'; }
+// 一键模式沿用手动模式的逐段主旋律、排队与追赶逻辑；唯一差异是忽略所按音名。
+function isManualMode() { return playMode === 'manual' || isOneKeyMode(); }
+function usesLiveDrumClock() { return window.FreezaDrumMode?.usesLiveClock(playMode) ?? (isFreeMode() || isManualMode()); }
+
+function updateFreePerformanceUi() {
+  const bpm = freeModeState.bpm;
+  const percent = ((bpm - window.FreezaFreeMode.MIN_BPM)
+    / (window.FreezaFreeMode.MAX_BPM - window.FreezaFreeMode.MIN_BPM)) * 100;
+  [$('menuBpmRange'), $('freeBpmRange')].forEach(range => {
+    if (!range) return;
+    range.value = String(bpm);
+    range.style.setProperty('--pct', `${percent}%`);
+  });
+  [$('menuBpmValue'), $('freeBpmValue')].forEach(input => {
+    if (input) input.value = String(bpm);
+  });
+  if ($('freePanelBpm')) $('freePanelBpm').textContent = String(bpm);
+  if ($('freeChordCount')) $('freeChordCount').textContent = String(freeChordCount);
+  if ($('freeStyleName')) $('freeStyleName').textContent = harmonyToneMode > 1 ? 'B' : 'A';
+}
+
+function syncFreeModeMenu() {
+  const screen = $('startScreen');
+  if (!screen) return;
+  const enabled = isFreeMode();
+  screen.classList.toggle('free-mode-selected', enabled);
+  if ($('freeBpmRow')) $('freeBpmRow').hidden = !enabled;
+  const guideControl = screen.querySelector('[data-group="guide"]');
+  if (guideControl) {
+    guideControl.classList.toggle('is-locked', enabled);
+    guideControl.setAttribute('aria-disabled', enabled ? 'true' : 'false');
+    guideControl.closest('.launch-toggle-item')?.classList.toggle('is-locked', enabled);
+    guideControl.querySelectorAll('button').forEach(button => { button.disabled = enabled; });
+  }
+  updateFreePerformanceUi();
+}
+
+function setPlayMode(mode) {
+  const screen = $('startScreen');
+  playMode = ['auto', 'one-key', 'semi', 'manual', 'free'].includes(mode) ? mode : 'semi';
+  if (isFreeMode()) guideMode = false;
+  screen?.querySelectorAll('[data-mode]').forEach(button => {
+    button.classList.toggle('selected', button.dataset.mode === playMode);
+  });
+  syncMelodyGuideMenu(screen);
+  syncFreeModeMenu();
+  updateGamePickControls();
+}
+
+function setFreeBpm(value, { restartDrums = true } = {}) {
+  const before = freeModeState.bpm;
+  const bpm = freeModeState.setBpm(value);
+  updateFreePerformanceUi();
+  if (restartDrums && isFreeMode() && playing && freeDrumStarted && bpm !== before) restartFreeDrumLoop();
+  return bpm;
+}
+
+function tapFreeBpm() {
+  const before = freeModeState.bpm;
+  const bpm = freeModeState.tap(performance.now());
+  updateFreePerformanceUi();
+  playLaunchUiSound('slider', (bpm - window.FreezaFreeMode.MIN_BPM)
+    / (window.FreezaFreeMode.MAX_BPM - window.FreezaFreeMode.MIN_BPM));
+  if (isFreeMode() && playing && freeDrumStarted && bpm !== before) restartFreeDrumLoop();
+}
+
+function updateFreeBpmFromNumberInput(input, { commit = false } = {}) {
+  if (!input) return;
+  const value = Number(input.value);
+  const min = window.FreezaFreeMode.MIN_BPM;
+  const max = window.FreezaFreeMode.MAX_BPM;
+  if (Number.isFinite(value) && value >= min && value <= max) {
+    setFreeBpm(value);
+  } else if (commit) {
+    setFreeBpm(value);
+  }
+}
+
+function bindFreeBpmNumberInput(input) {
+  if (!input) return;
+  input.addEventListener('input', () => updateFreeBpmFromNumberInput(input));
+  input.addEventListener('change', () => updateFreeBpmFromNumberInput(input, { commit: true }));
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      updateFreeBpmFromNumberInput(input, { commit: true });
+      input.blur();
+    }
+  });
+}
+
+function bindFreeBpmRange(range, { restartDrums = true } = {}) {
+  if (!range) return;
+  range.addEventListener('input', event => {
+    setFreeBpm(event.target.value, { restartDrums });
+  });
+  const releaseFocus = () => {
+    requestAnimationFrame(() => {
+      if (document.activeElement === range) range.blur();
+    });
+  };
+  // Range 会在鼠标或触摸拖动后保留焦点，导致 Z–M 被输入控件截获。
+  // 松手后立即释放焦点，让电脑键盘继续控制 C–B 和弦键。
+  range.addEventListener('pointerup', releaseFocus);
+  range.addEventListener('pointercancel', releaseFocus);
+  range.addEventListener('touchend', releaseFocus, { passive: true });
+}
+
+function updateGamePickControls(time = currentPlayTime()) {
+  const enabled = isAutoChordMode() || isFreeMode();
+  const activeSlot = song ? chordPatternSlotAtTime(time) : Math.max(0, harmonyToneMode - 1);
+  const button = $('pickToneBtn');
+  if (!button) return;
+  const label = activeSlot > 0 ? 'B' : 'A';
+  button.textContent = `拨${label}`;
+  button.dataset.pickSlot = label;
+  button.disabled = !enabled;
+  button.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+  button.setAttribute('aria-pressed', activeSlot > 0 ? 'true' : 'false');
+  button.setAttribute('aria-label', `切换拨片音色，当前 ${label}`);
+  button.title = enabled ? `点击切换到拨片 ${activeSlot > 0 ? 'A' : 'B'}` : '仅全自动模式可用';
+}
+
+function selectGamePickSlot(slot) {
+  if (!isAutoChordMode() && !isFreeMode()) return;
+  const normalized = Number(slot) > 0 ? 1 : 0;
+  harmonyToneMode = normalized + 1;
+  initialPickSlot = normalized;
+  insertUserPickEvent(normalized, currentPlayTime());
+  updateGamePickControls();
+  warmHarmonyTones(false);
+  if (playing && !isFreeMode()) scheduleFrom(currentPlayTime());
+  updateFreePerformanceUi();
+}
+
+function currentHarmonyPreset() {
+  return HARMONY_TONES[(harmonyToneMode - 1 + HARMONY_TONES.length) % HARMONY_TONES.length] || HARMONY_TONES[0];
+}
+
+function currentChordPattern() {
+  return chordPatternAtTime(currentPlayTime()).pattern;
+}
+
+function currentDrumPattern() {
+  return currentDrumCode ? patterns.byCode.get(currentDrumCode) : null;
+}
+
+function resolveDrumPatternCode(codes = []) {
+  const candidates = Array.isArray(codes) ? codes.filter(Boolean) : [codes].filter(Boolean);
+  for (const code of candidates) {
+    if (patterns.byCode.has(code)) return code;
+  }
+  const styleDrums = song?.styleInfo?.midiPrograms?.drumCodes || [];
+  const text = candidates.join(' ');
+  const fallback = /_3\b/i.test(text) ? styleDrums[1] : /_2\b/i.test(text) ? styleDrums[0] : null;
+  if (fallback && patterns.byCode.has(fallback)) return fallback;
+  for (const code of styleDrums) {
+    if (patterns.byCode.has(code)) return code;
+  }
+  const loose = candidates
+    .flatMap(code => [...patterns.byCode.keys()].filter(k => k.toLowerCase() === String(code).toLowerCase()))
+    .find(Boolean);
+  return loose || null;
+}
+
+function chordNameForPressedRoot(root, cue) {
+  const base = String(cue?.chord || root || '').trim();
+  if (!base) return root;
+  return base.replace(/^([A-G][#b]?)/i, root);
+}
+
+
+function chordNameForPerformedRoot(root, cue) {
+  // 七键界面只保存自然音字母，所以 Ab/Bb/Eb 的 cue.root 分别是 A/B/E。
+  // 按中了当前 cue 时必须保留谱面里的升降号；否则把 Ab 错改成 A、Bb
+  // 错改成 B，伴奏就会与已经是实际音高的主旋律相差半音。只有真正按错
+  // 根音时才用玩家按下的字母替换和弦根音。最后再统一应用歌曲转调与 Key。
+  const cueRoot = cue?.root || rootFromChord(cue?.chord);
+  const performedRoot = String(root || cueRoot || 'C').replace('♯', '#');
+  const baseChord = cue?.chord && performedRoot === cueRoot
+    ? cue.chord
+    : chordNameForPressedRoot(performedRoot, cue);
+  return transposeChordName(baseChord, songPlaybackTransposeSemitones());
+}
+
+function songTransposeSemitones() {
+  const explicit = Number(song?.styleInfo?.chordTransposeSemitones);
+  if (Number.isFinite(explicit)) return explicit;
+  const tone = String(song?.styleInfo?.tone || '').trim();
+  if (!tone) return 0;
+  const normalized = tone.startsWith('#') && tone.length >= 2
+    ? `${tone[1].toUpperCase()}#`
+    : tone[0]?.toUpperCase() + tone.slice(1);
+  const pc = NOTE_PC[normalized];
+  return Number.isFinite(pc) ? pc : 0;
+}
+
+function transposeRootName(root, semis) {
+  const pc = NOTE_PC[root];
+  if (!Number.isFinite(pc)) return root;
+  return PC_NOTE_SHARP[(pc + semis + 120) % 12];
+}
+
+function transposeChordName(chordName, semis = songPlaybackTransposeSemitones()) {
+  if (!semis) return chordName;
+  return String(chordName || '').replace(/^([A-G][#b]?)(.*?)(?:\/([A-G][#b]?))?$/, (_, root, rest, bass) => {
+    const transposedRoot = transposeRootName(root, semis);
+    const transposedBass = bass ? `/${transposeRootName(bass, semis)}` : '';
+    return `${transposedRoot}${rest || ''}${transposedBass}`;
+  });
+}
+
+function presetForStyleCode(code, label) {
+  const c = String(code || '').trim();
+  const sampled = window.FreezaInstrumentLibrary?.sampledPreset(c, label, balancedHarmonyGain);
+  if (sampled) return sampled;
+  if (/^PianoStudio/i.test(c)) return { label, code: c, name: 'Salamander Grand Piano', localPiano: true, gain: balancedHarmonyGain(c, 0.42) };
+  if (/^GS_1$/i.test(c)) return { label, code: c, name: 'FreePats Spanish Classical Guitar', fallbackName: 'acoustic_guitar_nylon', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.9), fallbackGain: 0.72 };
+  if (/^GEC2/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Jazz', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.64), fallbackGain: 0.62 };
+  if (/^GED/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Distorted', fallbackName: 'distortion_guitar', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.58), fallbackGain: 0.55 };
+  if (/^GEC|electric|eg/i.test(c)) return { label, code: c, name: 'FSBS Electric Guitar Clean', fallbackName: 'electric_guitar_clean', guitarLibrary: true, gain: balancedHarmonyGain(c, 0.64), fallbackGain: 0.62 };
+  if (/drum|chap/i.test(c)) return { label, code: c, name: 'synth_drum', gain: 0.74, drum: true };
+  return { label, code: c || label, name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: balancedHarmonyGain(c || 'GS_3', 0.70), fallbackGain: 0.65 };
+}
+
+function refreshHarmonyTonesFromStyle(styleInfo) {
+  const programCodes = (styleInfo?.midiPrograms?.chordPrograms || [])
+    .map(c => c?.code)
+    .filter(Boolean);
+  const chordCodes = programCodes.length
+    ? programCodes
+    : (styleInfo?.midiPrograms?.chordCodes || styleInfo?.configPack?.chords?.map(c => c?.code) || []);
+  const unique = [...new Set(chordCodes.filter(Boolean))]
+    .slice(0, 2);
+  if (unique.length >= 2) {
+    HARMONY_TONES = unique.map((code, i) => presetForStyleCode(code, i === 0 ? 'A' : 'B'));
+    harmonyToneMode = Math.min(Math.max(1, harmonyToneMode), HARMONY_TONES.length);
+    updateToneButton();
+  }
+  const drumCodes = availableDrumCodes();
+  if (drumCodes.length === 1) drumPatternSlot = 0;
+  currentDrumCode = drumCodes[drumPatternSlot] || drumCodes[0] || null;
+  updateToneButton();
+  syncStartDrumToneMenu();
+}
+
+function rootFromChord(text) {
+  const m = String(text || '').trim().match(/^([A-G])/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+
+
+function parseChordNotes(chordName) {
+  return runWasmCommand({ op: 'chordNotes', chord: chordName }).notes || [];
+}
+
+
+function warmHarmonyMidiSet(maxCues = 96) {
+  const set = new Set();
+  const roots = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  const active = chordAtTime(currentPlayTime()) || song?.chordCues?.[0] || null;
+  const pattern = currentChordPattern();
+  for (const root of roots) {
+    const chord = chordNameForPerformedRoot(root, active || { chord: root, root });
+    parseChordNotes(chord).forEach(n => set.add(n));
+    if (pattern?.notes?.length) {
+      pattern.notes.slice(0, 20).forEach(n => set.add(patternPitchToChordMidi(n.pitch, chord)));
+    }
+  }
+  // 同一首歌通常反复使用少量和弦；只解析唯一和弦，避免 Key 滑动时
+  // 对 96 个重复 cue 反复调用 WASM 和重复请求相同采样。
+  const chordNames = new Set((song?.chordCues || []).slice(0, maxCues)
+    .map(cue => transposeChordName(cue.chord))
+    .filter(Boolean));
+  chordNames.forEach(chord => parseChordNotes(chord).forEach(n => set.add(n)));
+  if (!set.size) [48, 52, 55, 60, 64, 67, 72].forEach(n => set.add(n));
+  return [...set];
+}
+
+function warmSoundfontPreset(preset) {
+  ensureAudio();
+  // 只加载 SoundFont，不发任何试音。之前 0.0001 gain 在部分移动浏览器仍可能听见，
+  // 所以倒计时 321 期间会莫名响一声。
+  return getSoundfontInstrument(preset);
+}
+
+function warmHarmonyPreset(preset) {
+  if (!preset) return Promise.resolve();
+  ensureAudio();
+  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+    // 只缓存当前歌曲实际会触发的音区与力度层。后台再下载整套 120 个
+    // 电吉他采样会在 iPhone 上占满连接并卡住 Loading/后续音频请求。
+    return window.FreezaGuitarSampler.preload(audio.ctx, preset.sampleCode || preset.code, warmHarmonyMidiSet());
+  }
+  if (preset.localPiano) {
+    if (window.Tone) Promise.resolve(Tone.start()).catch(() => {});
+    return Promise.resolve();
+  }
+  return warmSoundfontPreset(preset);
+}
+
+function fullyWarmHarmonyPreset(preset, onProgress = null) {
+  if (!preset) return Promise.resolve([]);
+  ensureAudio();
+  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+    return window.FreezaGuitarSampler.preloadStartup(audio.ctx, preset.sampleCode || preset.code, onProgress);
+  }
+  if (typeof onProgress === 'function') onProgress(0, 1);
+  const promise = preset.localPiano
+    ? Promise.resolve(sampleReadyPromise)
+    : warmSoundfontPreset(preset);
+  return Promise.resolve(promise).finally(() => {
+    if (typeof onProgress === 'function') onProgress(1, 1);
+  });
+}
+
+function warmHarmonyTones(all = false) {
+  const presets = all ? HARMONY_TONES : [currentHarmonyPreset()];
+  return Promise.allSettled(presets.map(preset => warmHarmonyPreset(preset))).then(results => {
+    results.forEach((res, i) => {
+      if (res.status === 'rejected') console.warn('Harmony tone warmup failed:', presets[i]?.code || presets[i]?.name, res.reason);
+    });
+    return results;
+  });
+}
+
+function patternPitchToChordMidi(pitch, chordName) {
+  return Number(runWasmCommand({ op: 'mapPatternPitch', pitch, chord: chordName }).midi);
+}
+
+
+
+
+
+function chordAtTime(time) {
+  const cues = song?.chordCues || [];
+  if (!cues.length) return null;
+  let current = cues[0];
+  for (const cue of cues) {
+    if (cue.time > time) break;
+    current = cue;
+  }
+  return current;
+}
+
+
+
+
+
+
+
+function chordPatternCodes() {
+  const style = song?.styleInfo || {};
+  const midi = style.midiPrograms || {};
+  const top = style.topLevel || {};
+  const pack = style.configPack || {};
+  const codes = [
+    top.rhythmicPatternA,
+    top.rhythmicPatternB,
+    ...(midi.chordCodes || []),
+    ...(pack.chords || []).map(c => c?.code),
+  ].filter(Boolean);
+  const unique = [...new Set(codes)];
+  return [unique[0] || HARMONY_TONES[0]?.code, unique[1] || HARMONY_TONES[1]?.code || unique[0]].filter(Boolean);
+}
+
+function pickSlotFromType(pickType) {
+  // C2 的 type=7：0 通常为 A；部分曲谱用 1/2 指向 B。
+  return Number(pickType) === 0 ? 0 : 1;
+}
+
+function chordPatternSlotAtTime(time = currentPlayTime()) {
+  const userSlot = Math.max(0, harmonyToneMode - 1);
+  if (isFreeMode()) return Math.max(0, Math.min(1, userSlot));
+  // 默认照 MIDI 的 LLEXT type=7 事件走；用户切 A/B 时，不全局强制，
+  // 而是在当前时间插入一个本地 type=7 事件，直到下一次 MIDI/用户事件覆盖。
+  const baseEvents = (song?.pickEvents || []).map((ev, i) => ({ ...ev, _order: i * 2 }));
+  const manualEvents = userPickEvents.map((ev, i) => ({ ...ev, _order: i * 2 + 1 }));
+  const events = [...baseEvents, ...manualEvents].sort((a, b) => (a.time - b.time) || (a._order - b._order));
+  let slot = Number(song?.styleInfo?.midiPrograms?.chordDefaultIndex);
+  if (!Number.isFinite(slot)) slot = userSlot;
+  for (const ev of events) {
+    if (ev.time > time + 0.001) break;
+    if (ev.pickAction === 0) continue;
+    slot = pickSlotFromType(ev.pickType);
+  }
+  return Math.max(0, Math.min(1, slot));
+}
+
+function insertUserPickEvent(slot, time = currentPlayTime()) {
+  const pickType = slot <= 0 ? 0 : 2;
+  const eventTime = Math.max(0, Number(time) || 0);
+  // 同一瞬间快速切换时改写最后一个本地事件，不堆叠。
+  const last = userPickEvents[userPickEvents.length - 1];
+  if (last && Math.abs(last.time - eventTime) < 0.08) {
+    last.pickType = pickType;
+    last.pickAction = 1;
+    last.time = eventTime;
+  } else {
+    userPickEvents.push({ time: eventTime, pickType, pickAction: 1, manual: true });
+  }
+  userPickEvents.sort((a, b) => a.time - b.time);
+}
+
+function chordPatternAtTime(time = currentPlayTime()) {
+  const codes = chordPatternCodes();
+  const slot = chordPatternSlotAtTime(time);
+  const code = codes[slot] || codes[0] || currentHarmonyPreset()?.code;
+  return { slot, code, pattern: code ? patterns.byCode.get(code) : null };
+}
+
+function nextChordCueTimeAfter(time) {
+  if (isFreeMode()) return time + freeModeState.barMs(patternBeats(currentChordPattern())) / 1000;
+  const next = (song?.chordCues || []).find(c => c.time > time + 0.04);
+  return next?.time ?? Math.min((song?.duration || time + 4), time + 4);
+}
+
+function nextPickEventTimeAfter(time) {
+  const next = (song?.pickEvents || []).find(e => e.time > time + 0.04);
+  return next?.time ?? Infinity;
+}
+
+
+
+
+
+
+
+function currentStyleCode() {
+  return song?.styleInfo?.configPack?.chords?.find(c => c.pickType === 1)?.code
+    || song?.styleInfo?.topLevel?.rhythmicPatternB
+    || song?.styleInfo?.configPack?.chords?.[0]?.code
+    || song?.styleInfo?.topLevel?.rhythmicPatternA
+    || 'default';
+}
+
+function beatMs() {
+  const bpm = isFreeMode() ? freeModeState.bpm : (Number(song?.styleInfo?.tempo) || 75);
+  return 60000 / bpm;
+}
+
+function patternBeats(pattern) {
+  const beat = String(pattern?.beat || song?.styleInfo?.beat || '4/4');
+  const n = Number(beat.split('/')[0]);
+  return Number.isFinite(n) && n > 0 ? n : 4;
+}
+
+function pcOfRoot(root) {
+  return NOTE_PC[root] ?? NOTE_PC[String(root || '').match(/^([A-G][#b]?)/)?.[1]] ?? 0;
+}
+
+function transposeMidi(midi, semitone) {
+  let n = midi + semitone;
+  while (n < 45) n += 12;
+  while (n > 76) n -= 12;
+  return n;
+}
+
+function track2SliceForCue(cue) {
+  if (!song?.accompanimentTrack?.notes?.length || !cue) return [];
+  const cues = song.chordCues || [];
+  const idx = Math.max(0, cues.indexOf(cue));
+  const start = cue.time;
+  const end = cues[idx + 1]?.time ?? start + beatMs() / 1000 * 2;
+  return song.accompanimentTrack.notes
+    .filter(n => n.time >= start - 0.001 && n.time < end - 0.001)
+    .slice(0, 32);
+}
+
+
+
+
+
+
+
+function cleanLyricText(text) {
+  return String(text || '')
+    .replace(/\r?\n/g, '')
+    .replace(/[｜|]/g, '')
+    .replace(/^\/+/, '')
+    .trim();
+}
+
+function lyricPiecesFromEvent(e) {
+  const raw = String(e.text || '');
+  const pieces = [];
+  let buf = '';
+  for (const ch of raw) {
+    if (ch === '\n' || ch === '\r') {
+      if (buf) pieces.push({ time: e.time, text: buf.replace(/[｜|]/g, '').replace(/^\/+/, ''), breakAfter: false });
+      pieces.push({ time: e.time, text: '', breakAfter: true });
+      buf = '';
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf) pieces.push({ time: e.time, text: buf.replace(/[｜|]/g, '').replace(/^\/+/, ''), breakAfter: false });
+  return pieces;
+}
+
+function escapeHtml(text) {
+  return String(text || '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function noteClassForRoot(root) {
+  const clean = String(root || 'C').trim();
+  const displayRoot = transposeRootName(clean.match(/^([A-G][#b]?)/i)?.[1] || clean[0] || 'C', userKeyShift);
+  return `note-${String(displayRoot || 'C').trim()[0]?.toLowerCase() || 'c'}`;
+}
+
+function lyricTokenHtml(token, blue = false, index = 0, renderTime = currentPlayTime()) {
+  const text = typeof token === 'string' ? token : token?.text;
+  const cls = noteClassForRoot(token?.root);
+  const now = renderTime;
+  const cueStart = Number.isFinite(token?.cueStartTime) ? token.cueStartTime : Number.isFinite(token?.time) ? token.time - 0.08 : null;
+  const cueEnd = Number.isFinite(token?.cueEndTime) ? token.cueEndTime : Number.isFinite(token?.time) ? token.time + 0.18 : null;
+  const isCueNow = token?.root && cueStart != null && cueEnd != null && now >= cueStart && now <= cueEnd;
+  const isCueSoon = token?.root && cueStart != null && now < cueStart && cueStart - now <= 1.0;
+  const cueClass = `${isCueNow ? ' cue-now' : ''}${isCueSoon ? ' cue-soon' : ''}`;
+  const data = ` data-kidx="${index}"`;
+  if (/\s/.test(text || '')) {
+    // 空格也当成一个歌词字：底层/拉幕层都画同一个色块，随卡拉 OK 进度从左到右扫过去。
+    return `<span class="lyric-block stable-block ${cls || 'note-c'}${blue ? ' blue' : ''}${cueClass}"${data}></span>`;
+  }
+  const keyClass = token?.root ? ` lyric-key ${cls}${blue ? ' blue' : ''}${cueClass}` : '';
+  return `<span class="lyric-char${keyClass}"${data}>${escapeHtml(text || '')}</span>`;
+}
+
+function chordRootNearTime(time, threshold = 0.32) {
+  const cue = (song?.chordCues || []).find(c => Math.abs(c.time - time) <= threshold);
+  return cue?.root || '';
+}
+
+function tokensForLine(lineOrText) {
+  if (lineOrText && typeof lineOrText === 'object') {
+    if (lineOrText.events?.length) {
+      let consecutiveBlankBlocks = 0;
+      return lineOrText.events
+        .map(e => ({ text: e.text, time: e.time, root: e.root, chordSpace: !!e.chordSpace, cueStartTime: e.cueStartTime, cueEndTime: e.cueEndTime }))
+        .filter(t => {
+          if (!t.chordSpace) { consecutiveBlankBlocks = 0; return true; }
+          consecutiveBlankBlocks += 1;
+          return consecutiveBlankBlocks <= 10;
+        });
+    }
+    return [...String(lineOrText.text || '')].map(ch => ({ text: ch, time: lineOrText.start }));
+  }
+  return [...String(lineOrText || '')].map(ch => ({ text: ch }));
+}
+
+function furiganaRowHtml(line, tokens) {
+  const annotations = Array.isArray(line?.furigana) ? line.furigana : [];
+  const tokenIndexForChar = [];
+  tokens.forEach((token, tokenIndex) => {
+    if (!token.chordSpace) tokenIndexForChar.push(tokenIndex);
+  });
+  const html = annotations.map(annotation => {
+    const start = Math.max(0, Number(annotation.start) || 0);
+    const length = Math.max(1, Number(annotation.length) || 1);
+    const firstToken = tokenIndexForChar[start];
+    const lastToken = tokenIndexForChar[start + length - 1];
+    const reading = String(annotation.reading || '').trim();
+    if (!reading || firstToken == null || lastToken == null) return '';
+    const fontScale = 1 / Math.max(2, [...reading].length / length);
+    return `<span class="lyric-furigana" data-first-token="${firstToken}" data-last-token="${lastToken}" style="font-size:${fontScale.toFixed(4)}em">${escapeHtml(reading)}</span>`;
+  }).join('');
+  return html;
+}
+
+function alignFuriganaToGlyphs(lineEl) {
+  const readingEl = lineEl.querySelector('.lyric-reading');
+  const wrapEl = lineEl.querySelector('.lyric-wrap');
+  const baseEl = wrapEl?.querySelector('.lyric-base');
+  if (!readingEl || !wrapEl || !baseEl) return;
+
+  const wrapRect = wrapEl.getBoundingClientRect();
+  if (!wrapRect.width) return;
+  readingEl.style.width = `${wrapRect.width}px`;
+
+  readingEl.querySelectorAll('.lyric-furigana').forEach(furiganaEl => {
+    const firstIndex = furiganaEl.dataset.firstToken;
+    const lastIndex = furiganaEl.dataset.lastToken;
+    const firstEl = baseEl.querySelector(`[data-kidx="${firstIndex}"]`);
+    const lastEl = baseEl.querySelector(`[data-kidx="${lastIndex}"]`);
+    if (!firstEl || !lastEl) return;
+    const firstRect = firstEl.getBoundingClientRect();
+    const lastRect = lastEl.getBoundingClientRect();
+    const center = ((firstRect.left + lastRect.right) / 2) - wrapRect.left;
+    furiganaEl.style.left = `${center}px`;
+  });
+}
+
+function karaokeCueSignature(tokens, now) {
+  let signature = '';
+  tokens.forEach((token, index) => {
+    if (!token?.root) return;
+    const cueStart = Number.isFinite(token.cueStartTime) ? token.cueStartTime
+      : Number.isFinite(token.time) ? token.time - 0.08 : null;
+    const cueEnd = Number.isFinite(token.cueEndTime) ? token.cueEndTime
+      : Number.isFinite(token.time) ? token.time + 0.18 : null;
+    let phase = 0;
+    if (cueStart != null && cueEnd != null && now >= cueStart && now <= cueEnd) phase = 2;
+    else if (cueStart != null && now < cueStart && cueStart - now <= 1.0) phase = 1;
+    signature += `${index}:${phase};`;
+  });
+  return signature;
+}
+
+function setKaraokeLine(el, lineOrText, progress = 0, active = false, renderTime = currentPlayTime()) {
+  const tokens = tokensForLine(lineOrText);
+  const reading = lineOrText && typeof lineOrText === 'object' ? String(lineOrText.reading || '') : '';
+  const lineId = karaokePerformance.objectId(lineOrText);
+  const signature = `${lineId}|${active ? 1 : 0}|${userKeyShift}|${karaokeCueSignature(tokens, renderTime)}`;
+  karaokePerformance.renderLine(el, signature, () => {
+    el.classList.toggle('active', active);
+    el.classList.toggle('next', !active);
+    el.classList.toggle('has-reading', Boolean(reading));
+    const furigana = furiganaRowHtml(lineOrText, tokens);
+    const baseHtml = tokens.map((t, i) => lyricTokenHtml(t, false, i, renderTime)).join('');
+    const blueHtml = tokens.map((t, i) => lyricTokenHtml(t, true, i, renderTime)).join('');
+    el.innerHTML = baseHtml
+      ? `${reading ? `<span class="lyric-reading" aria-label="${escapeHtml(reading)}">${furigana}</span>` : ''}<span class="lyric-wrap"><span class="lyric-base">${baseHtml}</span><span class="lyric-blue" aria-hidden="true">${blueHtml}</span></span>`
+      : '';
+    if (reading) alignFuriganaToGlyphs(el);
+  });
+  karaokePerformance.setProgress(el, active ? `${progress.toFixed(2)}%` : '0%');
+}
+
+function alignLineEventsToText(line, rawEvents) {
+  const chars = [...(line.text || '')];
+  const events = [...rawEvents].sort((a, b) => a.time - b.time);
+  const out = [];
+  let eventIndex = 0;
+  let lastTime = line.start;
+
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (/\s/.test(ch)) {
+      let runEnd = i;
+      while (runEnd < chars.length && /\s/.test(chars[runEnd])) runEnd++;
+      const nextEvent = events[eventIndex];
+      const nextTime = nextEvent?.time ?? line.end;
+      const runLen = runEnd - i;
+      for (let j = 0; j < runLen; j++) {
+        const t = lastTime + (nextTime - lastTime) * ((j + 1) / (runLen + 1));
+        const time = Math.max(line.start, Math.min(line.end, t));
+        out.push({ time, text: ' ', root: chordAtTime(time)?.root, virtual: true });
+      }
+      i = runEnd - 1;
+      continue;
+    }
+    const ev = events[eventIndex++];
+    const time = ev?.time ?? Math.min(line.end, lastTime + 0.15);
+    out.push({ time, text: ch, root: '', virtual: !ev });
+    lastTime = time;
+  }
+  return out;
+}
+
+function buildLyricLines() {
+  const beatSec = beatMs() / 1000;
+  const explicitLines = (song?.lyricLineEvents || [])
+    .map(e => {
+      const data = e.data || {};
+      const startBeat = Number(data.time);
+      const endBeat = Number(data.endTime);
+      const start = Number.isFinite(startBeat) ? startBeat * beatSec : e.time;
+      const end = Number.isFinite(endBeat) ? endBeat * beatSec : start + 2;
+      return {
+        start,
+        end,
+        text: String(data.text || ''),
+        reading: String(data.reading || ''),
+        furigana: Array.isArray(data.furigana) ? data.furigana : [],
+        events: [],
+        paragraphType: data.paragraphType,
+      };
+    })
+    .filter(line => line && line.text)
+    .sort((a, b) => a.start - b.start);
+  if (explicitLines.length) {
+    const lyricEvents = (song?.noteTracks?.find(t => (t.texts || []).some(e => e.type === 0x03 && e.text === 'Lyrics'))?.texts || song?.noteTracks?.[3]?.texts || [])
+      .filter(e => e.type === 0x05 || e.type === 0x01)
+      .flatMap(lyricPiecesFromEvent)
+      .filter(e => e.text)
+      .sort((a, b) => a.time - b.time);
+    lyricLines = explicitLines.map((line, i) => {
+      const end = Math.max(line.end, explicitLines[i + 1]?.start ?? line.end);
+      const raw = lyricEvents.filter(e => e.time >= line.start - 0.001 && e.time < end - 0.001);
+      const fullLine = { ...line, end };
+      return { ...fullLine, events: alignLineEventsToText(fullLine, raw) };
+    });
+    const firstStart = lyricLines[0]?.start ?? 0;
+    const preludeCues = (song?.chordCues || []).filter(c => c.time < firstStart - 0.001);
+    if (preludeCues.length) {
+      const preludeLines = [];
+      for (let i = 0; i < preludeCues.length; i += 10) {
+        const chunk = preludeCues.slice(i, i + 10);
+        preludeLines.push({
+          start: chunk[0]?.time ?? 0,
+          end: preludeCues[i + 10]?.time ?? firstStart,
+          text: ' '.repeat(chunk.length),
+          events: chunk.map(c => ({ time: c.time, text: ' ', root: c.root, virtual: true, chordSpace: true })),
+          prelude: true,
+        });
+      }
+      lyricLines.unshift(...preludeLines);
+    }
+    return;
+  }
+  const rawEvents = (song?.noteTracks?.[3]?.texts || [])
+    .filter(e => e.type === 0x05 || e.type === 0x01)
+    .flatMap(lyricPiecesFromEvent)
+    .filter(e => (e.text || e.breakAfter) && !/^track\s*name/i.test(e.text))
+    .sort((a, b) => a.time - b.time);
+  const hasExplicitLineBreaks = rawEvents.some(e => e.breakAfter);
+  const events = rawEvents.filter(e => e.text || e.breakAfter);
+  const lines = [];
+  let current = null;
+  const flush = () => {
+    if (!current || !current.text.trim()) return;
+    current.end = current.events.at(-1)?.time ?? current.start;
+    lines.push(current);
+  };
+  for (const ev of events) {
+    if (ev.breakAfter) {
+      flush();
+      current = null;
+      continue;
+    }
+    const last = current?.events?.at(-1);
+    const hardBreak = /[。！？!?；;]$/.test(last?.text || '');
+    const commaBreak = /[，、,]$/.test(last?.text || '') && current?.text?.length >= 8;
+    const longGap = !hasExplicitLineBreaks && last && ev.time - last.time > 0.85 && current?.text?.length >= 4;
+    const tooLong = !hasExplicitLineBreaks && current && current.text.length >= 11 && (last ? ev.time - last.time > 0.24 : false);
+    if (!current || hardBreak || commaBreak || longGap || tooLong) {
+      flush();
+      current = { start: ev.time, end: ev.time + 1.8, text: '', events: [] };
+    }
+    current.text += ev.text;
+    current.events.push(ev);
+  }
+  flush();
+  lyricLines = lines.map((line, i) => ({
+    ...line,
+    end: Math.max(line.end + 0.65, lines[i + 1]?.start ?? song?.duration ?? line.end + 2),
+  }));
+}
+
+
+
+
+
+function lyricProgressState(line, now) {
+  return runWasmCommand({
+    op: 'lyricProgress',
+    now,
+    lineEnd: Number.isFinite(Number(line?.end)) ? Number(line.end) : null,
+    events: (line?.events || []).map(event => ({
+      time: Number(event.time) || 0,
+      text: String(event.text || ''),
+      cueStartTime: Number.isFinite(Number(event.cueStartTime)) ? Number(event.cueStartTime) : null,
+      cueEndTime: Number.isFinite(Number(event.cueEndTime)) ? Number(event.cueEndTime) : null,
+    })),
+  });
+}
+
+function syncActiveKaraokeProgress(el, line, state) {
+  const tokens = tokensForLine(line);
+  const base = el?.querySelector('.lyric-base');
+  const wrap = el?.querySelector('.lyric-wrap');
+  if (!base || !wrap || !tokens.length) return null;
+  const currentIndex = Number(state?.currentIndex ?? -1);
+  const frac = Math.max(0, Math.min(1, Number(state?.fraction ?? 0)));
+  if (currentIndex < 0) return null;
+  const geometryKey = `${karaokePerformance.revision()}:${karaokePerformance.objectId(line)}:${currentIndex}`;
+  const measured = karaokePerformance.getGeometry(el, geometryKey, () => {
+    const node = base.querySelector(`[data-kidx="${currentIndex}"]`);
+    if (!node) return null;
+    const br = base.getBoundingClientRect();
+    const nr = node.getBoundingClientRect();
+    return {
+      baseLeft: br.left,
+      baseWidth: br.width,
+      nodeLeft: nr.left,
+      nodeWidth: nr.width,
+      nodeTop: nr.top,
+      nodeHeight: nr.height,
+    };
+  });
+  if (!measured) return null;
+  // 紫色层按歌词内容宽度（max-content）裁剪；进度也必须以同宽的 base 为基准。
+  // 长歌词会溢出 lyric-wrap，若使用 wrap.width 会把进度严重放大。
+  const x = (measured.nodeLeft - measured.baseLeft) + measured.nodeWidth * frac;
+  const pct = Math.max(0, Math.min(100, (x / Math.max(1, measured.baseWidth)) * 100));
+  karaokePerformance.setProgress(el, `${pct.toFixed(2)}%`);
+  // 特效必须使用和紫色裁剪边界完全相同的实际像素坐标，不能再用整行容器宽度。
+  // 当前行在面板里居中，而歌词内容宽度通常远小于整行；以整行百分比换算会明显偏离文字。
+  return {
+    progress: pct,
+    x: measured.baseLeft + x,
+    y: measured.nodeTop + measured.nodeHeight * 0.56,
+    tokenRect: measured,
+  };
+}
+
+function lyricEventAt(time, maxHold = Infinity) {
+  const events = lyricLines.flatMap(line => (line.events || []).map((ev, index) => ({ ...ev, line, index })))
+    .sort((a, b) => a.time - b.time);
+  if (!events.length) return null;
+  for (let i = 0; i < events.length; i++) {
+    const cur = events[i];
+    const next = events[i + 1];
+    const end = next?.time ?? (cur.line?.end ?? cur.time + 0.6);
+    if (time >= cur.time && time < end && time - cur.time <= maxHold) return cur;
+    if (time < cur.time) break;
+  }
+  return null;
+}
+
+function allLyricEvents() {
+  return lyricLines.flatMap(line => (line.events || []).map((ev, index) => ({ ev, line, index })))
+    .sort((a, b) => a.ev.time - b.ev.time);
+}
+
+function lyricLineForTime(time) {
+  if (!lyricLines.length) return null;
+  return lyricLines.find((line, i) => time >= line.start - 0.001 && time < (lyricLines[i + 1]?.start ?? line.end ?? Infinity) - 0.001)
+    || lyricLines.find(line => time >= line.start - 0.001 && time < (line.end ?? Infinity) - 0.001)
+    || null;
+}
+
+function lyricEventForChordCue(cue, maxDistance = 0.008) {
+  const events = allLyricEvents().filter(x => String(x.ev.text || '').trim());
+  if (!events.length || !cue) return null;
+  let best = null;
+  for (const item of events) {
+    const d = Math.abs(item.ev.time - cue.time);
+    // 只绑定“同一时间点/同一拍”的歌词字；有和弦但没字，就插入空格。
+    // 这里的 8ms 只用于 MIDI tick/浮点转换误差，不用于抓附近歌词。
+    if (d <= maxDistance && (!best || d < best.distance)) best = { ...item, distance: d };
+  }
+  return best;
+}
+
+function splitTrailingChordSpaceLines(maxBlocksPerLine = 10) {
+  lyricLines = window.FreezaLyricLayout.redistributeChordSpaceLines(lyricLines, { maxBlocksPerLine });
+}
+
+function bindChordCuesToLyrics() {
+  lyricLines.forEach(line => {
+    line.events = (line.events || []).filter(ev => !ev.chordSpace);
+    line.events.forEach(ev => {
+      ev.root = '';
+      ev.cueId = '';
+      delete ev.cueStartTime;
+      delete ev.cueEndTime;
+    });
+  });
+  (song?.chordCues || []).forEach((cue, i) => {
+    cue._lyricChar = '';
+    cue._lyricEventTime = null;
+    const id = `${i}-${cue.time}-${cue.chord}`;
+    const hit = lyricEventForChordCue(cue);
+    let ev = hit?.ev || null;
+    if (!ev) {
+      const line = lyricLineForTime(cue.time);
+      if (!line) return;
+      ev = { time: cue.time, text: ' ', root: cue.root, virtual: true, chordSpace: true };
+      line.events.push(ev);
+      line.events.sort((a, b) => a.time - b.time);
+    } else {
+      ev.root = cue.root;
+    }
+    ev.cueId = id;
+    // 下方提示：65% = cue.time - 71ms，70% = cue.time，75% = cue.time + 71ms。
+    // 歌词绑定字/空格也用这段窗口，保证视觉同步。
+    ev.cueStartTime = Math.max(0, cue.time - (5 / 70));
+    ev.cueEndTime = cue.time + (5 / 70);
+    cue._lyricChar = String(ev.text || '').trim() ? ([...String(ev.text)].at(-1) || '') : '';
+    cue._lyricIsBlank = !String(ev.text || '').trim();
+    cue._lyricEventTime = ev.time;
+  });
+  splitTrailingChordSpaceLines();
+}
+
+function lyricCharForCue(cue) {
+  if (cue?._lyricChar) return cue._lyricChar;
+  return '';
+}
+
+function cueLyricDisplayForCue(cue) {
+  const ch = lyricCharForCue(cue);
+  if (ch) return { text: ch, blank: false };
+  if (cue?._lyricIsBlank) return { text: '■', blank: true };
+  const fallback = lyricCharAt(cue?.time ?? currentPlayTime());
+  return fallback ? { text: fallback, blank: false } : { text: '■', blank: true };
+}
+
+function spawnLyricGhost(box, lines) {
+  // v74: 不再叠加旧字幕层，避免旧层盖住第一行；整组新字幕统一滚动。
+}
+
+function ensureKaraokeLines(lineCount) {
+  const box = document.querySelector('.karaoke');
+  if (!box) return [];
+  const status = box.querySelector('.karaoke-status');
+  for (let i = 1; i <= lineCount; i++) {
+    if (!$(`lyricLine${i}`)) {
+      const div = document.createElement('div');
+      div.id = `lyricLine${i}`;
+      div.className = `karaoke-line ${i === 1 ? 'active' : 'next'}`;
+      box.insertBefore(div, status || null);
+    }
+  }
+  return Array.from({ length: lineCount }, (_, i) => $(`lyricLine${i + 1}`)).filter(Boolean);
+}
+
+function karaokeLayoutMetrics(box = document.querySelector('.karaoke')) {
+  if (!box) return { count: 1, fontSize: 16, activeFontSize: 19 };
+  return karaokePerformance.getLayout(() => {
+    const style = getComputedStyle(box);
+    const availableHeight = Math.max(1, box.clientHeight - (parseFloat(style.paddingTop) || 0) - (parseFloat(style.paddingBottom) || 0));
+    const availableWidth = Math.max(1, box.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0));
+    const hasReadings = lyricLines.some(line => String(line?.reading || '').trim());
+    const lengths = lyricLines.map(line => Math.max(
+      [...String(line?.text || '')].length,
+      [...String(line?.reading || '')].length * 0.52,
+    )).filter(Boolean).sort((a, b) => a - b);
+    const representativeLength = lengths.length ? lengths[Math.floor((lengths.length - 1) * 0.9)] : 10;
+    const geometricFont = Math.sqrt(availableWidth * availableHeight) * 0.05;
+    const widthLimitedFont = availableWidth * 0.92 / Math.max(1, representativeLength + 1);
+    const fontSize = Math.max(12, Math.min(geometricFont, widthLimitedFont));
+    const activeFontSize = fontSize * 1.18;
+    const rowHeight = fontSize * (hasReadings ? 1.68 : 1.23);
+    const activeExtra = activeFontSize - fontSize;
+    const resolutionCount = Math.max(1, Math.floor((availableHeight - activeExtra) / Math.max(1, rowHeight)));
+    const count = lyricLines.length ? Math.min(lyricLines.length, resolutionCount) : resolutionCount;
+    box.style.setProperty('--lyric-font-size', `${fontSize.toFixed(2)}px`);
+    box.style.setProperty('--active-lyric-font-size', `${activeFontSize.toFixed(2)}px`);
+    box.style.setProperty('--lyric-row-height', `${rowHeight.toFixed(2)}px`);
+    return { count, fontSize, activeFontSize, rowHeight, availableHeight, availableWidth };
+  });
+}
+
+function updateLyrics() {
+  const box = document.querySelector('.karaoke');
+  if (isFreeMode() && document.body.classList.contains('free-performance')) {
+    box?.querySelectorAll('.karaoke-line').forEach(line => { line.textContent = ''; });
+    return;
+  }
+  const { count } = karaokeLayoutMetrics(box);
+  const lines = ensureKaraokeLines(count);
+  const l1 = lines[0];
+  if (!lines.every(Boolean)) return;
+  if (box) box.style.setProperty('--lyric-lines', count);
+  box?.querySelectorAll('.karaoke-line').forEach((line, i) => {
+    karaokePerformance.setDisplay(line, i < count ? '' : 'none');
+  });
+  const now = currentPlayTime();
+  if (!lyricLines.length) {
+    lines.forEach(l => setKaraokeLine(l, '', 0, false, now));
+    return;
+  }
+  let idx = lyricLines.findIndex((line, i) => now >= line.start && now < (lyricLines[i + 1]?.start ?? line.end));
+  if (idx < 0) idx = now < lyricLines[0].start ? 0 : lyricLines.length - 1;
+  const cur = lyricLines[idx];
+  if (idx !== lastLyricIndex) {
+    lastLyricIndex = idx;
+    if (box) {
+      box.classList.remove('roll');
+      void box.offsetWidth;
+      box.classList.add('roll');
+      karaokePerformance.clearGeometry();
+      setTimeout(() => {
+        box.classList.remove('roll');
+        karaokePerformance.clearGeometry();
+      }, 360);
+    }
+  }
+  const progressState = lyricProgressState(cur, now);
+  const progress = Number(progressState.progress || 0);
+  const activeSlot = Math.min(lines.length - 1, Math.max(0, Math.floor(lines.length * 0.62)));
+  const startIdx = Math.max(0, Math.min(idx - activeSlot, Math.max(0, lyricLines.length - lines.length)));
+  let activeEl = l1;
+  for (let i = 0; i < lines.length; i++) {
+    const lineIndex = startIdx + i;
+    const active = lineIndex === idx;
+    if (active) activeEl = lines[i];
+    setKaraokeLine(lines[i], lyricLines[lineIndex] || '', active ? progress : 0, active, now);
+  }
+  const visualProgress = syncActiveKaraokeProgress(activeEl, cur, progressState);
+  if (playing) emitLyricParticles(visualProgress);
+}
+
+function lyricCharAt(time) {
+  const ev = lyricEventAt(time, 0.72);
+  return ev && String(ev.text).trim() ? [...ev.text].at(-1) : '';
+}
+
+function emitLyricParticles(visualProgress) {
+  const now = performance.now();
+  const progress = Number(visualProgress?.progress);
+  if (now - lastLyricParticleAt < 95 || progress <= 0 || progress >= 99.5) return;
+  const x = Number(visualProgress.x);
+  const y = Number(visualProgress.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+  lastLyricParticleAt = now;
+  for (let i = 0; i < 4; i++) {
+    const p = lyricParticlePool.pop() || document.createElement('span');
+    p.className = 'lyric-particle';
+    const dx = (Math.random() * 42 - 12).toFixed(1) + 'px';
+    const dy = (-10 - Math.random() * 34).toFixed(1) + 'px';
+    p.style.left = `${x + Math.random() * 8 - 4}px`;
+    p.style.top = `${y + Math.random() * 8 - 4}px`;
+    p.style.setProperty('--dx', dx);
+    p.style.setProperty('--dy', dy);
+    p.style.setProperty('--rot', `${Math.random() * 260 - 130}deg`);
+    p.style.setProperty('--size', `${2 + Math.random() * 4}px`);
+    document.body.appendChild(p);
+    setTimeout(() => {
+      p.remove();
+      p.className = '';
+      if (lyricParticlePool.length < 48) lyricParticlePool.push(p);
+    }, 700);
+  }
+}
+
+async function loadSongMidi(songConfig) {
+  try {
+    await loadPatternManifest();
+    if (!songConfig?.path) throw new Error('未选择歌曲');
+    const res = await fetch(songConfig.path, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buffer = await res.arrayBuffer();
+    song = await parseEncryptedSongWithWasm(buffer);
+    song.catalog = songConfig;
+    // MIDI、歌词、和弦与全部 LiberLive 私有事件只有 WASM 一个权威解析器。
+    userPickEvents = [];
+    if (initialPickSlot !== null) insertUserPickEvent(initialPickSlot, 0);
+    const summary = song.noteTracks.map(t => `Track ${t.number}:${t.notes.length}`).join(' / ');
+    setPill('midiStatus', `✅ 加密曲谱已加载：${song.trackCount} 轨 · WASM`, 'ok');
+    setPill('trackStatus', `只播放 Track 1 主旋律 · ${song.melodyTrack.notes.length} 音 · ${summary}`, song.melodyTrack.notes.length ? 'ok' : 'warn');
+    refreshHarmonyTonesFromStyle(song.styleInfo);
+    updateCurrentKeyStatus();
+    buildLyricLines();
+    bindChordCuesToLyrics();
+    karaokePerformance.invalidateLayout();
+    renderPlaybackForMelody();
+    updateClock();
+    updateLyrics();
+    midiReady = true;
+    return song;
+  } catch (err) {
+    console.warn(err);
+    setPill('midiStatus', `⚠️ 加密曲谱加载失败：${err.message}`, 'warn');
+    setPill('trackStatus', '音轨：-', 'warn');
+    throw err;
+  }
+}
+
+function songConfigById(id) {
+  return SONG_CATALOG.find(item => item.id === id) || null;
+}
+
+function updateSongSelectionUi(message = '') {
+  document.querySelectorAll('#songScreen [data-song-id]').forEach(card => {
+    const selected = !freeLibraryEntrySelected && card.dataset.songId === selectedSongId;
+    card.classList.toggle('selected', selected);
+    card.classList.toggle('loading', selected && songSelectionPending);
+    card.disabled = songSelectionPending;
+  });
+  const freeEntry = $('songFreePerformance');
+  if (freeEntry) {
+    freeEntry.classList.toggle('selected', freeLibraryEntrySelected);
+    freeEntry.classList.toggle('loading', freeLibraryEntrySelected && songSelectionPending);
+    freeEntry.disabled = songSelectionPending;
+  }
+  const status = $('songSelectStatus');
+  if (status) status.textContent = message
+    || (freeLibraryEntrySelected ? '自由演奏已准备' : (selectedSongId ? '曲目已准备' : '请选择自由演奏或一首歌曲'));
+}
+
+function normalizedSongSearch(value) {
+  return window.FreezaSongSearch?.normalize(value)
+    || String(value || '').normalize('NFKC').toLocaleLowerCase('und').replace(/\s+/g, ' ').trim();
+}
+
+function songLanguage(config) {
+  return window.FreezaSongSearch?.languageOf(config) || (config.instrumental ? 'instrumental' : 'zh');
+}
+
+function songMatchesLibraryFilters(config) {
+  const query = normalizedSongSearch(songLibraryState.query);
+  const haystack = normalizedSongSearch([
+    config.title, config.artist, config.collection, config.subtitle, ...(config.aliases || []),
+  ].join(' '));
+  if (query && !query.split(' ').every(term => haystack.includes(term))) return false;
+  if (songLibraryState.artist !== 'all' && config.collection !== songLibraryState.artist
+    && config.artist !== songLibraryState.artist) return false;
+  if (songLibraryState.language !== 'all' && songLanguage(config) !== songLibraryState.language) return false;
+  if (songLibraryState.version === 'advanced' && !String(config.subtitle).includes('进阶')) return false;
+  if (songLibraryState.version === 'standard' && String(config.subtitle).includes('进阶')) return false;
+  return true;
+}
+
+function visibleSongCatalog() {
+  const originalOrder = new Map(SONG_CATALOG.map((item, index) => [item.id, index]));
+  const items = SONG_CATALOG.filter(songMatchesLibraryFilters);
+  const text = (left, right, field) => String(left[field] || '').localeCompare(String(right[field] || ''), 'zh-CN');
+  items.sort((left, right) => {
+    if (songLibraryState.sort === 'popular') return Number(right.hot || 0) - Number(left.hot || 0) || text(left, right, 'title');
+    if (songLibraryState.sort === 'title') return text(left, right, 'title') || text(left, right, 'artist');
+    if (songLibraryState.sort === 'artist') return text(left, right, 'artist') || text(left, right, 'title');
+    return Number(right.featured) - Number(left.featured)
+      || Number(left.order ?? 9999) - Number(right.order ?? 9999)
+      || Number(right.hot || 0) - Number(left.hot || 0)
+      || Number(originalOrder.get(left.id)) - Number(originalOrder.get(right.id));
+  });
+  return items;
+}
+
+function createSongCard(config) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = `song-card song-card-${config.theme || 'spectrum'}`;
+  card.dataset.songId = config.id;
+  card.style.setProperty('--song-hue', String(config.hue ?? 262));
+
+  const art = document.createElement('span');
+  art.className = 'song-art';
+  art.setAttribute('aria-hidden', 'true');
+  const artPrimary = document.createElement('i');
+  const artSecondary = document.createElement('i');
+  if (config.theme === 'moon') {
+    artPrimary.className = 'song-art-moon';
+    artSecondary.className = 'song-art-rings';
+  } else {
+    artPrimary.className = 'song-art-orbit';
+    artSecondary.className = 'song-art-wave';
+  }
+  const initial = document.createElement('b');
+  initial.textContent = Array.from(config.title)[0] || '♪';
+  art.append(artPrimary, artSecondary, initial);
+
+  const content = document.createElement('span');
+  content.className = 'song-card-content';
+  const kicker = document.createElement('span');
+  kicker.className = 'song-card-kicker';
+  kicker.textContent = config.collection || 'PERFORMANCE';
+  const title = document.createElement('strong');
+  title.textContent = config.title;
+  const artist = document.createElement('em');
+  artist.textContent = config.artist;
+  const tags = document.createElement('span');
+  tags.className = 'song-tags';
+  const languageLabel = { zh: '中文', ja: '日文', instrumental: '纯音乐' }[songLanguage(config)];
+  for (const value of [...new Set([languageLabel, config.melodyOnly ? '仅主旋律' : '', config.subtitle,
+    config.duration, `${config.bpm} BPM`, config.tone].filter(Boolean))]) {
+    const tag = document.createElement('i');
+    tag.textContent = value;
+    tags.append(tag);
+  }
+  content.append(kicker, title, artist, tags);
+
+  const action = document.createElement('span');
+  action.className = 'song-card-action';
+  const actionLabel = document.createElement('b');
+  actionLabel.textContent = '选择曲目';
+  const arrow = document.createElement('i');
+  arrow.textContent = '→';
+  action.append(actionLabel, arrow);
+  card.append(art, content, action);
+  return card;
+}
+
+function renderSongCatalog(resetLimit = false) {
+  const grid = $('songGrid');
+  if (!grid) return;
+  if (resetLimit) songLibraryState.limit = SONG_PAGE_SIZE;
+  grid.replaceChildren();
+  const count = $('songLibraryCount');
+  if (count) count.textContent = String(SONG_CATALOG.length).padStart(2, '0');
+  const matches = visibleSongCatalog();
+  const page = matches.slice(0, songLibraryState.limit);
+  grid.append(...page.map(createSongCard));
+  const resultCount = $('songResultCount');
+  if (resultCount) resultCount.textContent = `${matches.length} 首`;
+  const empty = $('songEmptyState');
+  if (empty) empty.hidden = matches.length > 0;
+  const more = $('songLoadMore');
+  if (more) {
+    more.hidden = page.length >= matches.length;
+    const remaining = Math.max(0, matches.length - page.length);
+    more.querySelector('span').textContent = `显示更多 · 还有 ${remaining} 首`;
+    more.querySelector('b').textContent = `${page.length} / ${matches.length}`;
+  }
+  updateSongSelectionUi();
+}
+
+function renderSongLibraryFilters() {
+  const languageCounts = new Map([['zh', 0], ['ja', 0], ['instrumental', 0]]);
+  SONG_CATALOG.forEach(item => languageCounts.set(songLanguage(item), (languageCounts.get(songLanguage(item)) || 0) + 1));
+  const languageSelect = $('songLanguageFilter');
+  if (languageSelect) {
+    languageSelect.replaceChildren(
+      new Option(`全部语言 · ${SONG_CATALOG.length}`, 'all'),
+      new Option(`中文 · ${languageCounts.get('zh') || 0}`, 'zh'),
+      new Option(`日文 · ${languageCounts.get('ja') || 0}`, 'ja'),
+      new Option(`纯音乐 · ${languageCounts.get('instrumental') || 0}`, 'instrumental'),
+    );
+    languageSelect.value = songLibraryState.language;
+  }
+  const counts = new Map();
+  SONG_CATALOG
+    .filter(item => songLibraryState.language === 'all' || songLanguage(item) === songLibraryState.language)
+    .forEach(item => counts.set(item.collection || item.artist, (counts.get(item.collection || item.artist) || 0) + 1));
+  if (songLibraryState.artist !== 'all' && !counts.has(songLibraryState.artist)) songLibraryState.artist = 'all';
+  const artists = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'));
+  const select = $('songArtistFilter');
+  if (select) {
+    const languageTotal = [...counts.values()].reduce((total, value) => total + value, 0);
+    select.replaceChildren(new Option(`全部歌手 · ${languageTotal}`, 'all'),
+      ...artists.map(([artist, total]) => new Option(`${artist} · ${total}`, artist)));
+    select.value = songLibraryState.artist;
+  }
+  const chips = $('songArtistChips');
+  if (chips) {
+    const preferred = ['all', '周杰伦', '王菲', '卫兰', '张学友'].filter(value => value === 'all' || counts.has(value));
+    chips.replaceChildren(...preferred.map(value => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.artist = value;
+      button.className = value === songLibraryState.artist ? 'selected' : '';
+      button.textContent = value === 'all' ? `全部 ${[...counts.values()].reduce((total, item) => total + item, 0)}` : `${value} ${counts.get(value)}`;
+      return button;
+    }));
+  }
+}
+
+async function selectSong(songId, { mode = null, freeEntry = false } = {}) {
+  if (songSelectionPending) return;
+  const config = songConfigById(songId);
+  if (!config) return;
+  freeLibraryEntrySelected = freeEntry;
+  if (mode) setPlayMode(mode);
+  selectedSongId = config.id;
+  songSelectionPending = true;
+  midiReady = false;
+  song = null;
+  lyricLines = [];
+  const selectionName = freeEntry ? '自由演奏' : `《${config.title}》`;
+  updateSongSelectionUi(`正在载入${selectionName}…`);
+  midiReadyPromise = loadSongMidi(config);
+  try {
+    await midiReadyPromise;
+    const selectedStatus = $('selectedSongStatus');
+    if (selectedStatus) selectedStatus.textContent = freeEntry
+      ? `自由演奏 · ${config.title}风格`
+      : `${config.title} · ${config.artist}`;
+    const gameTitle = $('gameSongTitle');
+    if (gameTitle) {
+      gameTitle.textContent = freeEntry ? '自由演奏' : config.title;
+      gameTitle.title = freeEntry ? `使用《${config.title}》的伴奏风格` : `${config.title} · ${config.artist}`;
+    }
+    document.body.classList.add('song-selected');
+    $('songScreen')?.setAttribute('aria-hidden', 'true');
+    $('startScreen')?.setAttribute('aria-hidden', 'false');
+    updateSongSelectionUi(freeEntry ? '自由演奏已载入' : `《${config.title}》已载入`);
+  } catch (error) {
+    console.warn('Song selection failed:', error);
+    updateSongSelectionUi(`载入失败：${error.message}`);
+  } finally {
+    songSelectionPending = false;
+    updateSongSelectionUi(song
+      ? (freeEntry ? '自由演奏已载入' : `《${config.title}》已载入`)
+      : '载入失败，请重试');
+  }
+}
+
+function selectFreePerformance() {
+  const config = SONG_CATALOG.find(item => item.id === 'later')
+    || SONG_CATALOG.find(item => item.featured)
+    || SONG_CATALOG[0];
+  if (!config) return;
+  selectSong(config.id, { mode: 'free', freeEntry: true });
+}
+
+function setupSongScreen() {
+  const screen = $('songScreen');
+  if (!screen) return;
+  renderSongLibraryFilters();
+  renderSongCatalog();
+  setupLaunchUiSounds(screen);
+  $('songGrid')?.addEventListener('click', event => {
+    const card = event.target.closest('[data-song-id]');
+    if (card) {
+      const config = songConfigById(card.dataset.songId);
+      selectSong(card.dataset.songId, { mode: config?.melodyOnly ? 'auto' : 'semi', freeEntry: false });
+    }
+  });
+  $('songFreePerformance')?.addEventListener('click', selectFreePerformance);
+  $('songSearchInput')?.addEventListener('input', event => {
+    songLibraryState.query = event.target.value;
+    $('songSearchClear')?.classList.toggle('visible', Boolean(event.target.value));
+    renderSongCatalog(true);
+  });
+  $('songSearchClear')?.addEventListener('click', () => {
+    const input = $('songSearchInput');
+    if (input) input.value = '';
+    songLibraryState.query = '';
+    $('songSearchClear')?.classList.remove('visible');
+    renderSongCatalog(true);
+    input?.focus();
+  });
+  $('songArtistChips')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-artist]');
+    if (!button) return;
+    songLibraryState.artist = button.dataset.artist || 'all';
+    if ($('songArtistFilter')) $('songArtistFilter').value = songLibraryState.artist;
+    renderSongLibraryFilters();
+    renderSongCatalog(true);
+  });
+  $('songArtistFilter')?.addEventListener('change', event => {
+    songLibraryState.artist = event.target.value;
+    renderSongLibraryFilters();
+    if ($('songArtistFilter')) $('songArtistFilter').value = songLibraryState.artist;
+    renderSongCatalog(true);
+  });
+  $('songLanguageFilter')?.addEventListener('change', event => {
+    songLibraryState.language = event.target.value;
+    songLibraryState.artist = 'all';
+    renderSongLibraryFilters();
+    renderSongCatalog(true);
+  });
+  $('songVersionFilter')?.addEventListener('change', event => {
+    songLibraryState.version = event.target.value;
+    renderSongCatalog(true);
+  });
+  $('songSortFilter')?.addEventListener('change', event => {
+    songLibraryState.sort = event.target.value;
+    renderSongCatalog(true);
+  });
+  $('songLoadMore')?.addEventListener('click', () => {
+    songLibraryState.limit += SONG_PAGE_SIZE;
+    renderSongCatalog();
+  });
+  updateSongSelectionUi();
+}
+
+function scheduleSongMelodyNote(note, delay) {
+  ensureAudio();
+  const midi = shiftedMidi(note.note);
+  const duration = Math.max(0.03, Number(note.duration) || 0.65);
+  audioScheduler.scheduleAudio(audio.ctx, delay, when => playNote(midi, duration, note.velocity, when), 'song-melody');
+  timers.push(setTimeout(() => showVisualNote(midi, 'playback'), delay));
+}
+
+function scheduleDrumNote(patternNote, drumCode, delay) {
+  ensureAudio();
+  audioScheduler.scheduleAudio(
+    audio.ctx,
+    delay,
+    when => playDrumPatternNote(patternNote, drumCode, when),
+    'drums',
+  );
+}
+
+function stopFreeDrumLoop() {
+  clearTimeout(freeDrumTimer);
+  freeDrumTimer = null;
+  freeDrumNextBarAt = 0;
+  audioScheduler.cancelGroup('drums');
+}
+
+function scheduleFreeDrumBar(anchorAt = performance.now() + 70) {
+  clearTimeout(freeDrumTimer);
+  freeDrumTimer = null;
+  const performanceOpen = window.FreezaDrumMode?.performanceOpen({
+    playMode,
+    playing,
+    gameStarted: document.body.classList.contains('game-started'),
+  }) ?? (isFreeMode() ? playing : document.body.classList.contains('game-started'));
+  if (!usesLiveDrumClock() || !performanceOpen || !freeDrumStarted || drumMode === 'off') return;
+  const pattern = currentDrumPattern();
+  if (!pattern?.notes?.length) return;
+  const beat = isFreeMode() ? freeModeState.beatMs() : beatMs();
+  const beats = patternBeats(pattern);
+  const barMs = beat * beats;
+  const now = performance.now();
+  let barAt = Math.max(Number(anchorAt) || now + 70, now + 40);
+  prepareDrumPattern(pattern, currentDrumCode || pattern.code);
+  for (const note of pattern.notes) {
+    const delay = Math.max(0, barAt + Number(note.beat || 0) * beat - now);
+    scheduleDrumNote(note, currentDrumCode || pattern.code, delay);
+  }
+  freeDrumNextBarAt = barAt + barMs;
+  freeDrumTimer = setTimeout(() => scheduleFreeDrumBar(freeDrumNextBarAt),
+    Math.max(40, freeDrumNextBarAt - performance.now() - 120));
+}
+
+function startFreeDrumLoop() {
+  const performanceOpen = window.FreezaDrumMode?.performanceOpen({
+    playMode,
+    playing,
+    gameStarted: document.body.classList.contains('game-started'),
+  }) ?? (isFreeMode() ? playing : document.body.classList.contains('game-started'));
+  if (!usesLiveDrumClock() || !performanceOpen || drumMode === 'off') return;
+  freeDrumStarted = true;
+  scheduleFreeDrumBar();
+}
+
+function restartFreeDrumLoop() {
+  if (!usesLiveDrumClock()) return;
+  const performanceOpen = window.FreezaDrumMode?.performanceOpen({
+    playMode,
+    playing,
+    gameStarted: document.body.classList.contains('game-started'),
+  }) ?? (isFreeMode() ? playing : document.body.classList.contains('game-started'));
+  const shouldRun = performanceOpen && drumMode !== 'off' && (drumMode === 'on' || freeDrumStarted);
+  stopFreeDrumLoop();
+  freeDrumStarted = shouldRun;
+  if (shouldRun) scheduleFreeDrumBar();
+}
+
+function syncFreeDrumsAfterModeChange() {
+  if (!usesLiveDrumClock()) return;
+  if (drumMode === 'off') {
+    freeDrumStarted = false;
+    stopFreeDrumLoop();
+  } else if (drumMode === 'on') {
+    startFreeDrumLoop();
+  } else {
+    freeDrumStarted = false;
+    stopFreeDrumLoop();
+  }
+}
+
+function scheduleFrom(offset = 0, preserveInteractive = false, skipChordCueAtOffset = false) {
+  if (!song || !song.melodyTrack.notes.length) return;
+  if (!preserveInteractive) resetInteractiveSequencer();
+  clearTimers();
+  playing = true;
+  updatePlayButton();
+  playOffset = offset;
+  playStartedAt = performance.now();
+  const notes = song.melodyTrack.notes.filter(e => e.time >= offset && shouldAutoPlayMelodyAt(e.time));
+  for (const e of notes) {
+    const delay = Math.max(0, (e.time - offset) * 1000);
+    scheduleSongMelodyNote(e, delay);
+  }
+  if (isManualMode() && drumMode === 'on') startFreeDrumLoop();
+  else scheduleDrumsFrom(offset);
+  if (isAutoChordMode()) scheduleAutoHarmonyFrom(offset);
+  else scheduleChordCues(offset, skipChordCueAtOffset);
+  timers.push(setTimeout(finishPlayback, Math.max(0, (song.duration - offset) * 1000) + 900));
+  startClockLoop(true, 30);
+  updateClock();
+  updateLyrics();
+  updatePlayButton();
+}
+
+function scheduleDrumsFrom(offset = 0) {
+  if (!drumsEnabled || drumMode === 'off') return;
+  if (drumMode === 'auto') {
+    if (song?.drumEvents?.length) return scheduleAutomatedDrumsFrom(offset);
+    return;
+  }
+  const pattern = currentDrumPattern();
+  if (!pattern?.notes?.length || !song?.duration) return;
+  prepareDrumPattern(pattern, currentDrumCode || pattern.code);
+  const beat = beatMs();
+  const barBeats = patternBeats(pattern);
+  const barSec = barBeats * beat / 1000;
+  const firstBar = Math.max(0, Math.floor(offset / barSec) - 1);
+  for (let bar = firstBar; bar * barSec <= song.duration + barSec; bar++) {
+    const barStart = bar * barSec;
+    for (const n of pattern.notes) {
+      const t = barStart + Number(n.beat || 0) * beat / 1000;
+      if (t < offset - 0.02 || t > song.duration + 0.5) continue;
+      const delay = Math.max(0, (t - offset) * 1000);
+      scheduleDrumNote(n, currentDrumCode || pattern.code, delay);
+    }
+  }
+}
+
+function rescheduleDrumsOnly() {
+  // 鼓机开关/鼓组切换不能重跑整首调度。尤其手动与一键模式中，
+  // scheduleFrom() 会清除当前互动片段并重置提示，看起来就像“开鼓无效”。
+  // 这里只撤销鼓机声部并按当前时间重新排鼓，主旋律、和弦和状态机不动。
+  audioScheduler.cancelGroup('drums');
+  if (usesLiveDrumClock()) {
+    syncFreeDrumsAfterModeChange();
+    return;
+  }
+  if (!playing || !drumsEnabled || drumMode === 'off') return;
+  scheduleDrumsFrom(currentPlayTime());
+}
+
+function scheduleAutomatedDrumsFrom(offset = 0) {
+  if (!song?.drumEvents?.length || !song?.duration) return;
+  const events = song.drumEvents;
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+    if (ev.switchType !== 1) continue;
+    const end = events.slice(i + 1).find(e => e.switchType === 0 || resolveDrumPatternCode(e.drumCodes))?.time ?? song.duration;
+    if (end <= offset - 0.02 || ev.time > song.duration + 0.5) continue;
+    const code = resolveDrumPatternCode(ev.drumCodes);
+    const pattern = code ? patterns.byCode.get(code) : null;
+    if (!pattern?.notes?.length) {
+      console.warn('No drum pattern for LLDRUM', ev.drumCodes);
+      continue;
+    }
+    prepareDrumPattern(pattern, code);
+    scheduleDrumPatternWindow(pattern, code, Math.max(offset, ev.time), ev.time, Math.min(end, song.duration), offset);
+  }
+}
+
+function scheduleDrumPatternWindow(pattern, drumCode, fromTime, anchorTime, endTime, offset) {
+  const plan = runWasmCommand({
+    op: 'patternWindow',
+    notes: pattern.notes,
+    beatSec: beatMs() / 1000,
+    barBeats: patternBeats(pattern),
+    fromTime,
+    anchorTime,
+    endTime: Math.min(endTime, (song?.duration || endTime) + 0.5),
+  });
+  for (const event of plan.events || []) {
+    const delay = Math.max(0, (Number(event.time) - offset) * 1000);
+    scheduleDrumNote(event.note, drumCode || pattern.code, delay);
+  }
+}
+function clearTimers() {
+  clearCountdown();
+  timers.forEach(clearTimeout); timers = [];
+  cueTimers.forEach(clearTimeout); cueTimers = [];
+  cancelMelodyAndDrumAudio();
+  stopCueRuntimeLoop();
+  activeCue = null;
+  clearHarmonyTimers(true);
+  harmonyAutoTimers.forEach(clearTimeout);
+  harmonyAutoTimers = [];
+  manualMelodyTimers.forEach(clearTimeout);
+  manualMelodyTimers = [];
+  stopClockLoop();
+  stopFreeDrumLoop();
+  document.querySelectorAll('#manualKeyboard .chord-cue, #manualKeyboard .chord-due').forEach(k => {
+    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit');
+    k.style.removeProperty('--chord-scale');
+  });
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => { el.textContent = ''; });
+  cueState.clear();
+}
+
+
+function scheduleAutoHarmonyFrom(offset = 0) {
+  // 自动模式 = 半自动的自动按键版：先出现提示，到点自动按下并产生同样特效。
+  if (!song?.chordCues?.length) return;
+  nextCueIndex = song.chordCues.findIndex(c => c.time >= offset - 0.02);
+  if (nextCueIndex < 0) nextCueIndex = song.chordCues.length;
+  activeCue = null;
+  startCueRuntimeLoop();
+}
+
+
+function scheduleChordCues(offset = 0, skipCueAtOffset = false) {
+  if (!song?.chordCues?.length) return;
+  const threshold = skipCueAtOffset ? offset + 0.02 : offset - 0.02;
+  nextCueIndex = song.chordCues.findIndex(c => c.time >= threshold);
+  if (nextCueIndex < 0) nextCueIndex = song.chordCues.length;
+  activeCue = null;
+  // 手动/一键在真正按下后才有进度；等待输入时不运行空的 60fps 循环。
+  if (isManualMode()) stopCueRuntimeLoop();
+  else startCueRuntimeLoop();
+}
+
+function startCue(midi, cue, runtime = null) {
+  // 取消上一个 cue 安排的延迟清理，避免它把本次 cue 的提示字擦掉。
+  clearTimeout(cueCleanupTimer);
+  clearManualCueVisuals();
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
+    const perfNow = performance.now();
+    const due = runtime?.due ?? (playing
+      ? playStartedAt + (cue.time - playOffset) * 1000
+      : perfNow + Math.max(0, (cue.time - currentPlayTime()) * 1000));
+    cueState.set(k.dataset.root, {
+      start: runtime?.start ?? due - 1000,
+      due,
+      end: runtime?.end ?? due + 400,
+      cueId: cue?._id,
+    });
+    const symbol = k.querySelector('.chord-symbol');
+    if (symbol) {
+      const display = cueLyricDisplayForCue(cue);
+      symbol.textContent = display.text;
+      symbol.dataset.text = display.text;
+      symbol.classList.toggle('blank', !!display.blank);
+      symbol.dataset.cueId = cue?._id || '';
+      delete symbol.dataset.floatShattered;
+      symbol.classList.remove('hit', 'fail');
+    }
+    k.classList.remove('chord-due', 'chord-press', 'chord-release');
+    k.classList.remove('chord-cue');
+    setCueFillProgress(k, 0);
+    void k.offsetWidth;
+    k.classList.add('chord-cue');
+  });
+}
+
+function hitCue(midi, cue) {
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
+    if (cue?._id && k.dataset.cueId && k.dataset.cueId !== cue._id) return;
+    k.classList.add('chord-due');
+  });
+}
+
+function clearManualCueVisuals() {
+  document.querySelectorAll('#manualKeyboard .key').forEach(k => {
+    k.dataset.pressGeneration = String((Number(k.dataset.pressGeneration) || 0) + 1);
+    k.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit', 'manual-next-cue-preview');
+    k.style.removeProperty('--chord-scale');
+    delete k.dataset.cueId;
+  });
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
+    el.textContent = '';
+    el.classList.remove('blank', 'hit', 'fail');
+    delete el.dataset.floatShattered;
+    delete el.dataset.cueId;
+    delete el.dataset.manualNextPreview;
+  });
+  cueState.clear();
+}
+
+function animateChordPress(key) {
+  if (!key) return;
+  const generation = (Number(key.dataset.pressGeneration) || 0) + 1;
+  key.dataset.pressGeneration = String(generation);
+  key.classList.remove('chord-release');
+  key.classList.add('chord-press');
+  setTimeout(() => {
+    if (Number(key.dataset.pressGeneration) !== generation) return;
+    key.classList.remove('chord-press');
+    key.classList.add('chord-release');
+    setTimeout(() => {
+      if (Number(key.dataset.pressGeneration) !== generation) return;
+      key.classList.remove('chord-release');
+    }, 220);
+  }, 520);
+}
+
+let cueCleanupTimer = null;
+
+function finishActiveCue() {
+  if (!activeCue) return;
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
+    if (el.textContent && !el.classList.contains('hit')) {
+      burstChordSymbol(el);
+      el.classList.add('hit');
+      el.closest('.key')?.classList.add('chord-hit');
+    }
+  });
+  clearTimeout(cueCleanupTimer);
+  cueCleanupTimer = setTimeout(clearManualCueVisuals, 620);
+  activeCue = null;
+}
+
+function burstChordSymbol(el) {
+  if (!el || el.dataset.floatShattered === '1') return;
+  el.dataset.floatShattered = '1';
+  const key = el.closest('.key');
+  if (!key) return;
+  const text = el.classList.contains('blank') ? '' : (el.dataset.text || el.textContent || '');
+  const count = text ? 8 : 5;
+  for (let i = 0; i < count; i++) {
+    const shard = document.createElement('span');
+    shard.className = 'chord-shard';
+    const angle = -Math.PI / 2 + (Math.random() - .5) * Math.PI * 1.4;
+    const dist = 14 + Math.random() * 30;
+    shard.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    shard.style.setProperty('--dy', `${Math.sin(angle) * dist - Math.random() * 10}px`);
+    shard.style.setProperty('--rot', `${Math.random() * 160 - 80}deg`);
+    shard.style.setProperty('--s', `${3 + Math.random() * 5}px`);
+    shard.style.setProperty('--delay', `${Math.random() * .06}s`);
+    key.appendChild(shard);
+    setTimeout(() => shard.remove(), 720);
+  }
+}
+
+// 没按/按早/按错：整键轻微快速摇晃，不显示 X（docs/UI.md）。
+function failActiveCue(showMissRating = true) {
+  if (!activeCue) return;
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${activeCue.midi}"]`).forEach(k => {
+    if (!activeCue.cue?._id || !k.dataset.cueId || k.dataset.cueId === activeCue.cue._id) {
+      if (showMissRating) showTimingRating(k, 'MISS');
+      k.classList.remove('chord-miss');
+      void k.offsetWidth;
+      k.classList.add('chord-miss');
+      setTimeout(() => k.classList.remove('chord-miss'), 820);
+    }
+  });
+  document.querySelectorAll('#manualKeyboard .chord-symbol').forEach(el => {
+    if (el.textContent && !el.classList.contains('hit')) {
+      el.classList.add('fail');
+    }
+  });
+  clearTimeout(cueCleanupTimer);
+  cueCleanupTimer = setTimeout(clearManualCueVisuals, 620);
+  activeCue = null;
+}
+
+function rejectEarlyChordPress(key) {
+  if (!key) return;
+  key.classList.remove('chord-early-reject');
+  void key.offsetWidth;
+  key.classList.add('chord-early-reject');
+  setTimeout(() => key.classList.remove('chord-early-reject'), 460);
+  if (navigator.vibrate) navigator.vibrate(35);
+}
+
+function startCueRuntimeLoop() {
+  stopCueRuntimeLoop();
+  const loop = () => {
+    updateCueRuntime();
+    cueRuntimeRaf = requestAnimationFrame(loop);
+  };
+  loop();
+}
+
+function stopCueRuntimeLoop() {
+  cancelAnimationFrame(cueRuntimeRaf);
+  cueRuntimeRaf = null;
+}
+
+function setCueFillProgress(key, progress) {
+  const scale = Math.max(0, Math.min(1, progress / 140));
+  key.style.setProperty('--chord-scale', scale.toFixed(4));
+}
+
+function updateCueRuntime() {
+  if ((!playing && !isManualMode()) || !song?.chordCues?.length) return;
+  // 手动/一键模式的色块是“已经开始演奏的小节进度”，不是谱面提前提示。
+  // 没按键、没有正在演奏的小节时，键盘上不产生进度条。
+  if (isManualMode()) {
+    const phrase = interactiveSession.phrase;
+    if (!phrase || phrase.musicVisualComplete
+      || !Number.isFinite(phrase.musicStartAt) || !Number.isFinite(phrase.musicEndAt)) return;
+    const duration = Math.max(1, phrase.musicEndAt - phrase.musicStartAt);
+    const progress = ((performance.now() - phrase.musicStartAt) / duration) * 100;
+    const midi = NATURAL_TO_MIDI[phrase.cue?.root || phrase.root];
+    document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(k => {
+      setCueFillProgress(k, progress);
+      if (progress >= 100) k.classList.add('chord-due');
+    });
+    return;
+  }
+  const now = currentPlayTime();
+  if (activeCue) {
+    const progress = 100 + (now - activeCue.cue.time) * 100;
+    document.querySelectorAll(`#manualKeyboard .key[data-midi="${activeCue.midi}"]`).forEach(k => {
+      if (!activeCue.cue?._id || !k.dataset.cueId || k.dataset.cueId === activeCue.cue._id) {
+        setCueFillProgress(k, progress);
+      }
+    });
+    if (!activeCue.hit && now >= activeCue.cue.time) {
+      activeCue.hit = true;
+      hitCue(activeCue.midi, activeCue.cue);
+      if (isAutoChordMode()) autoPressCue(activeCue);
+    }
+    // 生命周期 140%：应按点后 0.4s（110% 之后仍未按 → miss 打叉）。
+    if (now >= activeCue.cue.time + 0.4) {
+      if (activeCue.pressed) finishActiveCue();
+      else failActiveCue();
+    }
+    return;
+  }
+  const cue = song.chordCues[nextCueIndex];
+  if (!cue) return;
+  if (now >= cue.time - 1.0) {
+    cue._id = `${nextCueIndex}-${cue.time}-${cue.chord}`;
+    const midi = NATURAL_TO_MIDI[cue.root];
+    activeCue = { cue, midi, hit: now >= cue.time };
+    nextCueIndex++;
+    startCue(midi, cue);
+    if (activeCue.hit) {
+      hitCue(midi, cue);
+      if (isAutoChordMode()) autoPressCue(activeCue);
+    }
+  }
+}
+
+function clearCountdown() {
+  clearTimeout(countdownTimer);
+  countdownTimer = null;
+  countdownActive = false;
+  interactiveSession.finishCountdown();
+  clearCountdownCuePreview();
+  const el = $('countdownOverlay');
+  if (el) {
+    el.classList.remove('show', 'pop');
+    el.textContent = '';
+  }
+}
+
+function clearCountdownCuePreview() {
+  document.querySelectorAll('#manualKeyboard .countdown-cue-preview').forEach(key => {
+    key.classList.remove('countdown-cue-preview');
+    const symbol = key.querySelector('.chord-symbol[data-countdown-preview="1"]');
+    if (symbol) {
+      symbol.textContent = '';
+      delete symbol.dataset.countdownPreview;
+    }
+  });
+}
+
+function showCountdownCuePreview() {
+  clearCountdownCuePreview();
+  const cue = (song?.chordCues || []).find(item => item?.root && NATURAL_TO_MIDI[item.root]);
+  if (!cue) return;
+  const midi = NATURAL_TO_MIDI[cue.root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    const symbol = key.querySelector('.chord-symbol');
+    if (!symbol) return;
+    symbol.textContent = shiftedRootLabel(cue.root);
+    symbol.dataset.countdownPreview = '1';
+    key.classList.add('countdown-cue-preview');
+  });
+}
+
+function clearManualNextCuePreview() {
+  document.querySelectorAll('#manualKeyboard .manual-next-cue-preview').forEach(key => {
+    key.classList.remove('manual-next-cue-preview');
+    const symbol = key.querySelector('.chord-symbol[data-manual-next-preview="1"]');
+    if (!symbol) return;
+    symbol.textContent = '';
+    symbol.classList.remove('blank');
+    delete symbol.dataset.manualNextPreview;
+    delete symbol.dataset.cueId;
+  });
+}
+
+function showManualNextCuePreview(cue, preserveCurrentProgress = false) {
+  if (preserveCurrentProgress) clearManualNextCuePreview();
+  else {
+    clearManualCueVisuals();
+    activeCue = null;
+  }
+  if (!cue?.root || !NATURAL_TO_MIDI[cue.root]) return;
+  const midi = NATURAL_TO_MIDI[cue.root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    const symbol = key.querySelector('.chord-symbol');
+    if (!symbol) return;
+    const display = cueLyricDisplayForCue(cue);
+    symbol.textContent = display.text;
+    symbol.dataset.text = display.text;
+    symbol.dataset.cueId = cue?._id || '';
+    symbol.dataset.manualNextPreview = '1';
+    symbol.classList.toggle('blank', Boolean(display.blank));
+    key.classList.add('manual-next-cue-preview');
+  });
+}
+
+function finishManualCurrentCueVisual(phrase) {
+  stopCueRuntimeLoop();
+  const root = phrase?.cue?.root || phrase?.root;
+  const midi = NATURAL_TO_MIDI[root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    key.dataset.pressGeneration = String((Number(key.dataset.pressGeneration) || 0) + 1);
+    key.classList.remove('chord-cue', 'chord-due', 'chord-press', 'chord-release', 'chord-hit');
+    key.style.removeProperty('--chord-scale');
+    const symbol = key.querySelector('.chord-symbol');
+    // 同根音的下一小节会复用这个键；50% 时写入的下一提示必须保留。
+    if (symbol && symbol.dataset.manualNextPreview !== '1') {
+      symbol.textContent = '';
+      symbol.classList.remove('blank', 'hit', 'fail');
+      delete symbol.dataset.cueId;
+    }
+  });
+  cueState.delete(root);
+  activeCue = null;
+}
+
+function hideInteractivePhraseSymbol(phrase) {
+  const root = phrase?.cue?.root || phrase?.root;
+  const midi = NATURAL_TO_MIDI[root];
+  document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+    const symbol = key.querySelector('.chord-symbol');
+    if (!symbol) return;
+    symbol.textContent = '';
+    symbol.classList.remove('blank', 'hit', 'fail');
+    delete symbol.dataset.text;
+    delete symbol.dataset.cueId;
+    delete symbol.dataset.manualNextPreview;
+  });
+}
+
+function enterPlaybackAfterCountdown() {
+  if (isManualMode()) {
+    if (guideMode) {
+      playManualGuideIntro();
+      return;
+    }
+    playing = false;
+    clearTimers();
+    ensureManualClock();
+    scheduleChordCues(0);
+    showManualNextCuePreview((song?.chordCues || [])[0]);
+    updateClock();
+    updateLyrics();
+  } else {
+    playPlayback();
+  }
+}
+
+async function playManualGuideIntro() {
+  const introEnd = Math.min(song?.duration || 0, firstRealLyricStart());
+  if (!Number.isFinite(introEnd) || introEnd <= 0.001) {
+    playing = false;
+    playOffset = 0;
+    ensureManualClock();
+    scheduleChordCues(0);
+    showManualNextCuePreview((song?.chordCues || [])[0]);
+    updateClock();
+    updateLyrics();
+    return;
+  }
+  clearTimers();
+  playing = true;
+  playOffset = 0;
+  playStartedAt = performance.now();
+  updatePlayButton();
+  await startRecording();
+  for (const note of song.melodyTrack.notes.filter(note => note.time < introEnd - 0.001)) {
+    const delay = Math.max(0, note.time * 1000);
+    scheduleSongMelodyNote(note, delay);
+  }
+  startClockLoop(true, 30);
+  timers.push(setTimeout(() => {
+    clearTimers();
+    playing = false;
+    playOffset = introEnd;
+    const nextIndex = song.melodyTrack.notes.findIndex(note => note.time >= introEnd - 0.001);
+    nextManualMelodyIndex = nextIndex < 0 ? song.melodyTrack.notes.length : nextIndex;
+    ensureManualClock();
+    scheduleChordCues(introEnd);
+    showManualNextCuePreview((song?.chordCues || []).find(cue => cue.time >= introEnd - 0.02));
+    updatePlayButton();
+    updateClock();
+    updateLyrics();
+  }, introEnd * 1000));
+}
+
+function setLoadingStatus(text) {
+  const el = $('loadingText');
+  if (el) el.textContent = text;
+}
+
+const loadingCategoryProgress = new Map();
+const LOADING_CATEGORY_IDS = ['core', 'piano', 'pickA', 'pickB', 'drums', 'mic'];
+
+function updateLoadingOverall() {
+  const values = LOADING_CATEGORY_IDS.map(id => loadingCategoryProgress.get(id) || 0);
+  const progress = values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  const percent = Math.round(progress * 100);
+  const label = $('loadingPercent');
+  const bar = $('loadingOverallBar');
+  if (label) label.textContent = `${percent}%`;
+  if (bar) bar.style.width = `${percent}%`;
+}
+
+function setLoadingCategory(id, progress, detail = '', state = '') {
+  const normalized = Math.max(0, Math.min(1, Number(progress) || 0));
+  loadingCategoryProgress.set(id, normalized);
+  const item = document.querySelector(`.launch-loading-item[data-load-id="${id}"]`);
+  if (item) {
+    item.style.setProperty('--load-progress', normalized.toFixed(4));
+    item.classList.remove('loading', 'done', 'error');
+    const stateClass = state || (normalized >= 1 ? 'done' : normalized > 0 ? 'loading' : '');
+    if (stateClass) item.classList.add(stateClass);
+    const description = item.querySelector('small');
+    const status = item.querySelector('b');
+    if (description && detail) description.textContent = detail;
+    if (status) status.textContent = state === 'error' ? '部分可用' : normalized >= 1 ? '完成' : normalized > 0 ? `${Math.round(normalized * 100)}%` : '等待';
+  }
+  updateLoadingOverall();
+}
+
+function resetLoadingProgress() {
+  loadingCategoryProgress.clear();
+  LOADING_CATEGORY_IDS.forEach(id => setLoadingCategory(id, 0));
+  setLoadingStatus('正在检查演奏资源…');
+}
+
+function loadingTaskTimeout(promise, label, timeoutMs = 20000) {
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} loading timeout`)), timeoutMs);
+  });
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
+}
+
+function drumSelectionsForSong() {
+  const codes = new Set(availableDrumCodes().slice(0, 2));
+  if (currentDrumCode) codes.add(currentDrumCode);
+  for (const event of song?.drumEvents || []) {
+    const code = resolveDrumPatternCode(event.drumCodes);
+    if (code) codes.add(code);
+  }
+  return [...codes]
+    .map(code => [patterns.byCode.get(code), code])
+    .filter(([pattern]) => pattern?.notes?.length);
+}
+
+async function loadAllSongDrums() {
+  const selections = drumSelectionsForSong();
+  if (!selections.length) {
+    setLoadingCategory('drums', 1, '歌曲未使用鼓机');
+    return;
+  }
+  const counters = new Map(selections.map(([pattern, code]) => [code, {
+    done: 0,
+    total: Math.max(1, new Set(pattern.notes.map(note => drumPitchToMidi(note.pitch))).size),
+  }]));
+  const refresh = () => {
+    const values = [...counters.values()];
+    const done = values.reduce((sum, value) => sum + value.done, 0);
+    const total = values.reduce((sum, value) => sum + value.total, 0);
+    setLoadingCategory('drums', total ? done / total : 1, `${selections.length} 套歌曲鼓组`);
+  };
+  refresh();
+  await Promise.all(selections.map(([pattern, code]) => prepareDrumPattern(pattern, code, (done, total) => {
+    counters.set(code, { done, total: Math.max(1, total) });
+    refresh();
+  })));
+  setLoadingCategory('drums', 1, `${selections.length} 套歌曲鼓组`);
+}
+
+async function loadHarmonyCategory(id, preset) {
+  if (!preset) {
+    setLoadingCategory(id, 1, '当前风格未配置');
+    return;
+  }
+  const detail = preset.name || preset.code || `拨片 ${preset.label || ''}`;
+  setLoadingCategory(id, 0.01, detail);
+  await loadingTaskTimeout(fullyWarmHarmonyPreset(preset, (done, total) => {
+    setLoadingCategory(id, total ? done / total : 1, detail);
+  }), id);
+  setLoadingCategory(id, 1, detail);
+}
+
+async function prepareStartAssets() {
+  setLoadingStatus('解析 MIDI / WASM / 风格包…');
+  setLoadingCategory('core', 0.08, '解析 MIDI · WASM · 风格包');
+  await (midiReadyPromise || Promise.resolve());
+  setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 风格已解析`);
+  setLoadingStatus('启动音频引擎并缓存全部音色…');
+  ensureAudio();
+  if (window.Tone) await loadingTaskTimeout(Promise.resolve(Tone.start()), 'audio engine', 5000).catch(() => {});
+  try {
+    await window.FreezaPcmRecorder?.prepare?.(
+      audio.ctx,
+      `pcm-recorder-worklet.js?v=${ASSET_VERSION}`,
+    );
+  } catch (error) {
+    // 录音能力不是进入演奏的前置条件。Safari/旧浏览器初始化失败时，
+    // startRecording() 会自动退回 MediaRecorder，绝不能卡住开始按钮。
+    console.warn('PCM recorder preload skipped:', error);
+  }
+  setLoadingCategory('piano', 0.05, '等待钢琴采样解码');
+  const pianoTask = loadingTaskTimeout(Promise.resolve(sampleReadyPromise), 'piano')
+    .then(() => setLoadingCategory('piano', 1, '钢琴采样已缓存'))
+    .catch(error => {
+      console.warn('Piano preload failed:', error);
+      setLoadingCategory('piano', 1, '使用 WebAudio 备用音色', 'error');
+    });
+  const categoryTasks = [
+    pianoTask,
+    loadHarmonyCategory('pickA', HARMONY_TONES[0]).catch(error => {
+      console.warn('Pick A preload failed:', error);
+      setLoadingCategory('pickA', 1, '备用音色可用', 'error');
+    }),
+    loadHarmonyCategory('pickB', HARMONY_TONES[1] || HARMONY_TONES[0]).catch(error => {
+      console.warn('Pick B preload failed:', error);
+      setLoadingCategory('pickB', 1, '备用音色可用', 'error');
+    }),
+    loadingTaskTimeout(loadAllSongDrums(), 'drums').catch(error => {
+      console.warn('Drum preload failed:', error);
+      setLoadingCategory('drums', 1, '合成鼓组可用', 'error');
+    }),
+  ];
+  if (micEnabled) {
+    setLoadingCategory('mic', 0.1, '等待浏览器授权');
+    categoryTasks.push(loadingTaskTimeout(ensureMic(), 'microphone').then(ready => {
+      setLoadingCategory('mic', 1, ready ? '录音输入已连接' : '未获得权限', ready ? 'done' : 'error');
+    }));
+  } else {
+    setLoadingCategory('mic', 1, '当前未启用');
+  }
+  await Promise.all(categoryTasks);
+  setLoadingStatus('全部演奏资源已就绪');
+}
+
+function startCountdownThenPlay() {
+  const el = $('countdownOverlay');
+  const steps = ['3', '2', '1'];
+  let i = 0;
+  countdownActive = true;
+  interactiveSession.beginCountdown(playMode);
+  showCountdownCuePreview();
+  const tick = () => {
+    if (!el) return playPlayback();
+    el.textContent = steps[i];
+    el.classList.add('show');
+    playRaceCountdownSound(Number(steps[i]));
+    i++;
+    if (i < steps.length) {
+      countdownTimer = setTimeout(tick, 760);
+    } else {
+      countdownTimer = setTimeout(() => {
+        playRaceCountdownSound(0);
+        clearCountdown();
+        enterPlaybackAfterCountdown();
+      }, 760);
+    }
+  };
+  tick();
+}
+
+async function startFreePerformance({ reset = false } = {}) {
+  if (!song || !isFreeMode()) return;
+  clearTimers();
+  if (reset) {
+    playOffset = 0;
+    freeChordCount = 0;
+    resetHarmonyHalfSequence();
+    freeModeState.resetTaps();
+  }
+  playing = true;
+  playStartedAt = performance.now();
+  updatePlayButton();
+  updateFreePerformanceUi();
+  ensureAudio();
+  if (window.Tone) await Promise.resolve(Tone.start()).catch(() => {});
+  await startRecording();
+  startClockLoop(false, 10);
+  if (drumMode === 'on' || (drumMode === 'auto' && freeDrumStarted)) startFreeDrumLoop();
+  updateClock();
+  updateCurrentKeyStatus();
+  requestWakeLock();
+}
+
+function leaveFreePerformance() {
+  if (!isFreeMode()) return;
+  playing = false;
+  playOffset = 0;
+  freeDrumStarted = false;
+  startRequested = false;
+  clearTimers();
+  stopRecording(true);
+  releaseWakeLock();
+  document.body.classList.remove('game-started', 'free-performance');
+  $('startScreen')?.setAttribute('aria-hidden', 'false');
+  $('songScreen')?.setAttribute('aria-hidden', 'true');
+  updatePlayButton();
+  updateClock();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function playPlayback() {
+  if (!song) return;
+  if (isFreeMode()) {
+    await startFreePerformance();
+    return;
+  }
+  if (!countdownActive) interactiveSession.finishCountdown();
+  if (playOffset <= 0.01 || playOffset >= song.duration) {
+    nextManualMelodyIndex = 0;
+    resetHarmonyHalfSequence();
+  }
+  if (window.Tone) Tone.start();
+  requestWakeLock();
+  await startRecording();
+  scheduleFrom(playOffset >= song.duration ? 0 : playOffset);
+}
+
+function currentPlayTime() {
+  if (!song) return 0;
+  return playing ? playOffset + (performance.now() - playStartedAt) / 1000 : playOffset;
+}
+
+function playTrack2At(root) {
+  if (!song?.accompanimentTrack?.notes?.length) {
+    playVisualNote(shiftedMidi(NATURAL_TO_MIDI[root] || 60), 0.75, 'manual');
+    return;
+  }
+  const now = currentPlayTime();
+  const notes = song.accompanimentTrack.notes;
+  let bestIndex = -1;
+  let bestScore = Infinity;
+  for (let i = 0; i < notes.length; i++) {
+    if (i <= lastTrack2Index && Math.abs(notes[i].time - now) < 2.0) continue;
+    const delta = notes[i].time - now;
+    const score = Math.abs(delta) + (delta < -0.25 ? 0.9 : 0);
+    if (score < bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
+  }
+  const note = notes[bestIndex];
+  if (!note) {
+    playVisualNote(shiftedMidi(NATURAL_TO_MIDI[root] || 60), 0.75, 'manual');
+    return;
+  }
+  lastTrack2Index = bestIndex;
+  playVisualNote(shiftedMidi(note.note), note.velocity || 0.65, 'manual');
+}
+
+
+function autoPressCue(active) {
+  if (!active?.cue) return;
+  active.pressed = true;
+  const root = active.cue.root || rootFromChord(active.cue.chord) || 'C';
+  const keys = document.querySelectorAll(`#manualKeyboard .key[data-root="${root}"]`);
+  recordTimingGrade('SSS');
+  keys.forEach(key => {
+    showTimingRating(key, 'SSS', false);
+    showPickZoneFeedback(key, chordPatternSlotAtTime(active.cue.time));
+    key.classList.remove('chord-due', 'miss', 'chord-release');
+    animateChordPress(key);
+  });
+  playStyledHarmony(root, active.cue);
+  cueState.delete(root);
+}
+
+function showPickZoneFeedback(key, slot) {
+  if (!key) return;
+  const normalized = slot > 0 ? 1 : 0;
+  key.dataset.pick = normalized ? 'B' : 'A';
+  const zone = key.querySelector(`.pick-zone[data-pick-slot="${normalized}"]`);
+  if (!zone) return;
+  zone.classList.remove('picked');
+  void zone.offsetWidth;
+  zone.classList.add('picked');
+  setTimeout(() => zone.classList.remove('picked'), 420);
+}
+
+function normalizedHarmonyVelocity(rawVelocity) {
+  const raw = Number(rawVelocity || 56) / 127;
+  // 网页采样比原机声卡弱，不能直接把 pattern velocity 当最终音量。
+  // 保留强弱，但给伴奏单音足够的输出下限，避免听起来整体小一截。
+  return Math.max(0.42, Math.min(0.92, raw * 1.32));
+}
+
+function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) {
+  const replaceExisting = options.replaceExisting !== false;
+  const advancePhase = options.advancePhase !== false;
+  if (replaceExisting) clearHarmonyTimers();
+  const now = currentPlayTime();
+  const cue = forcedCue || chordAtTime(now) || { chord: root, root };
+  const chordName = chordNameForPerformedRoot(root, cue);
+  const scheduled = [];
+  let segmentEnd = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
+  if (!Number.isFinite(segmentEnd) || segmentEnd <= now + 0.02) segmentEnd = Math.min(song?.duration || now + 1.8, now + 1.8);
+  warmHarmonyTones(false);
+  const { slot, code, pattern } = chordPatternAtTime(now);
+  if (pattern?.notes?.length) {
+    const previousHalf = harmonyRepeat.get('last');
+    const half = advancePhase
+      ? nextHarmonyHalfForRoot(root)
+      : (previousHalf?.root === root ? (previousHalf.half === 0 ? 1 : 0) : 0);
+    // 和弦结构、pattern 前后半切分、音高映射和 BPM 布局统一由 WASM 计算。
+    const makePlan = planHalf => runWasmCommand({
+      op: 'harmonyPlan',
+      chord: chordName,
+      half: planHalf,
+      bpm: isFreeMode() ? freeModeState.bpm : (Number(song?.styleInfo?.tempo) || 75),
+      barBeats: patternBeats(pattern),
+      notes: pattern.notes,
+    });
+    const firstPlan = makePlan(half);
+    const availableDuration = Math.max(0, segmentEnd - now);
+    const segments = window.FreezaHarmonyContinuity?.planSegments({
+      firstHalf: half,
+      segmentDuration: Number(firstPlan.segmentDuration),
+      availableDuration,
+      continuous: song?.styleInfo?.continuousHarmony === true,
+    }) || [{ half, offset: 0 }];
+    for (const segment of segments) {
+      const plan = segment.offset === 0 && segment.half === half ? firstPlan : makePlan(segment.half);
+      const balancedEvents = (plan.events || []).map(event => ({
+        ...event,
+        velocity: normalizedHarmonyVelocity(event.velocity),
+      }));
+      const densityGain = window.FreezaHarmonyBalance?.planGain(balancedEvents) || 1;
+      for (const event of balancedEvents) {
+        const naturalDelay = Number(segment.offset) + Number(event.delay);
+        if (availableDuration > 0.04 && naturalDelay >= availableDuration - 0.015) continue;
+        const velocity = Math.max(0.04, Math.min(0.98, event.velocity * densityGain));
+        scheduled.push(playHarmonyVisualNote(
+          Number(event.midi),
+          naturalDelay * timeScale * 1000,
+          Math.max(0.045, Number(event.duration) * timeScale),
+          velocity,
+          slot + 1,
+        ));
+      }
+    }
+    if (advancePhase && segments.length) {
+      harmonyRepeat.set('last', { root, half: segments.at(-1).half });
+    }
+    return { root, cue, segmentEnd, events: scheduled };
+  }
+
+  // fallback MIDI 和弦轨：只在 LiberLive pattern 资源缺失时使用。
+  // Track 2 是普通和弦展开，不等同于原机 pattern，但可以保证普通/降级播放器仍有伴奏。
+  const fallbackNotes = track2SliceForCue(cue);
+  if (fallbackNotes.length) {
+    const start = fallbackNotes[0].time;
+    const naturalEnd = fallbackNotes.reduce((max, n) => Math.max(max, (n.time - start) + Number(n.duration || 0.45)), 0.001);
+    let nextTime = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
+    if (nextTime <= now + 0.08) nextTime = nextChordCueTimeAfter(now);
+    const targetEnd = Math.max(0.12, nextTime - now - 0.018);
+    // fallback 也遵守统一的最大约 1.6x 加速限制，禁止为了硬塞窗口压成 4x 快放。
+    const speed = Math.max(0.62, Math.min(1.12, timeScale, targetEnd / naturalEnd));
+    const balancedFallback = fallbackNotes.map(n => ({
+      note: n,
+      delay: (n.time - start) * speed,
+      duration: Math.max(0.08, Number(n.duration || 0.45) * speed),
+      velocity: normalizedHarmonyVelocity((n.velocity || 0.48) * 127),
+    }));
+    const densityGain = window.FreezaHarmonyBalance?.planGain(balancedFallback) || 1;
+    for (const event of balancedFallback) {
+      const n = event.note;
+      const delay = Math.max(0, (n.time - start) * 1000 * speed);
+      const velocity = Math.max(0.04, Math.min(0.98, event.velocity * densityGain));
+      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, event.duration, velocity, harmonyToneMode));
+    }
+    console.warn('No LiberLive chord pattern loaded; using Track 2 fallback chord notes for', code || currentHarmonyPreset()?.code);
+    return { root, cue, segmentEnd, events: scheduled };
+  }
+
+  console.warn('No LiberLive chord pattern or Track 2 fallback loaded for', code || currentHarmonyPreset()?.code);
+  return { root, cue, segmentEnd, events: scheduled };
+}
+
+function playWrongHarmonyPreview(root, cue, pickSlot = 0) {
+  // 错键必须听得出是错误和弦，但不能再启动一整段 pattern。完整 pattern 会
+  // 与当前正确伴奏持续交叠，连续错按后就像调度器乱序。这里只播放一个短促、
+  // 同时发声的和弦击键，而且不创建任何会被下一小节继承的 timer/phase 状态。
+  const chordName = chordNameForPerformedRoot(root, cue || { chord: root, root });
+  // 两个和弦音已经足够让玩家听出按错；不要为一次错误输入同时创建 3–4 个
+  // 长 release 采样声部，否则手机上连续乱按会堆出几十个并发音源。
+  const notes = [...new Set(parseChordNotes(chordName).map(Number).filter(Number.isFinite))].slice(0, 2);
+  const toneMode = Math.max(1, Math.min(HARMONY_TONES.length, Number(pickSlot) + 1));
+  for (const midi of notes) {
+    playHarmonyToneNote(midi, 0.14, 0.38, toneMode);
+    flash('playbackKeyboard', midi, 180, 'harmony');
+  }
+}
+function pausePlayback() {
+  if (!playing) return;
+  playOffset += (performance.now() - playStartedAt) / 1000;
+  playing = false;
+  updatePlayButton();
+  clearTimers();
+  resetInteractiveSequencer();
+  releaseWakeLock();
+  updateClock();
+  updateLyrics();
+  $('nowPlaying').textContent = '已暂停';
+}
+function stopPlayback() {
+  playing = false;
+  updatePlayButton();
+  playOffset = 0;
+  nextManualMelodyIndex = 0;
+  clearTimers();
+  resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
+  freeDrumStarted = false;
+  stopRecording(false);
+  releaseWakeLock();
+  updateClock();
+  updateLyrics();
+  document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+  $('nowPlaying').textContent = '已停止';
+}
+function finishPlayback() {
+  playing = false;
+  updatePlayButton();
+  playOffset = song?.duration || 0;
+  nextManualMelodyIndex = 0;
+  clearTimers();
+  resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
+  stopRecording(true);
+  releaseWakeLock();
+  updateClock();
+  updateLyrics();
+  document.querySelectorAll('.key.active').forEach(k => k.classList.remove('active'));
+  $('nowPlaying').textContent = '播放完成';
+  showPerformanceResults();
+}
+function restartPlayback() {
+  resetTimingRatings();
+  if (isFreeMode()) {
+    playing = false;
+    playOffset = 0;
+    freeDrumStarted = false;
+    clearTimers();
+    resetHarmonyHalfSequence();
+    startFreePerformance({ reset: true });
+    return;
+  }
+  stopPlayback();
+  playPlayback();
+}
+
+function rangeForMelody() {
+  if (isFreeMode()) return { start: 48, end: 72 };
+  const melodyNotes = song?.melodyTrack?.notes?.map(n => shiftedMidi(n.note)) || [];
+  // 和弦提示可达数百个，但实际和弦名通常只有十几个。音域只需解析唯一值。
+  const chordNames = new Set((song?.chordCues || []).map(c => transposeChordName(c.chord)).filter(Boolean));
+  const chordNotes = [...chordNames].flatMap(chord => parseChordNotes(chord));
+  const notes = [...melodyNotes, ...chordNotes];
+  if (!notes.length) return { start: 48, end: 72 };
+  let min = Math.min(...notes);
+  let max = Math.max(...notes);
+  min = Math.max(21, min - 2);
+  max = Math.min(108, max + 2);
+  while (min > 21 && min % 12 !== 0) min--;
+  while (max < 108 && max % 12 !== 11) max++;
+  return { start: min, end: max };
+}
+
+function whiteCount(start, end) {
+  let count = 0;
+  for (let midi = start; midi <= end; midi++) {
+    if (!NOTE_NAMES[midi % 12].includes('#')) count++;
+  }
+  return count;
+}
+
+function renderPlaybackForMelody() {
+  const { start, end } = rangeForMelody();
+  renderKeyboard('playbackKeyboard', start, end, 'playback');
+  const kb = $('playbackKeyboard');
+  const whites = whiteCount(start, end);
+  const viewport = kb.parentElement.clientWidth || window.innerWidth;
+  const width = Math.max(8, Math.floor((viewport - 24) / Math.max(1, whites)));
+  kb.style.setProperty('--white-key', `${width}px`);
+  kb.style.minWidth = '0';
+  kb.style.width = '100%';
+}
+
+function renderKeyboard(id, start, end, source) {
+  const kb = $(id); kb.innerHTML = '';
+  for (let midi = start; midi <= end; midi++) {
+    const name = NOTE_NAMES[midi % 12];
+    const key = document.createElement('div');
+    key.className = `key ${name.includes('#') ? 'black' : 'white'} note-${name[0].toLowerCase()}`;
+    key.dataset.midi = midi;
+    key.textContent = '';
+    key.title = labelOf(midi);
+    key.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      requestWakeLock();
+      playVisualNote(midi, 0.6, source);
+    });
+    kb.appendChild(key);
+  }
+}
+
+
+function clearManualMelodyTimers() {
+  manualMelodyTimers.forEach(clearTimeout);
+  manualMelodyTimers = [];
+  cancelMelodyAndDrumAudio();
+}
+
+function cancelMelodyAndDrumAudio() {
+  // scheduleFrom() 会被主旋律、Key、鼓机和拨片开关用于原地重排。
+  // 只清 setTimeout 不足以撤销已交给短前瞻调度器的旧任务；否则关闭
+  // 主旋律后，旧 song-melody 队列仍会在后面的拨片事件附近继续发声。
+  audioScheduler.cancelGroup('song-melody');
+  audioScheduler.cancelGroup('drums');
+  audioScheduler.cancelGroup('interactive-melody');
+}
+
+function scheduleInteractiveMelodyEvent(note, idx, delay) {
+  ensureAudio();
+  const midi = shiftedMidi(note.note);
+  const velocity = note.velocity || 0.65;
+  const event = { note, idx, dueAt: performance.now() + delay, fired: false, timer: null, audioTask: null };
+  event.audioTask = audioScheduler.scheduleAudio(audio.ctx, delay, when => {
+    event.fired = true;
+    return playNote(midi, 0.65, velocity, when);
+  }, 'interactive-melody');
+  event.timer = setTimeout(() => {
+    playOffset = note.time;
+    showVisualNote(midi, 'playback');
+    if (nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
+    updateClock();
+    updateLyrics();
+  }, delay);
+  manualMelodyTimers.push(event.timer);
+  return event;
+}
+
+function ensureManualClock() {
+  if (clockTimer) return;
+  startClockLoop(true, 30);
+}
+
+function playNextManualMelodyNote(cue, timeScale = 1) {
+  const notes = song?.melodyTrack?.notes || [];
+  if (!notes.length || nextManualMelodyIndex >= notes.length) return { events: [], segmentEnd: playOffset };
+  ensureManualClock();
+
+  // 手动片段必须以和弦 cue 的谱面时间为原点。旧实现以该段第一个旋律音
+  // 为原点，会吞掉 cue 到首音之间的休止：例如《月亮代表我的心》第二个 C
+  // 在 1.564s，而旋律首音在 1.956s，旧代码会把它提前约 391ms，随后越来越
+  // 像双倍速并与和弦错位。
+  const cueStart = Number.isFinite(Number(cue?.time)) ? Number(cue.time) : playOffset;
+  while (nextManualMelodyIndex < notes.length
+    && Number(notes[nextManualMelodyIndex].time) < cueStart - 0.001) nextManualMelodyIndex += 1;
+  const startIndex = nextManualMelodyIndex;
+  const nextCue = nextCueAfter(cue);
+  // 最后一个和弦必须把剩余主旋律完整播完，不能只截取固定 1.8 秒后永远到不了结算。
+  const chunkEnd = Math.min(song?.duration || Infinity, nextCue?.time ?? (song?.duration || cueStart + 1.8));
+  let endIndex = notes.findIndex((n, i) => i > startIndex && n.time >= chunkEnd - 0.001);
+  if (endIndex < 0) endIndex = nextCue ? Math.min(notes.length, startIndex + 8) : notes.length;
+  endIndex = Math.max(endIndex, startIndex + 1);
+
+  const chunk = notes.slice(startIndex, endIndex);
+  playing = false;
+
+  const events = chunk.map((note, localIndex) => {
+    const idx = startIndex + localIndex;
+    const delay = Math.max(0, (note.time - cueStart) * timeScale * 1000);
+    return scheduleInteractiveMelodyEvent(note, idx, delay);
+  });
+  return { events, segmentEnd: chunkEnd, endIndex, startTime: cueStart };
+}
+
+function resetInteractiveSequencer() {
+  interactiveSession.reset(playMode);
+  oneKeyNextCueIndex = -1;
+  oneKeyLastBarEndAt = 0;
+  oneKeyLastBarDurationMs = 0;
+}
+
+function nextCueAfter(cue) {
+  const cues = song?.chordCues || [];
+  const index = cue ? cues.indexOf(cue) : -1;
+  return index >= 0 ? (cues[index + 1] || null) : null;
+}
+
+function interactiveCueIsQueued(cue) {
+  return interactiveSession.hasQueuedCue(cue);
+}
+
+function cueForInteractivePress(root) {
+  let cue = activeCue?.cue || chordAtTime(currentPlayTime()) || null;
+  if (interactiveSession.phrase?.cue && cue === interactiveSession.phrase.cue) {
+    const next = nextCueAfter(interactiveSession.phrase.cue);
+    if (next && (!root || next.root === root || rootFromChord(next.chord) === root)) cue = next;
+  }
+  return cue || { chord: root, root, time: currentPlayTime() };
+}
+
+function takeNextOneKeyCue() {
+  const cues = song?.chordCues || [];
+  if (!cues.length) return null;
+  if (oneKeyNextCueIndex < 0) {
+    const now = currentPlayTime();
+    const index = cues.findIndex(cue => Number(cue.time) >= now - 0.08);
+    oneKeyNextCueIndex = index >= 0 ? index : cues.length;
+  }
+  const cue = cues[oneKeyNextCueIndex] || null;
+  if (cue) oneKeyNextCueIndex += 1;
+  return cue;
+}
+
+function oneKeyOutputKey(cue, fallbackKey) {
+  const root = cue?.root || rootFromChord(cue?.chord);
+  return (root && document.querySelector(`#manualKeyboard .key[data-root="${root}"]`)) || fallbackKey;
+}
+
+function oneKeyPressTiming(now = performance.now()) {
+  if (interactiveSession.phrase && Number.isFinite(interactiveSession.phrase.musicStartAt)
+    && Number.isFinite(interactiveSession.phrase.musicEndAt)) {
+    const duration = Math.max(1, interactiveSession.phrase.musicEndAt - interactiveSession.phrase.musicStartAt);
+    const progress = ((now - interactiveSession.phrase.musicStartAt) / duration) * 100;
+    const judged = window.FreezaInteractiveState.judgeOneKeyTiming(
+      progress,
+      Boolean(interactiveSession.queue.length || interactiveSession.transitioning),
+    );
+    return {
+      ...judged,
+      queued: judged.accepted,
+    };
+  }
+  if (oneKeyLastBarEndAt > 0 && oneKeyLastBarDurationMs > 0) {
+    const progress = 100 + ((now - oneKeyLastBarEndAt) / oneKeyLastBarDurationMs) * 100;
+    return { ...window.FreezaInteractiveState.judgeOneKeyWaitingTiming(progress), queued: false };
+  }
+  return { accepted: true, progress: 100, grade: 'SSS', queued: false };
+}
+
+function manualMusicPressTiming(now = performance.now()) {
+  if (!interactiveSession.phrase || !Number.isFinite(interactiveSession.phrase.musicStartAt)
+    || !Number.isFinite(interactiveSession.phrase.musicEndAt)) {
+    return { accepted: true, progress: 100, grade: 'SSS' };
+  }
+  const duration = Math.max(1, interactiveSession.phrase.musicEndAt - interactiveSession.phrase.musicStartAt);
+  const progress = ((now - interactiveSession.phrase.musicStartAt) / duration) * 100;
+  return window.FreezaInteractiveState.judgeManualTiming(progress);
+}
+
+function timingForInteractivePhrase(cue, timing = {}) {
+  const nowSong = currentPlayTime();
+  const nowPerf = performance.now();
+  const cueTime = Number.isFinite(Number(cue?.time)) ? Number(cue.time) : nowSong;
+  const nextTime = nextChordCueTimeAfter(cueTime);
+  return runWasmCommand({
+    op: 'interactiveTiming',
+    nowSong,
+    nowPerf,
+    cueTime,
+    nextTime,
+    songDuration: song?.duration || cueTime + 1.8,
+    progress: Number.isFinite(Number(timing.progress)) ? Number(timing.progress) : null,
+    dueAt: Number(timing.dueAt || nowPerf),
+  });
+}
+
+function startInteractivePhraseNow(root, cue, timing = {}) {
+  clearHarmonyTimers();
+  if (isOneKeyMode()) {
+    oneKeyLastBarEndAt = 0;
+    oneKeyLastBarDurationMs = 0;
+  }
+  const scheduleTiming = timingForInteractivePhrase(cue, timing);
+  let melody = { events: [], segmentEnd: scheduleTiming.boundary };
+  if (isManualMode()) {
+    clearManualMelodyTimers();
+    melody = playNextManualMelodyNote(cue, scheduleTiming.timeScale);
+  }
+  const harmony = playStyledHarmony(root, cue, scheduleTiming.timeScale);
+  interactiveSession.startPhrase({
+    root,
+    cue: harmony?.cue || cue,
+    segmentEnd: Math.max(Number(melody?.segmentEnd || 0), Number(harmony?.segmentEnd || 0)),
+    melodyEvents: melody?.events || [],
+    harmonyEvents: harmony?.events || [],
+  });
+  const phrase = interactiveSession.phrase;
+  const phraseStartedAt = performance.now();
+  const naturalDurationMs = Math.max(60,
+    (Number(scheduleTiming.boundary) - Number(cue?.time || 0)) * Number(scheduleTiming.timeScale || 1) * 1000);
+  // “小节结束”以谱面边界为准，不以最后一个 Note On 是否已触发为准。
+  // 采样的最后一个音可能很早就触发，但这不代表下一小节可以立刻开始。
+  phrase.naturalEndAt = phraseStartedAt + naturalDurationMs;
+  if (isManualMode()) {
+    phrase.musicStartAt = phraseStartedAt;
+    phrase.musicEndAt = phraseStartedAt + naturalDurationMs;
+    cue._id ||= `interactive-${oneKeyNextCueIndex}-${cue.time}-${cue.chord}`;
+    const phraseMidi = NATURAL_TO_MIDI[cue.root || rootFromChord(cue.chord) || root];
+    activeCue = { cue, midi: phraseMidi, hit: true, pressed: true, interactive: true };
+    startCue(phraseMidi, cue, {
+      start: phrase.musicStartAt,
+      due: phrase.musicEndAt,
+      end: phrase.musicStartAt + naturalDurationMs * 1.2,
+    });
+    startCueRuntimeLoop();
+  }
+  if (isManualMode()) {
+    const nextPreviewCue = nextCueAfter(phrase.cue);
+    if (nextPreviewCue) {
+      const previewTimer = setTimeout(() => {
+        if (interactiveSession.phrase !== phrase || interactiveSession.transitioning) return;
+        hideInteractivePhraseSymbol(phrase);
+        showManualNextCuePreview(nextPreviewCue, true);
+      }, Math.max(0, naturalDurationMs * 0.5));
+      manualMelodyTimers.push(previewTimer);
+    }
+  }
+  if (isOneKeyMode()) {
+    const naturalEndAt = phrase.musicEndAt;
+    const completionTimer = setTimeout(() => {
+      if (interactiveSession.phrase !== phrase || interactiveSession.transitioning) return;
+      playOffset = Math.max(playOffset, Math.min(song?.duration || scheduleTiming.boundary, scheduleTiming.boundary));
+      interactiveSession.clearPhrase(phrase);
+      oneKeyLastBarEndAt = performance.now();
+      oneKeyLastBarDurationMs = naturalDurationMs;
+      ensureManualClock();
+      const next = interactiveSession.shiftQueue();
+      scheduleChordCues(playOffset, Boolean(next));
+      updateClock();
+      updateLyrics();
+      // 极短小节可能在事件循环边界才收到下一次输入；下一小节仍从头开始。
+      if (next) beginInteractivePhrase(next.root, next.cue, { progress: 100, dueAt: performance.now() });
+      else {
+        const upcoming = nextCueAfter(phrase.cue);
+        finishManualCurrentCueVisual(phrase);
+        if (upcoming) {
+          const alreadyShown = [...document.querySelectorAll('#manualKeyboard .chord-symbol[data-manual-next-preview="1"]')]
+            .some(symbol => symbol.dataset.cueId === (upcoming?._id || ''));
+          if (!alreadyShown) showManualNextCuePreview(upcoming, true);
+        } else {
+          clearManualCueVisuals();
+          finishPlayback();
+        }
+      }
+    }, Math.max(0, naturalEndAt - performance.now()) + 12);
+    manualMelodyTimers.push(completionTimer);
+  } else if (isManualMode()) {
+    const completedPhrase = interactiveSession.phrase;
+    // 下一键提示跟音乐小节边界走，不能等待钢琴/吉他采样的 release 尾音。
+    // 否则长延音会让进度已经结束后仍空白很久。
+    const completedDueAt = Math.max(performance.now(), Number(completedPhrase.musicEndAt || 0));
+    const completionTimer = setTimeout(() => {
+      if (interactiveSession.phrase !== completedPhrase || interactiveSession.transitioning) return;
+      interactiveSession.markPhraseComplete(completedPhrase);
+      playOffset = Math.max(playOffset,
+        Math.min(song?.duration || scheduleTiming.boundary, Number(scheduleTiming.boundary)));
+      if (interactiveSession.queue.length) {
+        finishManualCurrentCueVisual(completedPhrase);
+        finishInteractiveTransition('manual', scheduleTiming.boundary);
+        return;
+      }
+      const next = nextCueAfter(completedPhrase.cue);
+      finishManualCurrentCueVisual(completedPhrase);
+      if (next) {
+        const alreadyShown = [...document.querySelectorAll('#manualKeyboard .chord-symbol[data-manual-next-preview="1"]')]
+          .some(symbol => symbol.dataset.cueId === (next?._id || ''));
+        if (!alreadyShown) showManualNextCuePreview(next, true);
+      } else finishPlayback();
+    }, Math.max(0, completedDueAt - performance.now()) + 12);
+    manualMelodyTimers.push(completionTimer);
+  } else if (isSemiAutoMode()) {
+    // 半自动允许玩家在当前伴奏尾音尚未结束时输入下一和弦。若下一和弦
+    // 还没迟到，就只排队并让当前伴奏自然结束，不能为了“腾位置”而快放。
+    const completedPhrase = phrase;
+    const completionTimer = setTimeout(() => {
+      if (interactiveSession.phrase !== completedPhrase || interactiveSession.transitioning) return;
+      interactiveSession.clearPhrase(completedPhrase);
+      const next = interactiveSession.shiftQueue();
+      if (next) beginInteractivePhrase(next.root, next.cue, { progress: 100, dueAt: performance.now() });
+    }, naturalDurationMs + 12);
+    manualMelodyTimers.push(completionTimer);
+  }
+}
+
+function beginInteractivePhrase(root, cue, timing = {}) {
+  const scheduleTiming = timingForInteractivePhrase(cue, timing);
+  if (scheduleTiming.earlyRejected) return;
+  if (scheduleTiming.waitMs > 24) {
+    const request = { root, cue, timing: { ...timing, progress: 100, dueAt: performance.now() + scheduleTiming.waitMs } };
+    const waiting = { root, cue, waiting: true, waitingUntil: performance.now() + scheduleTiming.waitMs, waitingTimer: null };
+    waiting.waitingTimer = setTimeout(() => {
+      if (interactiveSession.phrase !== waiting) return;
+      interactiveSession.clearPhrase(waiting);
+      startInteractivePhraseNow(request.root, request.cue, request.timing);
+      if (interactiveSession.queue.length) {
+        const next = interactiveSession.shiftQueue();
+        setTimeout(() => requestInteractivePhrase(next.root, next.cue, next.timing), 0);
+      }
+    }, scheduleTiming.waitMs);
+    manualMelodyTimers.push(waiting.waitingTimer);
+    interactiveSession.setWaiting(waiting);
+    return;
+  }
+  startInteractivePhraseNow(root, cue, timing);
+}
+
+function pendingInteractiveEvents(phrase, nowSong, nowPerf) {
+  const harmony = (phrase?.harmonyEvents || [])
+    .filter(event => !event.fired)
+    .map(event => ({ type: 'harmony', event, remaining: Math.max(0, (event.dueAt - nowPerf) / 1000) }));
+  if (isManualMode()) {
+    return harmony.concat((phrase?.melodyEvents || [])
+      .filter(event => !event.fired)
+      .map(event => ({ type: 'melody', event, remaining: Math.max(0, (event.dueAt - nowPerf) / 1000) })));
+  }
+  const boundary = Number(phrase?.segmentEnd || nowSong);
+  const melody = (song?.melodyTrack?.notes || [])
+    .map((note, idx) => ({ note, idx }))
+    .filter(({ note }) => note.time > nowSong + 0.008 && note.time < boundary - 0.001 && shouldAutoPlayMelodyAt(note.time))
+    .map(({ note, idx }) => ({ type: 'melody', event: { note, idx }, remaining: note.time - nowSong }));
+  return harmony.concat(melody);
+}
+
+function finishInteractiveTransition(mode, boundary) {
+  playOffset = Math.max(playOffset, Math.min(song?.duration || boundary, boundary));
+  interactiveSession.finishTransition();
+  // 触发追赶时，队首就是玩家已经提前按下、马上要真正播放的 boundary cue。
+  // 重新调度提示时必须跳过它，否则同一个 cue 会先以 100% 进度瞬间重画一次，
+  // 看起来像“下一个和弦飞快升起”。
+  const next = interactiveSession.shiftQueue();
+  if (mode === 'semi') {
+    scheduleFrom(playOffset, true, Boolean(next));
+  } else {
+    const notes = song?.melodyTrack?.notes || [];
+    const boundaryIndex = notes.findIndex(note => note.time >= playOffset - 0.001);
+    if (boundaryIndex >= 0) nextManualMelodyIndex = Math.max(nextManualMelodyIndex, boundaryIndex);
+    ensureManualClock();
+    scheduleChordCues(playOffset, Boolean(next));
+    updateClock();
+    updateLyrics();
+  }
+  if (next) beginInteractivePhrase(next.root, next.cue, next.timing);
+  if (interactiveSession.queue.length) {
+    const following = interactiveSession.shiftQueue();
+    setTimeout(() => requestInteractivePhrase(following.root, following.cue, following.timing), 0);
+  }
+}
+
+function accelerateInteractivePhrase() {
+  if (!interactiveSession.phrase || interactiveSession.transitioning) return;
+  const mode = isManualMode() ? 'manual' : 'semi';
+  const nowSong = currentPlayTime();
+  const nowPerf = performance.now();
+  const boundary = Math.max(nowSong, Math.min(song?.duration || Infinity, Number(interactiveSession.phrase.segmentEnd || nowSong)));
+  const pending = pendingInteractiveEvents(interactiveSession.phrase, nowSong, nowPerf);
+  if (!pending.length) return finishInteractiveTransition(mode, boundary);
+
+  const catchup = runWasmCommand({ op: 'catchup', remaining: pending.map(item => item.remaining) });
+  const catchupDuration = Number(catchup.duration);
+  const scale = Number(catchup.scale);
+  if (!interactiveSession.beginTransition()) return;
+  clearTimers();
+  playing = false;
+  interactiveSession.clearPhrase(interactiveSession.phrase);
+
+  for (const [index, item] of pending.entries()) {
+    const delay = Math.max(0, Number(catchup.delays?.[index] ?? item.remaining * scale) * 1000);
+    if (item.type === 'harmony') {
+      const event = item.event;
+      playHarmonyVisualNote(event.midi, delay, Math.max(0.045, event.duration * scale), event.velocity, event.toneMode);
+    } else {
+      const { note, idx } = item.event;
+      scheduleInteractiveMelodyEvent(note, idx, delay);
+    }
+  }
+  const settleMs = catchupDuration <= 0.08 ? 8 : 45;
+  const done = setTimeout(() => finishInteractiveTransition(mode, boundary), catchupDuration * 1000 + settleMs);
+  manualMelodyTimers.push(done);
+}
+
+function requestInteractivePhrase(root, cue = cueForInteractivePress(root), timing = {}) {
+  // 手动/一键的评分来自正在播放的小节，不能把旧小节的 progress 再用于
+  // 新小节调速；两种模式均等待当前小节自然结束。只有半自动主旋律已先到、
+  // 伴奏迟按时，后面的 catch-up 才允许收完当前残余事件。
+  const requestTiming = isManualMode()
+    ? { progress: 100, dueAt: performance.now() }
+    : timing;
+  const request = { root, cue, timing: requestTiming };
+  if (isManualMode() && interactiveSession.phrase?.musicVisualComplete) {
+    // 当前片段的边界 timer 已经结束；此时才按正确键时，旧 phrase 仍保留
+    // 只是为了显示下一键预告。必须先释放它，否则旧伴奏 release 事件会让
+    // 请求进入一个再也没有 completion timer 消费的队列。
+    interactiveSession.clearPhrase(interactiveSession.phrase);
+  }
+  const nowSong = currentPlayTime();
+  const nowPerf = performance.now();
+  const pending = interactiveSession.phrase && pendingInteractiveEvents(interactiveSession.phrase, nowSong, nowPerf).length;
+  const phraseBoundaryPending = interactiveSession.phrase && Number.isFinite(interactiveSession.phrase.naturalEndAt)
+    && nowPerf < interactiveSession.phrase.naturalEndAt;
+  const requestedCueTime = Number(cue?.time);
+  const melodyAlreadyStarted = isSemiAutoMode() && Number.isFinite(requestedCueTime)
+    && nowSong >= requestedCueTime - 0.008;
+  // 所有模式共用一个请求状态机。只有半自动且主旋律已经越过 cue 时允许
+  // catch-up；手动/一键无论连续按多少次，都只能排队等待真实小节边界。
+  const decision = interactiveSession.decideRequest(request, {
+    pending,
+    boundaryPending: phraseBoundaryPending,
+    melodyAlreadyStarted,
+    allowCatchup: isSemiAutoMode(),
+  });
+  if (decision.action === 'catchup') accelerateInteractivePhrase();
+  else if (decision.action === 'start') beginInteractivePhrase(root, cue, requestTiming);
+}
+
+function triggerFreeChord(label, pickSlot, key) {
+  if (!isFreeMode() || !playing) return false;
+  requestWakeLock();
+  ensureAudio();
+  const normalizedPickSlot = pickSlot > 0 ? 1 : 0;
+  harmonyToneMode = Math.min(HARMONY_TONES.length, normalizedPickSlot + 1);
+  initialPickSlot = normalizedPickSlot;
+  showPickZoneFeedback(key, normalizedPickSlot);
+  warmHarmonyTones(false);
+  const cue = {
+    _id: `free-${performance.now().toFixed(3)}`,
+    chord: label,
+    root: label,
+    time: currentPlayTime(),
+  };
+  playStyledHarmony(label, cue);
+  animateChordPress(key);
+  const symbol = key.querySelector('.chord-symbol');
+  if (symbol) {
+    symbol.textContent = shiftedRootLabel(label);
+    symbol.classList.remove('blank', 'fail');
+    symbol.classList.add('hit');
+    setTimeout(() => {
+      if (symbol.textContent === shiftedRootLabel(label)) {
+        symbol.textContent = '';
+        symbol.classList.remove('hit');
+      }
+    }, 620);
+  }
+  freeChordCount += 1;
+  if (drumMode === 'auto' && !freeDrumStarted) startFreeDrumLoop();
+  updateFreePerformanceUi();
+  return true;
+}
+
+function triggerChordKey(label, pickSlot, key) {
+  if (!key || !song || !document.body.classList.contains('game-started')) return false;
+  if (isFreeMode()) return triggerFreeChord(label, pickSlot, key);
+  // 3/2/1 只是准备阶段。任何触屏、鼠标或外接 MIDI 输入都不能消费 cue、
+  // 启动手动小节或改变一键索引，否则倒计时结束后会从错误状态开始。
+  if (countdownActive || !interactiveSession.canAcceptInput()) return false;
+  requestWakeLock();
+  const oneKeyMode = isOneKeyMode();
+  const manualMode = !oneKeyMode && isManualMode();
+  const oneKeyPress = oneKeyMode ? oneKeyPressTiming() : null;
+  const manualPress = manualMode ? manualMusicPressTiming() : null;
+  if (oneKeyMode && !oneKeyPress.accepted) {
+    const pendingCue = (song?.chordCues || [])[oneKeyNextCueIndex]
+      || nextCueAfter(interactiveSession.phrase?.cue);
+    showTimingRating(oneKeyOutputKey(pendingCue, key), 'MISS');
+    rejectEarlyChordPress(key);
+    return false;
+  }
+  const pressedCue = oneKeyMode
+    ? takeNextOneKeyCue()
+    : (manualMode && interactiveSession.phrase?.cue
+      ? (nextCueAfter(interactiveSession.phrase.cue) || interactiveSession.phrase.cue)
+      : cueForInteractivePress(label));
+  if (!pressedCue) return false;
+  const performedRoot = oneKeyMode
+    ? (pressedCue?.root || rootFromChord(pressedCue?.chord) || activeCue?.cue?.root || label)
+    : label;
+  const matchesManualCue = Boolean(manualMode
+    && (pressedCue?.root === label || rootFromChord(pressedCue?.chord) === label));
+  if (manualMode && matchesManualCue && interactiveCueIsQueued(pressedCue)) {
+    // 快速乱按时可能无意中已经击中过正确键；之后再按同一个正确键不能把
+    // 同一 cue 重复入队。否则边界后会连续启动两次同一小节，听起来像主旋律
+    // 双倍速，并让下一和弦错位。
+    return false;
+  }
+  const expectedRoot = activeCue?.cue?.root || performedRoot;
+  const timingKey = (oneKeyMode || expectedRoot !== label)
+    ? (document.querySelector(`#manualKeyboard .key[data-root="${expectedRoot}"]`) || key)
+    : key;
+  const pressProgress = oneKeyMode
+    ? oneKeyPress.progress
+    : (manualMode ? manualPress.progress : cueProgressForKey(timingKey));
+  const pressCueState = cueState.get(performedRoot);
+  if (!oneKeyMode && !manualMode && isSemiAutoMode()) {
+    const timing = timingForInteractivePhrase(pressedCue, {
+      progress: pressProgress,
+      dueAt: pressCueState?.due,
+    });
+    if (timing.earlyRejected) {
+      showTimingRating(key, 'MISS');
+      rejectEarlyChordPress(key);
+      return false;
+    }
+  }
+  const normalizedPickSlot = pickSlot > 0 ? 1 : 0;
+  if (manualMode && (!matchesManualCue || !manualPress.accepted)) {
+    // 错键是完全隔离的试听：不写入用户拨片事件、不改变全局音色、不推进
+    // pattern 前后半、不进入交互队列，也不接触当前主旋律/伴奏的计时状态。
+    // 这样连续乱按后再按正确键，仍从原小节的正确时间和相位继续。
+    const wrongPressedAt = performance.now();
+    // 一个 MISS 的浮字动画持续 1 秒。在它消失前，所有后续错误输入都静音、
+    // 无动画、也不重复计分。85–115 判定窗内的正确键可以越过这把锁。
+    if (!interactiveSession.tryWrongFeedback(wrongPressedAt, 1000)) return false;
+    showTimingRating(key, 'MISS');
+    rejectEarlyChordPress(key);
+    showPickZoneFeedback(key, normalizedPickSlot);
+    warmHarmonyTones(false);
+    playWrongHarmonyPreview(label, pressedCue, normalizedPickSlot);
+    animateChordPress(key);
+    return true;
+  }
+  if (manualMode && matchesManualCue && manualPress.accepted) interactiveSession.clearWrongFeedback();
+  harmonyToneMode = Math.min(HARMONY_TONES.length, Math.max(1, normalizedPickSlot + 1));
+  // 有效按键必须让本次和弦立刻读取所选 A/B。以前把事件写到 cue.time，
+  // 在判定窗前半段（90~99）按 B 时当前时刻仍会读到 A，听感像 B 慢半拍。
+  const pickTime = currentPlayTime();
+  insertUserPickEvent(normalizedPickSlot, pickTime);
+  showPickZoneFeedback(key, normalizedPickSlot);
+  warmHarmonyTones(false);
+  // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
+  const matchesActiveCue = Boolean(activeCue && (activeCue.cue?.root === label
+    || key.dataset.cueId === activeCue.cue?._id));
+  const oneKeyHitsActiveCue = Boolean(oneKeyMode && activeCue
+    && (activeCue.cue === pressedCue || activeCue.cue?._id === pressedCue?._id));
+  const ratingKey = oneKeyMode
+    ? oneKeyOutputKey(pressedCue, key)
+    : key;
+  const rating = oneKeyMode
+    ? oneKeyPress.grade
+    : (manualMode ? (matchesManualCue ? manualPress.grade : 'MISS') : timingGrade(pressProgress, matchesActiveCue));
+  showTimingRating(ratingKey, rating);
+  if ((oneKeyMode && oneKeyHitsActiveCue) || (!oneKeyMode && !manualMode && isGoodTiming(timingKey) && matchesActiveCue)) {
+    activeCue.hit = true;
+    activeCue.pressed = true;
+    hitCue(activeCue.midi, activeCue.cue);
+    const completedCue = activeCue;
+    window.setTimeout(() => { if (activeCue === completedCue) finishActiveCue(); }, 260);
+  } else if (!oneKeyMode && !manualMode) {
+    failActiveCue(false);
+  }
+  key.classList.remove('chord-due', 'miss', 'chord-release');
+  const wrongInteractiveKey = !oneKeyMode && !manualMode && isSemiAutoMode() && !matchesActiveCue;
+  if (wrongInteractiveKey) {
+    // 错误和弦只作为独立试听：不能清除当前小节尚未触发的伴奏 timer，
+    // 也不能推进正常 pattern 的前/后半 phase，否则下一次正确输入会异常追赶快放。
+    playStyledHarmony(label, pressedCue, 1, { replaceExisting: false, advancePhase: false });
+  } else if (isSemiAutoMode() || isManualMode()) {
+    requestInteractivePhrase(performedRoot, pressedCue, { progress: pressProgress, dueAt: pressCueState?.due });
+  } else {
+    playStyledHarmony(performedRoot, pressedCue);
+  }
+  // 小节切换会先清理旧状态；清理完成后再启动本次按压动画，避免旧 timer
+  // 在下一小节重新给第一个琴键补上 release 颜色。
+  animateChordPress(key);
+  if ((!oneKeyMode && !manualMode) || oneKeyHitsActiveCue) cueState.delete(performedRoot);
+  return true;
+}
+
+
+function renderManualKeyboard() {
+  const kb = $('manualKeyboard');
+  kb.innerHTML = '';
+  const notes = [
+    ['C', 60], ['D', 62], ['E', 64], ['F', 65], ['G', 67], ['A', 69], ['B', 71],
+  ];
+  for (const [label, midi] of notes) {
+    const displayLabel = shiftedRootLabel(label);
+    const shortcut = COMPUTER_CHORD_KEY_BY_ROOT[label];
+    const key = document.createElement('div');
+    key.className = `key white ${shiftedRootClass(label)}`;
+    key.dataset.midi = midi;
+    key.dataset.root = label;
+    key.dataset.display = displayLabel;
+    key.innerHTML = `<span class="pick-regions" aria-hidden="true"><span class="pick-zone pick-zone-a" data-pick-slot="0">A</span><span class="pick-zone pick-zone-b" data-pick-slot="1">B</span></span><span class="chord-fill"></span><span class="chord-line"></span><span class="chord-symbol"></span><span class="key-label">${displayLabel}</span><span class="key-shortcut">${shortcut}</span>`;
+    key.title = `${displayLabel} (${label}) · 快捷键 ${shortcut} · 左下拨片 A / 右上拨片 B`;
+    key.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      const explicitZone = ev.target.closest?.('.pick-zone');
+      const rect = key.getBoundingClientRect();
+      const normalizedX = Math.max(0, Math.min(1, (ev.clientX - rect.left) / Math.max(1, rect.width)));
+      const normalizedY = Math.max(0, Math.min(1, (ev.clientY - rect.top) / Math.max(1, rect.height)));
+      const pickBoundary = 0.47 + normalizedX * 0.16;
+      const pickSlot = explicitZone
+        ? Number(explicitZone.dataset.pickSlot || 0)
+        : (normalizedY >= pickBoundary ? 0 : 1);
+      triggerChordKey(label, pickSlot, key);
+    });
+    kb.appendChild(key);
+  }
+}
+
+function computerChordTargetIsEditable(target) {
+  return target instanceof Element
+    && (target.matches('input, textarea, select') || target.isContentEditable);
+}
+
+function handleComputerChordKeyDown(event) {
+  const root = COMPUTER_CHORD_ROOT_BY_CODE[event.code];
+  if (!root || event.repeat || heldComputerChordKeys.has(event.code)
+    || !document.body.classList.contains('game-started')
+    || computerChordTargetIsEditable(event.target)
+    || event.ctrlKey || event.metaKey || event.altKey) return;
+  const key = document.querySelector(`#manualKeyboard .key[data-root="${root}"]`);
+  if (!key) return;
+  event.preventDefault();
+  heldComputerChordKeys.add(event.code);
+  const pickSlot = Math.max(0, Math.min(1, harmonyToneMode - 1));
+  triggerChordKey(root, pickSlot, key);
+}
+
+function handleComputerChordKeyUp(event) {
+  if (!COMPUTER_CHORD_ROOT_BY_CODE[event.code]) return;
+  heldComputerChordKeys.delete(event.code);
+}
+
+const MIDI_ROOT_BY_PITCH_CLASS = Object.freeze({
+  0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B',
+});
+const MIDIWEB_IOS_URL = 'https://apps.apple.com/app/midiweb-browser/id6757226617';
+
+function isIosBrowser() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+const externalMidiPerformance = {
+  volume: 1,
+  expression: 1,
+  pitchBend: 0,
+  modulation: 0,
+  sustain: false,
+  voices: new Map(),
+};
+
+function externalMidiVoiceGain(velocity) {
+  return Math.max(0.0001, Math.min(0.42,
+    Number(velocity || 0.65) * externalMidiPerformance.volume
+      * externalMidiPerformance.expression * melodyGain * 0.34));
+}
+
+function updateExternalMidiVoiceControls(voice, immediate = false) {
+  if (sampled.midiPitch) sampled.midiPitch.pitch = externalMidiPerformance.pitchBend * 2;
+  if (sampled.midiVibrato?.depth) {
+    sampled.midiVibrato.depth.rampTo(externalMidiPerformance.modulation * 0.32, immediate ? 0.005 : 0.035);
+  }
+  if (sampled.midiVolume?.volume && window.Tone) {
+    const linear = Math.max(0.001, externalMidiPerformance.volume * externalMidiPerformance.expression * melodyGain);
+    sampled.midiVolume.volume.rampTo(Tone.gainToDb(linear), immediate ? 0.005 : 0.035);
+  }
+  if (!voice || voice.kind === 'piano' || !audio.ctx) return;
+  const now = audio.ctx.currentTime;
+  const glide = immediate ? 0.005 : 0.035;
+  const pitchCents = externalMidiPerformance.pitchBend * 200;
+  voice.oscillators.forEach(osc => osc.detune.setTargetAtTime(pitchCents, now, glide));
+  voice.lfoGain.gain.setTargetAtTime(externalMidiPerformance.modulation * 34, now, glide);
+  voice.gain.gain.setTargetAtTime(externalMidiVoiceGain(voice.velocity), now, glide);
+}
+
+function stopExternalMidiPreviewVoice(key, release = 0.11) {
+  const voice = externalMidiPerformance.voices.get(key);
+  if (!voice || voice.stopping) return;
+  voice.stopping = true;
+  externalMidiPerformance.voices.delete(key);
+  if (voice.kind === 'piano') {
+    sampled.midiPiano?.triggerRelease?.(voice.noteName);
+    return;
+  }
+  const now = audio.ctx?.currentTime || 0;
+  voice.gain.gain.cancelScheduledValues(now);
+  voice.gain.gain.setTargetAtTime(0.0001, now, Math.max(0.012, release / 3));
+  const stopAt = now + release + 0.08;
+  [...voice.oscillators, voice.lfo].forEach(node => {
+    try { node.stop(stopAt); } catch (_) {}
+  });
+}
+
+function startExternalMidiPreviewVoice(message) {
+  ensureAudio();
+  audio.ctx?.resume?.().catch(() => {});
+  const startStatus = $('midiStartStatus');
+  if (startStatus) {
+    startStatus.textContent = `${labelOf(message.note)} · V${Math.round(externalMidiPerformance.volume * 100)}`;
+    startStatus.title = `已收到 Note On：${labelOf(message.note)}，力度 ${Math.round(Number(message.velocity || 0) * 127)}`;
+  }
+  $('midiConnectBtn')?.classList.add('midi-note-active');
+  const key = message.key || `${message.inputId}:${message.channel}:${message.note}`;
+  stopExternalMidiPreviewVoice(key, 0.025);
+  if (sampled.midiReady && sampled.midiPiano && window.Tone) {
+    const noteName = toneNoteOf(message.note);
+    const voice = {
+      kind: 'piano', key, noteName, velocity: message.velocity,
+      released: false, stopping: false,
+    };
+    externalMidiPerformance.voices.set(key, voice);
+    updateExternalMidiVoiceControls(voice, true);
+    sampled.midiPiano.triggerAttack(noteName, undefined,
+      Math.max(0.025, Math.min(1, Number(message.velocity || 0.65))));
+    return;
+  }
+  const now = audio.ctx.currentTime;
+  const gain = audio.ctx.createGain();
+  const oscA = audio.ctx.createOscillator();
+  const oscB = audio.ctx.createOscillator();
+  const lfo = audio.ctx.createOscillator();
+  const lfoGain = audio.ctx.createGain();
+  const baseFrequency = midiToFreq(message.note);
+  oscA.type = 'triangle';
+  oscA.frequency.value = baseFrequency;
+  oscB.type = 'sine';
+  oscB.frequency.value = baseFrequency * 2;
+  oscB.connect(gain);
+  oscA.connect(gain).connect(audio.master);
+  lfo.frequency.value = 5.25;
+  lfoGain.gain.value = 0;
+  lfo.connect(lfoGain);
+  lfoGain.connect(oscA.detune);
+  lfoGain.connect(oscB.detune);
+  gain.gain.setValueAtTime(0.0001, now);
+  const voice = {
+    kind: 'synth',
+    key,
+    velocity: message.velocity,
+    gain,
+    lfo,
+    lfoGain,
+    oscillators: [oscA, oscB],
+    released: false,
+    stopping: false,
+  };
+  externalMidiPerformance.voices.set(key, voice);
+  updateExternalMidiVoiceControls(voice, true);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(externalMidiVoiceGain(message.velocity), now + 0.012);
+  gain.gain.setTargetAtTime(externalMidiVoiceGain(message.velocity) * 0.68, now + 0.22, 0.7);
+  oscA.start(now);
+  oscB.start(now);
+  lfo.start(now);
+}
+
+function refreshExternalMidiPerformanceTitle() {
+  const status = window.FreezaMidiInput?.snapshot?.() || {};
+  if (!status.connected) return;
+  const summary = [
+    `音量 ${Math.round(externalMidiPerformance.volume * 100)}%`,
+    `Pitch ${(externalMidiPerformance.pitchBend * 2).toFixed(1)} 半音`,
+    `Mod ${Math.round(externalMidiPerformance.modulation * 100)}%`,
+  ].join(' · ');
+  const compact = `V${Math.round(externalMidiPerformance.volume * 100)} · P${externalMidiPerformance.pitchBend >= 0 ? '+' : ''}${(externalMidiPerformance.pitchBend * 2).toFixed(1)} · M${Math.round(externalMidiPerformance.modulation * 100)}`;
+  const startStatus = $('midiStartStatus');
+  const connectButton = $('midiConnectBtn');
+  if (startStatus) {
+    startStatus.textContent = compact;
+    startStatus.title = summary;
+  }
+  if (connectButton) connectButton.title = `${connectButton.title.split(' · ')[0]} · ${summary}`;
+}
+
+function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {}) {
+  const connectButton = $('midiConnectBtn');
+  const startStatus = $('midiStartStatus');
+  const gameStatus = $('gameMidiStatus');
+  const gameLabel = $('gameMidiLabel');
+  const deviceNames = (status.devices || []).map(device => device.name).filter(Boolean);
+  const deviceSummary = deviceNames.length > 1 ? `${deviceNames[0]} 等 ${deviceNames.length} 台` : deviceNames[0];
+  let text = '点击连接 USB / 蓝牙';
+  if (!status.supported) text = isIosBrowser() ? '不支持 · 点击安装 MIDIWeb' : '此浏览器不支持 Web MIDI';
+  else if (status.connecting) text = status.restoring ? '正在恢复 MIDI 连接…' : '正在请求 MIDI 权限…';
+  else if (status.error) text = status.error;
+  else if (status.connected) text = deviceSummary || `已连接 ${status.count} 台设备`;
+  else if (status.authorized) text = '已授权，等待 MIDI 设备';
+  if (startStatus) {
+    startStatus.textContent = text;
+    startStatus.title = text;
+  }
+  if (connectButton) {
+    connectButton.classList.toggle('connected', Boolean(status.connected));
+    connectButton.classList.toggle('connecting', Boolean(status.connecting));
+    connectButton.classList.toggle('unsupported', !status.supported);
+    connectButton.disabled = Boolean(status.connecting) || (!status.supported && !isIosBrowser());
+    connectButton.title = status.connected
+      ? `MIDI 已连接：${deviceSummary}`
+      : (!status.supported && isIosBrowser() ? '前往 App Store 安装 MIDIWeb Browser' : text);
+  }
+  if (gameStatus) {
+    gameStatus.setAttribute('aria-hidden', status.connected ? 'false' : 'true');
+    gameStatus.tabIndex = status.connected ? 0 : -1;
+    gameStatus.title = status.connected ? `MIDI 已连接：${deviceSummary}` : text;
+  }
+  if (gameLabel) gameLabel.textContent = status.count > 1 ? `MIDI ×${status.count}` : 'MIDI';
+}
+
+function rootForExternalMidiNote(note) {
+  const pitchClass = ((Number(note) % 12) + 12) % 12;
+  return MIDI_ROOT_BY_PITCH_CLASS[pitchClass] || '';
+}
+
+function handleExternalMidiNote(message) {
+  if (!document.body.classList.contains('game-started')) {
+    if (document.body.classList.contains('song-selected')) startExternalMidiPreviewVoice(message);
+    return;
+  }
+  if (!song) return;
+  // 外接键盘只看音名，不看八度：C1/C2/C3…全部触发 C，其他自然音同理。
+  // 全局 Key shift 只改变最终发声音高，不能改变玩家该按哪个实体自然音键。
+  const root = rootForExternalMidiNote(message.note);
+  if (!root) return;
+  const key = document.querySelector(`#manualKeyboard .key[data-root="${root}"]`);
+  if (!key) return;
+  ensureAudio();
+  audio.ctx?.resume?.().catch(() => {});
+  window.Tone?.start?.().catch?.(() => {});
+  const pickSlot = song ? chordPatternSlotAtTime(currentPlayTime()) : Math.max(0, harmonyToneMode - 1);
+  triggerChordKey(root, pickSlot, key);
+}
+
+function handleExternalMidiNoteOff(message) {
+  const key = message.key || `${message.inputId}:${message.channel}:${message.note}`;
+  const voice = externalMidiPerformance.voices.get(key);
+  if (!voice) return;
+  voice.released = true;
+  $('midiConnectBtn')?.classList.remove('midi-note-active');
+  if (!externalMidiPerformance.sustain) stopExternalMidiPreviewVoice(key);
+}
+
+function handleExternalMidiPitchBend(message) {
+  externalMidiPerformance.pitchBend = Math.max(-1, Math.min(1, Number(message.value || 0)));
+  externalMidiPerformance.voices.forEach(voice => updateExternalMidiVoiceControls(voice));
+  refreshExternalMidiPerformanceTitle();
+}
+
+function handleExternalMidiControl(message) {
+  const controller = Number(message.controller);
+  if (controller === 1) externalMidiPerformance.modulation = message.value;
+  else if (controller === 7) externalMidiPerformance.volume = message.value;
+  else if (controller === 11) externalMidiPerformance.expression = message.value;
+  else if (controller === 64) {
+    externalMidiPerformance.sustain = message.raw >= 64;
+    if (!externalMidiPerformance.sustain) {
+      [...externalMidiPerformance.voices.values()]
+        .filter(voice => voice.released)
+        .forEach(voice => stopExternalMidiPreviewVoice(voice.key));
+    }
+  } else if (controller === 120 || controller === 123) {
+    [...externalMidiPerformance.voices.keys()].forEach(key => stopExternalMidiPreviewVoice(key, 0.04));
+  } else return;
+  externalMidiPerformance.voices.forEach(voice => updateExternalMidiVoiceControls(voice));
+  refreshExternalMidiPerformanceTitle();
+}
+
+async function requestExternalMidiConnection() {
+  if (!window.FreezaMidiInput) return;
+  const status = window.FreezaMidiInput.snapshot?.() || {};
+  if (!status.supported) {
+    if (isIosBrowser()) window.location.assign(MIDIWEB_IOS_URL);
+    return;
+  }
+  // iOS/MIDIWeb 中 MIDI 消息本身不属于用户手势；必须借连接按钮这次点击先解锁音频。
+  ensureAudio();
+  await Promise.allSettled([
+    audio.ctx?.resume?.(),
+    window.Tone?.start?.(),
+  ].filter(Boolean));
+  playLaunchUiSound('select');
+  await window.FreezaMidiInput.connect();
+}
+
+function setupExternalMidiInput() {
+  if (!window.FreezaMidiInput) {
+    updateExternalMidiUi({ supported: false, connected: false, devices: [] });
+    return;
+  }
+  window.FreezaMidiInput.setHandlers({
+    onNote: handleExternalMidiNote,
+    onNoteOff: handleExternalMidiNoteOff,
+    onControl: handleExternalMidiControl,
+    onPitchBend: handleExternalMidiPitchBend,
+    onStatus: updateExternalMidiUi,
+  });
+  $('midiConnectBtn')?.addEventListener('click', requestExternalMidiConnection);
+  $('gameMidiStatus')?.addEventListener('click', requestExternalMidiConnection);
+  // 只有用户曾经明确连接成功过才自动恢复。刷新后 MIDIAccess 对象必然失效，
+  // 因此重新申请已有权限并重新绑定所有输入端口；未连接过的用户不会被弹窗打扰。
+  window.FreezaMidiInput.autoConnect?.().catch(() => {});
+}
+
+
+$('playBtn').onclick = () => { requestWakeLock(); warmHarmonyTones(true); if (playing) pausePlayback(); else playPlayback(); };
+$('keyDownBtn').onclick = () => { applyKeyShift(-1); };
+$('keyUpBtn').onclick = () => { applyKeyShift(1); };
+$('restartBtn').onclick = () => { requestWakeLock(); warmHarmonyTones(true); restartPlayback(); };
+$('saveRecBtn').onclick = () => downloadRecording();
+$('savePromptDownload')?.addEventListener('click', () => { closeSavePrompt(); downloadRecording(); });
+$('savePromptCancel')?.addEventListener('click', closeSavePrompt);
+$('savePrompt')?.addEventListener('click', (ev) => { if (ev.target?.id === 'savePrompt') closeSavePrompt(); });
+$('resultHomeBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToSongScreen(); });
+$('gameSongBackBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToSongScreen(); });
+$('freeExitBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); leaveFreePerformance(); });
+$('freeBpmDownBtn')?.addEventListener('click', () => setFreeBpm(freeModeState.bpm - 1));
+$('freeBpmUpBtn')?.addEventListener('click', () => setFreeBpm(freeModeState.bpm + 1));
+$('freeTapBpm')?.addEventListener('click', tapFreeBpm);
+bindFreeBpmRange($('freeBpmRange'));
+bindFreeBpmNumberInput($('freeBpmValue'));
+$('toneBtn').onclick = () => {
+  selectGameDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1);
+};
+$('pickToneBtn').onclick = () => {
+  const currentSlot = song ? chordPatternSlotAtTime(currentPlayTime()) : Math.max(0, harmonyToneMode - 1);
+  selectGamePickSlot(currentSlot > 0 ? 0 : 1);
+};
+$('melodyToggle').onclick = () => {
+  melodyEnabled = !melodyEnabled;
+  if (melodyEnabled) guideMode = false;
+  syncMelodyGuideMenu();
+  updatePlaybackToggles();
+  if (playing) scheduleFrom(currentPlayTime());
+};
+$('drumToggle').onclick = () => {
+  // 演奏页鼓机按固定顺序循环：智能 → 开 → 关 → 智能。
+  drumMode = drumMode === 'auto' ? 'on' : drumMode === 'on' ? 'off' : 'auto';
+  if (drumMode !== 'off') drumModeBeforeOff = drumMode;
+  drumsEnabled = drumMode !== 'off';
+  updatePlaybackToggles();
+  rescheduleDrumsOnly();
+};
+
+function setupStartScreen() {
+  const screen = $('startScreen');
+  if (!screen) return;
+  setupLaunchUiSounds(screen);
+  // 默认必须关麦克风；只有用户主动点“开”才申请权限。
+  micEnabled = false;
+  stopMic();
+  cameraEnabled = false;
+  mediaSourceMode = 'off';
+  clearLocalMedia(false);
+  stopCamera();
+  // 麦克风默认必须关闭：初始化时强制 UI 和状态一致，避免浏览器缓存旧 class。
+  screen.querySelectorAll('[data-mic]').forEach(b => b.classList.toggle('selected', b.dataset.mic === 'off'));
+  updateMicMenu();
+  screen.querySelectorAll('[data-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setPlayMode(btn.dataset.mode || 'semi');
+    });
+  });
+  screen.querySelectorAll('[data-drum]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      drumMode = btn.dataset.drum || 'auto';
+      if (drumMode !== 'off') drumModeBeforeOff = drumMode;
+      drumsEnabled = drumMode !== 'off';
+      screen.querySelectorAll('[data-drum]').forEach(b => b.classList.toggle('selected', b === btn));
+      screen.querySelector('[data-group="drum"]')?.classList.toggle('is-off', drumMode === 'off');
+      updatePlaybackToggles();
+    });
+  });
+  screen.querySelector('[data-group="melody"]')?.addEventListener('click', () => {
+    if (guideMode) return;
+    melodyUserTouched = true;
+    melodyEnabled = !melodyEnabled;
+    if (melodyEnabled) guideMode = false;
+    syncMelodyGuideMenu(screen);
+    updatePlaybackToggles();
+  });
+  screen.querySelector('[data-group="mic"]')?.addEventListener('click', async () => {
+    micEnabled = !micEnabled;
+    if (!micEnabled) stopMic();
+    updateMicMenu();
+    if (micEnabled && await ensureMic()) showMicMonitorPrompt('enable');
+  });
+  $('micEffectsOpenBtn')?.addEventListener('click', event => {
+    event.stopPropagation();
+    openMicEffectsDialog();
+  });
+  document.querySelectorAll('[data-close-mic-effects]').forEach(button => {
+    button.addEventListener('click', closeMicEffectsDialog);
+  });
+  $('micMonitorCancel')?.addEventListener('click', () => {
+    setMicMonitoring(false);
+    closeMicMonitorPrompt();
+  });
+  $('micMonitorConfirm')?.addEventListener('click', async () => {
+    if (mic.feedbackPromptMode !== 'enable') {
+      closeMicMonitorPrompt();
+      return;
+    }
+    const result = await requestSafeMicOutput();
+    if (result.status === 'headphones') {
+      setMicMonitoring(true);
+      closeMicMonitorPrompt();
+    } else {
+      setMicMonitoring(false);
+      showMicMonitorPrompt(result.status === 'speaker' ? 'speaker' : 'unknown');
+    }
+  });
+  $('micMonitorGameToggle')?.addEventListener('click', () => {
+    if (!micEnabled || !mic.ready) return;
+    if (mic.outputRoute === 'speaker') {
+      showMicMonitorPrompt('speaker');
+      return;
+    }
+    setMicMonitoring(!mic.monitoring);
+  });
+  screen.querySelectorAll('[data-mic-preset]').forEach(button => {
+    button.addEventListener('click', () => {
+      selectMicEffectPreset(button.dataset.micPreset || 'beauty');
+    });
+  });
+  [
+    ['micBeautyRange', 'beauty'],
+    ['micReverbRange', 'reverb'],
+    ['micEchoRange', 'echo'],
+    ['micDelayRange', 'delay'],
+  ].forEach(([id, key]) => {
+    $(id)?.addEventListener('input', event => setMicEffectValue(key, event.target.value));
+  });
+  screen.querySelector('[data-group="media-source"]')?.addEventListener('click', async event => {
+    const button = event.target.closest('[data-media-source]');
+    if (!button) return;
+    await selectMediaSource(button.dataset.mediaSource || 'off');
+  });
+  screen.querySelector('[data-group="camera-facing"]')?.addEventListener('click', async event => {
+    const button = event.target.closest('[data-camera-facing]');
+    if (!button) return;
+    await selectCameraFacing(button.dataset.cameraFacing || 'user');
+  });
+  $('localVideoInput')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    if (file) await useLocalMediaFile('video', file);
+    event.target.value = '';
+  });
+  $('localAudioInput')?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    if (file) await useLocalMediaFile('audio', file);
+    event.target.value = '';
+  });
+  screen.querySelector('[data-group="video-sound"]')?.addEventListener('click', event => {
+    const button = event.target.closest('[data-video-sound]');
+    if (button) setVideoSoundEnabled(button.dataset.videoSound === 'on');
+  });
+  $('menuKeyDown')?.addEventListener('click', () => applyKeyShift(-1));
+  $('menuKeyUp')?.addEventListener('click', () => applyKeyShift(1));
+  $('menuKeyRange')?.addEventListener('input', (ev) => {
+    const next = Math.max(-14, Math.min(14, Number(ev.target.value) || 0));
+    // 拖动期间只更新界面并试听最后停下的 Key，避免每个刻度都重排整首播放。
+    setKeyShift(next, { previewDelay: 90, reschedule: false, warm: false });
+  });
+  $('menuKeyRange')?.addEventListener('change', () => {
+    if (wasmParser.exports) warmHarmonyTones(true);
+    if (playing) scheduleFrom(currentPlayTime());
+  });
+  bindFreeBpmRange($('menuBpmRange'), { restartDrums: false });
+  $('menuBpmDown')?.addEventListener('click', () => setFreeBpm(freeModeState.bpm - 1));
+  $('menuBpmUp')?.addEventListener('click', () => setFreeBpm(freeModeState.bpm + 1));
+  bindFreeBpmNumberInput($('menuBpmValue'));
+  $('menuTapBpm')?.addEventListener('click', event => {
+    event.preventDefault();
+    tapFreeBpm();
+  });
+  screen.querySelectorAll('[data-pick]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // A/B 是整组翻转开关：点已选中的 A 也必须切到 B，反之亦然。
+      harmonyToneMode = harmonyToneMode === 1 ? 2 : 1;
+      initialPickSlot = harmonyToneMode - 1;
+      insertUserPickEvent(initialPickSlot, 0);
+      screen.querySelectorAll('[data-pick]').forEach(b => b.classList.toggle('selected', (b.dataset.pick === 'B') === (harmonyToneMode === 2)));
+      updateToneButton();
+      warmHarmonyTones(false);
+    });
+  });
+  screen.querySelectorAll('[data-drum-tone]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      // 与拨片一致，点当前已选项也切换到另一套鼓机音色。
+      selectDrumPatternSlot(drumPatternSlot > 0 ? 0 : 1, false);
+    });
+  });
+  $('menuMelodyVolDown')?.addEventListener('click', () => adjustMelodyGain(-0.05));
+  $('menuMelodyVolUp')?.addEventListener('click', () => adjustMelodyGain(0.05));
+  $('menuHarmonyVolDown')?.addEventListener('click', () => adjustHarmonyGain(-0.05));
+  $('menuHarmonyVolUp')?.addEventListener('click', () => adjustHarmonyGain(0.05));
+  $('menuMicGainDown')?.addEventListener('click', () => adjustMicGain(0));
+  $('menuMicGainUp')?.addEventListener('click', () => adjustMicGain(0));
+  $('menuMelodyVolRange')?.addEventListener('input', (ev) => { melodyGain = Math.max(0.25, Math.min(2, Number(ev.target.value) / 100)); updateVolumeButtons(); });
+  $('menuHarmonyVolRange')?.addEventListener('input', (ev) => { harmonyGain = Math.max(0.25, Math.min(2, Number(ev.target.value) / 100)); updateVolumeButtons(); });
+  $('menuDrumVolRange')?.addEventListener('input', (ev) => { drumGain = Math.max(0.25, Math.min(2, Number(ev.target.value) / 100)); updateVolumeButtons(); });
+  $('menuMicGainRange')?.addEventListener('input', () => adjustMicGain(0));
+  updateVolumeButtons();
+  updateMicMenu();
+  updateCameraMenu();
+  setVideoSoundEnabled(true);
+  syncMelodyGuideMenu(screen);
+  syncFreeModeMenu();
+  syncStartDrumToneMenu(screen);
+  updateGamePickControls();
+  screen.querySelector('[data-group="guide"]')?.addEventListener('click', () => {
+    guideMode = !guideMode;
+    syncMelodyGuideMenu(screen);
+    updatePlaybackToggles();
+  });
+  $('startGameBtn')?.addEventListener('click', startGameFromMenu);
+  $('changeSongBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToSongScreen(); });
+}
+
+async function startGameFromMenu() {
+  if (startRequested) return;
+  startRequested = true;
+  const screen = $('startScreen');
+  resetLoadingProgress();
+  screen?.classList.add('loading');
+  requestWakeLock();
+  setLoadingStatus('准备载入…');
+  try {
+    await prepareStartAssets();
+  } catch (err) {
+    console.warn('start waits for midi failed', err);
+    startRequested = false;
+    screen?.classList.remove('loading');
+    return;
+  }
+  screen?.classList.remove('loading');
+  document.body.classList.add('game-started');
+  document.body.classList.toggle('free-performance', isFreeMode());
+  if ($('freeExitBtn')) $('freeExitBtn').hidden = !isFreeMode();
+  if ($('freeBpmGame')) $('freeBpmGame').hidden = !isFreeMode();
+  if ($('freePerformancePanel')) $('freePerformancePanel').hidden = !isFreeMode();
+  if (isFreeMode() && $('gameSongTitle')) {
+    $('gameSongTitle').textContent = `自由演奏 · ${song?.catalog?.title || '当前风格'}`;
+    $('gameSongTitle').title = `使用《${song?.catalog?.title || '当前歌曲'}》的伴奏风格`;
+  } else if ($('gameSongTitle') && song?.catalog) {
+    $('gameSongTitle').textContent = song.catalog.title;
+    $('gameSongTitle').title = `${song.catalog.title} · ${song.catalog.artist}`;
+  }
+  refreshPerformanceLayout();
+  positionCameraPip(!cameraPreviewState.userPositioned);
+  // 默认半自动必须有主旋律；只有用户在开始页明确点了“主旋律关”才关闭。
+  if (!melodyUserTouched && playMode === 'semi' && !guideMode) melodyEnabled = true;
+  drumsEnabled = drumMode !== 'off';
+  updatePlaybackToggles();
+  playOffset = 0;
+  nextManualMelodyIndex = 0;
+  resetTimingRatings();
+  resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
+  clearManualMelodyTimers();
+  if (isFreeMode()) {
+    freeChordCount = 0;
+    freeDrumStarted = false;
+    updateFreePerformanceUi();
+    await startFreePerformance({ reset: true });
+  } else {
+    startCountdownThenPlay();
+  }
+}
+
+let performanceLayoutRaf = 0;
+function refreshPerformanceLayout() {
+  cancelAnimationFrame(performanceLayoutRaf);
+  karaokePerformance.invalidateLayout();
+  performanceLayoutRaf = requestAnimationFrame(() => {
+    performanceLayoutRaf = 0;
+    if (!document.body.classList.contains('game-started')) return;
+    renderPlaybackForMelody();
+    updateLyrics();
+    positionCameraPip(false);
+  });
+}
+
+window.addEventListener('resize', refreshPerformanceLayout, { passive: true });
+window.addEventListener('orientationchange', refreshPerformanceLayout, { passive: true });
+window.visualViewport?.addEventListener('resize', refreshPerformanceLayout, { passive: true });
+
+document.addEventListener('contextmenu', ev => ev.preventDefault());
+document.addEventListener('selectstart', ev => ev.preventDefault());
+document.addEventListener('gesturestart', ev => ev.preventDefault());
+document.addEventListener('gesturechange', ev => ev.preventDefault());
+document.addEventListener('gestureend', ev => ev.preventDefault());
+document.addEventListener('keydown', handleComputerChordKeyDown);
+document.addEventListener('keyup', handleComputerChordKeyUp);
+let lastTouchEnd = 0;
+document.addEventListener('touchend', ev => {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 350) ev.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('dblclick', ev => ev.preventDefault(), { passive: false });
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection && window.getSelection();
+  if (sel && !sel.isCollapsed) sel.removeAllRanges();
+});
+function markPlaybackForFocusResync() {
+  if (!playing) return;
+  if (!playbackNeedsFocusResync) {
+    // 后台暂停歌曲时间轴。回到前台从离开点继续，而不是把后台经过的
+    // 时间当作已演奏，亦不会一次性补触发积压事件。
+    focusResumePosition = isFreeMode()
+      ? currentPlayTime()
+      : Math.min(song?.duration || Infinity, currentPlayTime());
+    playOffset = focusResumePosition;
+    playStartedAt = performance.now();
+  }
+  playbackNeedsFocusResync = true;
+  focusGestureUnlockPending = true;
+  // 离开前台时立刻撤销尚未触发的 timer/rAF，避免浏览器回到前台后
+  // 把后台积压的和弦回调一次性全部执行。
+  clearTimers();
+}
+
+async function resyncPlaybackAfterFocus() {
+  if (!playbackNeedsFocusResync || focusResyncing || document.hidden) return;
+  if (!playing || !song) {
+    playbackNeedsFocusResync = false;
+    focusResumePosition = null;
+    return;
+  }
+  focusResyncing = true;
+  clearTimeout(focusResyncRetryTimer);
+  focusResyncRetryTimer = null;
+  const resumeAt = isFreeMode()
+    ? (focusResumePosition ?? playOffset)
+    : Math.min(song.duration, focusResumePosition ?? playOffset);
+  try {
+    ensureAudio();
+    // Safari 可能在 visibilitychange 后短暂保持 interrupted。给本次恢复
+    // 一个有限等待，未成功则稍后重试；不能提前清掉待恢复标记。
+    const recovered = await Promise.race([
+      window.FreezaAudioFocusRecovery?.resume?.(audio.ctx, window.Tone, { userGesture: false })
+        || Promise.resolve(audio.ctx?.state === 'running'),
+      new Promise(resolve => setTimeout(() => resolve(false), 700)),
+    ]);
+    if (recovered && audio.ctx?.state === 'running') {
+      playbackNeedsFocusResync = false;
+      focusResumePosition = null;
+      if (playing) {
+        if (isFreeMode()) {
+          playOffset = resumeAt;
+          playStartedAt = performance.now();
+          startClockLoop(false, 10);
+          if (drumMode === 'on' || freeDrumStarted) startFreeDrumLoop();
+          updateClock();
+        } else {
+          scheduleFrom(resumeAt);
+        }
+      }
+      requestWakeLock();
+    } else if (!document.hidden && playing) {
+      focusResyncRetryTimer = setTimeout(resyncPlaybackAfterFocus, 350);
+    }
+  } finally {
+    focusResyncing = false;
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) markPlaybackForFocusResync();
+  else {
+    resyncPlaybackAfterFocus();
+    recheckMicHeadphoneRoute();
+    if (cameraPreviewState.stream) $('cameraPreview')?.play?.().catch(() => {});
+    else if (recorder.active && (mediaSourceMode === 'video' || mediaSourceMode === 'audio')) {
+      startSelectedMediaPlayback();
+    }
+  }
+});
+navigator.mediaDevices?.addEventListener?.('devicechange', () => {
+  recheckMicHeadphoneRoute();
+});
+window.addEventListener('blur', markPlaybackForFocusResync);
+window.addEventListener('blur', () => heldComputerChordKeys.clear());
+window.addEventListener('focus', resyncPlaybackAfterFocus);
+window.addEventListener('pageshow', event => {
+  if (event.persisted) playbackNeedsFocusResync = playing;
+  resyncPlaybackAfterFocus();
+});
+// 若 iOS 要求下一次用户手势才能恢复 AudioContext，这个捕获阶段会先于
+// 琴键/控制按钮执行恢复，然后继续此前挂起的演奏调度。
+document.addEventListener('pointerdown', () => {
+  if (!audio.ctx && !playbackNeedsFocusResync) return;
+  ensureAudio();
+  if (!focusGestureUnlockPending && audio.ctx?.state === 'running') return;
+  // iOS 有时从后台回来仍把 state 报为 running，但实际输出路由保持静音。
+  // 所以每次回前台后的首个真实手势都执行静音脉冲解锁，不能只看 state。
+  const recovery = window.FreezaAudioFocusRecovery?.resume?.(
+    audio.ctx,
+    window.Tone,
+    { userGesture: true },
+  ) || Promise.resolve(audio.ctx?.state === 'running');
+  recovery.then(recovered => {
+    if (recovered) focusGestureUnlockPending = false;
+    const continueResync = () => {
+      if (!playbackNeedsFocusResync) return;
+      if (focusResyncing) {
+        setTimeout(continueResync, 25);
+        return;
+      }
+      resyncPlaybackAfterFocus();
+    };
+    continueResync();
+  });
+}, { capture: true, passive: true });
+
+renderKeyboard('playbackKeyboard', 48, 72, 'playback');
+renderManualKeyboard();
+setupCameraPip();
+setupExternalMidiInput();
+updateToneButton();
+updateKeyButtons();
+updateVolumeButtons();
+updatePlaybackToggles();
+setupSongScreen();
+setupStartScreen();
+setupGameUiSounds();
+setupMicWave();
+initSamplePiano();
+midiReadyPromise = Promise.resolve(null);

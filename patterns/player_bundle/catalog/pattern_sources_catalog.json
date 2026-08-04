@@ -1,0 +1,4329 @@
+{
+  "schema": "liberlive_pattern_sources.v1",
+  "count": 354,
+  "patterns": [
+    {
+      "code": "Cajon_ChapMen_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_1.bin",
+          "size": 9728
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_10",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_10.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_11",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_11.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_12",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_12.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_13",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_13.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_14",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_14.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_15",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_15.bin",
+          "size": 9728
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_2.bin",
+          "size": 9216
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_3",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_3.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_4",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_4.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_5",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_5.bin",
+          "size": 9216
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_6",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_6.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_7",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_7.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_8",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_8.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Cajon_ChapMen_9",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Cajon_ChapMen_9.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "CityPOP_ChapMen_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPOP_ChapMen_1.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "CityPOP_ChapMen_10",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPOP_ChapMen_10.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "CityPOP_ChapMen_11",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPOP_ChapMen_11.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "CityPOP_ChapMen_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPOP_ChapMen_2.bin",
+          "size": 9216
+        }
+      ]
+    },
+    {
+      "code": "CityPOP_ChapMen_3",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPOP_ChapMen_3.bin",
+          "size": 9728
+        }
+      ]
+    },
+    {
+      "code": "CityPop_ChapMen_4",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPop_ChapMen_4.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "CityPop_ChapMen_5",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPop_ChapMen_5.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "CityPop_ChapMen_6",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPop_ChapMen_6.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "CityPop_ChapMen_7",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPop_ChapMen_7.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "CityPop_ChapMen_8",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPop_ChapMen_8.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "CityPop_ChapMen_9",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_CityPop_ChapMen_9.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Djembe_ChapMen_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Djembe_ChapMen_1.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Djembe_ChapMen_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Djembe_ChapMen_2.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Djembe_ChapMen_3",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Djembe_ChapMen_3.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "Djembe_ChapMen_4",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Djembe_ChapMen_4.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Djembe_ChapMen_5",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Djembe_ChapMen_5.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Djembe_ChapMen_6",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Djembe_ChapMen_6.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Djembe_ChapMen_7",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Djembe_ChapMen_7.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_1",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_1.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_10",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_10.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_11",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_11.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_12",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_12.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_13",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_13.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_14",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_14.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_15",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_15.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_2",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_2.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_3",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_3.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_4",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_4.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_5",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_5.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_6",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_6.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_7",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_7.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_8",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_8.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "EJB_ChapMen_9",
+      "family": "Bass/EJB",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EJB_ChapMen_9.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_1.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_10",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_10.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_11",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_11.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_12",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_12.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_13",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_13.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_14",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_14.bin",
+          "size": 11264
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_15",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_15.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_16",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_16.bin",
+          "size": 9728
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_2.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_3",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_3.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_4",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_4.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_5",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_5.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_6",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_6.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_7",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_7.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_8",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_8.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "EMO_ChapMen_9",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_EMO_ChapMen_9.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "ElcDrum01_Chapman_5",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcDrum01_Chapman_5.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "ElcDrum01_Chapman_6",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcDrum01_Chapman_6.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "ElcDrum01_ElcBass01_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcDrum01_ElcBass01_1.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "ElcDrum01_ElcBass01_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcDrum01_ElcBass01_2.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "ElcDrum01_ElcBass01_3",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcDrum01_ElcBass01_3.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "ElcDrum01_ElcBass01_4",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcDrum01_ElcBass01_4.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "ElcTrap_Chapmen_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcTrap_Chapmen_1.bin",
+          "size": 7680
+        }
+      ]
+    },
+    {
+      "code": "ElcTrap_Chapmen_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_ElcTrap_Chapmen_2.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "FUNK_Mute_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_FUNK_Mute_1.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_1",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_1.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_3",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_3.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_4",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_4.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_5",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_5.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_6",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_6.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_7",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_7.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_8",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_8.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Funk_ChapMen_9",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Funk_ChapMen_9.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "GEC1_1",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_1.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GEC1_10",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_10.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GEC1_11",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_11.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "GEC1_12",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_12.bin",
+          "size": 55808
+        }
+      ]
+    },
+    {
+      "code": "GEC1_13",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_13.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "GEC1_14",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_14.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "GEC1_15",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_15.bin",
+          "size": 50688
+        }
+      ]
+    },
+    {
+      "code": "GEC1_16",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_16.bin",
+          "size": 28160
+        }
+      ]
+    },
+    {
+      "code": "GEC1_17",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_17.bin",
+          "size": 50688
+        }
+      ]
+    },
+    {
+      "code": "GEC1_18",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_18.bin",
+          "size": 25600
+        }
+      ]
+    },
+    {
+      "code": "GEC1_2",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_2.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "GEC1_3",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_3.bin",
+          "size": 14848
+        }
+      ]
+    },
+    {
+      "code": "GEC1_4",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_4.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "GEC1_5",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_5.bin",
+          "size": 14848
+        }
+      ]
+    },
+    {
+      "code": "GEC1_6",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_6.bin",
+          "size": 50688
+        }
+      ]
+    },
+    {
+      "code": "GEC1_7",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_7.bin",
+          "size": 18432
+        }
+      ]
+    },
+    {
+      "code": "GEC1_8",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_8.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "GEC1_9",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC1_9.bin",
+          "size": 29184
+        }
+      ]
+    },
+    {
+      "code": "GEC2_1",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_1.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GEC2_10",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_10.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GEC2_11",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_11.bin",
+          "size": 20480
+        }
+      ]
+    },
+    {
+      "code": "GEC2_12",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_12.bin",
+          "size": 47616
+        }
+      ]
+    },
+    {
+      "code": "GEC2_13",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_13.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "GEC2_14",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_14.bin",
+          "size": 18944
+        }
+      ]
+    },
+    {
+      "code": "GEC2_15",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_15.bin",
+          "size": 45568
+        }
+      ]
+    },
+    {
+      "code": "GEC2_16",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_16.bin",
+          "size": 77824
+        }
+      ]
+    },
+    {
+      "code": "GEC2_17",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_17.bin",
+          "size": 57856
+        }
+      ]
+    },
+    {
+      "code": "GEC2_2",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_2.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "GEC2_3",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_3.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "GEC2_4",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_4.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GEC2_5",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_5.bin",
+          "size": 14848
+        }
+      ]
+    },
+    {
+      "code": "GEC2_6",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_6.bin",
+          "size": 51200
+        }
+      ]
+    },
+    {
+      "code": "GEC2_7",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_7.bin",
+          "size": 18432
+        }
+      ]
+    },
+    {
+      "code": "GEC2_8",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_8.bin",
+          "size": 28672
+        }
+      ]
+    },
+    {
+      "code": "GEC2_9",
+      "family": "GuitarEC",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GEC2_9.bin",
+          "size": 31232
+        }
+      ]
+    },
+    {
+      "code": "GED1_1",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED1_1.bin",
+          "size": 9728
+        }
+      ]
+    },
+    {
+      "code": "GED1_2",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED1_2.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "GED1_3",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED1_3.bin",
+          "size": 9216
+        }
+      ]
+    },
+    {
+      "code": "GED1_4",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED1_4.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "GED1_5",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED1_5.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "GED1_6",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED1_6.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "GED2_1",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED2_1.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "GED2_2",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED2_2.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "GED2_3",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED2_3.bin",
+          "size": 9216
+        }
+      ]
+    },
+    {
+      "code": "GED2_4",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED2_4.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "GED2_5",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED2_5.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "GED2_6",
+      "family": "GuitarED",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GED2_6.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "GN_1",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_1.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GN_10",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_10.bin",
+          "size": 47104
+        }
+      ]
+    },
+    {
+      "code": "GN_11",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_11.bin",
+          "size": 24576
+        }
+      ]
+    },
+    {
+      "code": "GN_12",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_12.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "GN_13",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_13.bin",
+          "size": 19456
+        }
+      ]
+    },
+    {
+      "code": "GN_14",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_14.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GN_15",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_15.bin",
+          "size": 18432
+        }
+      ]
+    },
+    {
+      "code": "GN_16",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_16.bin",
+          "size": 28160
+        }
+      ]
+    },
+    {
+      "code": "GN_17",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_17.bin",
+          "size": 31744
+        }
+      ]
+    },
+    {
+      "code": "GN_2",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_2.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "GN_3",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_3.bin",
+          "size": 49152
+        }
+      ]
+    },
+    {
+      "code": "GN_4",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_4.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GN_5",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_5.bin",
+          "size": 18432
+        }
+      ]
+    },
+    {
+      "code": "GN_6",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_6.bin",
+          "size": 30720
+        }
+      ]
+    },
+    {
+      "code": "GN_7",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_7.bin",
+          "size": 31744
+        }
+      ]
+    },
+    {
+      "code": "GN_8",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_8.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "GN_9",
+      "family": "GuitarN",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GN_9.bin",
+          "size": 14848
+        }
+      ]
+    },
+    {
+      "code": "GS_1",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#GS_1.mid",
+          "size": 964
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_1.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GS_10",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_10.bin",
+          "size": 36352
+        }
+      ]
+    },
+    {
+      "code": "GS_11",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_11.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "GS_12",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_12.bin",
+          "size": 18432
+        }
+      ]
+    },
+    {
+      "code": "GS_13",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_13.bin",
+          "size": 30720
+        }
+      ]
+    },
+    {
+      "code": "GS_14",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_14.bin",
+          "size": 31744
+        }
+      ]
+    },
+    {
+      "code": "GS_15",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_15.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "GS_16",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_16.bin",
+          "size": 14848
+        }
+      ]
+    },
+    {
+      "code": "GS_17",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_17.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "GS_18",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_18.bin",
+          "size": 24576
+        }
+      ]
+    },
+    {
+      "code": "GS_19",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_19.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "GS_2",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#GS_2.mid",
+          "size": 731
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_2.bin",
+          "size": 18432
+        }
+      ]
+    },
+    {
+      "code": "GS_20",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_20.bin",
+          "size": 19456
+        }
+      ]
+    },
+    {
+      "code": "GS_21",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_21.bin",
+          "size": 13312
+        }
+      ]
+    },
+    {
+      "code": "GS_22",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_22.bin",
+          "size": 23040
+        }
+      ]
+    },
+    {
+      "code": "GS_23",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_23.bin",
+          "size": 47616
+        }
+      ]
+    },
+    {
+      "code": "GS_24",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_24.bin",
+          "size": 32256
+        }
+      ]
+    },
+    {
+      "code": "GS_25",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_25.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "GS_26",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_26.bin",
+          "size": 16384
+        }
+      ]
+    },
+    {
+      "code": "GS_27",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_27.bin",
+          "size": 51200
+        }
+      ]
+    },
+    {
+      "code": "GS_28",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_28.bin",
+          "size": 41984
+        }
+      ]
+    },
+    {
+      "code": "GS_29",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_29.bin",
+          "size": 25600
+        }
+      ]
+    },
+    {
+      "code": "GS_3",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#GS_3.mid",
+          "size": 3015
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_3.bin",
+          "size": 49152
+        }
+      ]
+    },
+    {
+      "code": "GS_30",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_30.bin",
+          "size": 21504
+        }
+      ]
+    },
+    {
+      "code": "GS_31",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_31.bin",
+          "size": 19968
+        }
+      ]
+    },
+    {
+      "code": "GS_32",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_32.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "GS_4",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#GS_4.mid",
+          "size": 1384
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_4.bin",
+          "size": 28672
+        }
+      ]
+    },
+    {
+      "code": "GS_5",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#GS_5.mid",
+          "size": 1345
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_5.bin",
+          "size": 33280
+        }
+      ]
+    },
+    {
+      "code": "GS_6",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#GS_6.mid",
+          "size": 3981
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_6.bin",
+          "size": 69120
+        }
+      ]
+    },
+    {
+      "code": "GS_7",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#GS_7.mid",
+          "size": 3376
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_7.bin",
+          "size": 54272
+        }
+      ]
+    },
+    {
+      "code": "GS_8",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_8.bin",
+          "size": 56832
+        }
+      ]
+    },
+    {
+      "code": "GS_9",
+      "family": "GuitarS",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_str",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_str_GS_9.bin",
+          "size": 59392
+        }
+      ]
+    },
+    {
+      "code": "JAZZ_Mute_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_JAZZ_Mute_1.bin",
+          "size": 9216
+        }
+      ]
+    },
+    {
+      "code": "JAZZ_Mute_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_JAZZ_Mute_2.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_10",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_10.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_3",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_3.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_4",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_4.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_5",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_5.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_6",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_6.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_7",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_7.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_8",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_8.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Jazz_Mute_9",
+      "family": "Unknown",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Jazz_Mute_9.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "METAL_Fender_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_METAL_Fender_1.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "METAL_Fender_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_METAL_Fender_2.bin",
+          "size": 8704
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_10",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_10.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_11",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_11.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_12",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_12.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_13",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_13.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_14",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_14.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_3",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_3.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_4",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_4.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_5",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_5.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_6",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_6.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_7",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_7.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_8",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_8.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Metal_Chapman_9",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Metal_Chapman_9.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "POP_ChapMen_1",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_POP_ChapMen_1.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "POP_ChapMen_10",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_POP_ChapMen_10.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "POP_ChapMen_11",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_POP_ChapMen_11.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "POP_ChapMen_2",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_POP_ChapMen_2.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_1",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_1.bin",
+          "size": 32256
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_10",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_10.bin",
+          "size": 25088
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_11",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_11.bin",
+          "size": 27136
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_12",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_12.bin",
+          "size": 24576
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_13",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_13.bin",
+          "size": 40960
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_14",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_14.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_15",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_15.bin",
+          "size": 35840
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_16",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_16.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_17",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_17.bin",
+          "size": 27136
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_18",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_18.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_19",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_19.bin",
+          "size": 22528
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_2",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_2.bin",
+          "size": 30208
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_20",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_20.bin",
+          "size": 31232
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_21",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_21.bin",
+          "size": 30208
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_22",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_22.bin",
+          "size": 26112
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_24",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_24.bin",
+          "size": 40448
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_26",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_26.bin",
+          "size": 24576
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_29",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_29.bin",
+          "size": 57856
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_3",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_3.bin",
+          "size": 43520
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_33",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_33.bin",
+          "size": 51712
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_4",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_4.bin",
+          "size": 55808
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_42",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_42.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_5",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_5.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_6",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_6.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_61",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_61.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_62",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_62.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_63",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_63.bin",
+          "size": 24064
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_64",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_64.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_65",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_65.bin",
+          "size": 35840
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_66",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_66.bin",
+          "size": 52224
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_67",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_67.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_68",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_68.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_69",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_69.bin",
+          "size": 19968
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_7",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_7.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_70",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_70.bin",
+          "size": 36352
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_72",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_72.bin",
+          "size": 71680
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_73",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_73.bin",
+          "size": 56832
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_74",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_74.bin",
+          "size": 76288
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_75",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_75.bin",
+          "size": 64512
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_76",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_76.bin",
+          "size": 30720
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_8",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_8.bin",
+          "size": 45056
+        }
+      ]
+    },
+    {
+      "code": "PianoMKS20_9",
+      "family": "PianoMKS20",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoMKS20_9.bin",
+          "size": 22528
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_1",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_1.bin",
+          "size": 30720
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_10",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_10.bin",
+          "size": 25088
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_11",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_11.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_12",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_12.bin",
+          "size": 35840
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_13",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_13.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_14",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_14.bin",
+          "size": 27136
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_15",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_15.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_16",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_16.bin",
+          "size": 24576
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_17",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_17.bin",
+          "size": 40960
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_18",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_18.bin",
+          "size": 30720
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_19",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_19.bin",
+          "size": 26112
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_2",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_2.bin",
+          "size": 28672
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_20",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_20.bin",
+          "size": 45056
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_21",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_21.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_22",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_22.bin",
+          "size": 31232
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_23",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_23.bin",
+          "size": 30208
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_24",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_24.bin",
+          "size": 40448
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_26",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_26.bin",
+          "size": 24064
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_29",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_29.bin",
+          "size": 57856
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_33",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_33.bin",
+          "size": 51712
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_41",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_41.bin",
+          "size": 72192
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_42",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_42.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_61",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_61.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_62",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_62.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_63",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_63.bin",
+          "size": 24064
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_64",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_64.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_65",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_65.bin",
+          "size": 35840
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_66",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_66.bin",
+          "size": 53248
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_67",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_67.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_68",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_68.bin",
+          "size": 17920
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_69",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_69.bin",
+          "size": 19968
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_7",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_7.bin",
+          "size": 25600
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_70",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_70.bin",
+          "size": 36352
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_71",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_71.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_8",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_8.bin",
+          "size": 45568
+        }
+      ]
+    },
+    {
+      "code": "PianoRhodesWarm_9",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhodesWarm_9.bin",
+          "size": 22528
+        }
+      ]
+    },
+    {
+      "code": "PianoRhosdesWarm_3",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhosdesWarm_3.bin",
+          "size": 52224
+        }
+      ]
+    },
+    {
+      "code": "PianoRhosdesWarm_4",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhosdesWarm_4.bin",
+          "size": 55808
+        }
+      ]
+    },
+    {
+      "code": "PianoRhosdesWarm_5",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhosdesWarm_5.bin",
+          "size": 17408
+        }
+      ]
+    },
+    {
+      "code": "PianoRhosdesWarm_6",
+      "family": "PianoRhodesWarm",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoRhosdesWarm_6.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_1",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostudio_01.mid",
+          "size": 1967
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_1.bin",
+          "size": 28160
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_10",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_10.bin",
+          "size": 26112
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_11",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_11.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_12",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_12.bin",
+          "size": 26112
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_13",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_13.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_14",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_14.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_15",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_15.bin",
+          "size": 26112
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_16",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_16.bin",
+          "size": 31232
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_17",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_17.bin",
+          "size": 36352
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_18",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_18.bin",
+          "size": 46080
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_19",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_19.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_2",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostudio_02.mid",
+          "size": 1739
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_2.bin",
+          "size": 30208
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_20",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_20.bin",
+          "size": 32256
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_21",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_21.bin",
+          "size": 30208
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_22",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_22.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_23",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_23.bin",
+          "size": 24576
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_24",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_24.bin",
+          "size": 40448
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_25",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_25.bin",
+          "size": 40960
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_26",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_26.bin",
+          "size": 16384
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_27",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_27.bin",
+          "size": 30720
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_28",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_28.bin",
+          "size": 35840
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_29",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_29.bin",
+          "size": 60416
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_3",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostudio_03.mid",
+          "size": 1972
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_3.bin",
+          "size": 38400
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_30",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_30.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_31",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_31.bin",
+          "size": 27136
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_33",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_33.bin",
+          "size": 51712
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_4",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostudio_04.mid",
+          "size": 2978
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_4.bin",
+          "size": 58368
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_41",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_41.bin",
+          "size": 72192
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_42",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_42.bin",
+          "size": 48640
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_45",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_45.bin",
+          "size": 19968
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_46",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_46.bin",
+          "size": 39936
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_5",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostudio_05.mid",
+          "size": 1456
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_5.bin",
+          "size": 18432
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_50",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_50.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_51",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_51.bin",
+          "size": 43520
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_52",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_52.bin",
+          "size": 67584
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_58",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_58.bin",
+          "size": 80896
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_6",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostudio_06.mid",
+          "size": 966
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_6.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_60",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_60.bin",
+          "size": 56320
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_61",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_61.bin",
+          "size": 20992
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_62",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_62.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_63",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_63.bin",
+          "size": 24064
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_64",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_64.bin",
+          "size": 27648
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_65",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_65.bin",
+          "size": 35840
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_66",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_66.bin",
+          "size": 52224
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_68",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_68.bin",
+          "size": 16896
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_69",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_69.bin",
+          "size": 19968
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_7",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostudio_07.mid",
+          "size": 1356
+        },
+        {
+          "type": "midi",
+          "path": "rhythm_midi_patterns/app_bundle/#1#pianostuidio_07.mid",
+          "size": 1356
+        },
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_7.bin",
+          "size": 25088
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_70",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_70.bin",
+          "size": 36352
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_71",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_71.bin",
+          "size": 39936
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_75",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_75.bin",
+          "size": 31232
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_76",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_76.bin",
+          "size": 50688
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_77",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_77.bin",
+          "size": 28160
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_78",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_78.bin",
+          "size": 43008
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_79",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_79.bin",
+          "size": 58368
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_8",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_8.bin",
+          "size": 45056
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_80",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_80.bin",
+          "size": 31232
+        }
+      ]
+    },
+    {
+      "code": "PianoStudio_9",
+      "family": "PianoStudio",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "chord_model_379",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/chord_model_379_PianoStudio_9.bin",
+          "size": 22016
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_12",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_12.bin",
+          "size": 9728
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_13",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_13.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_14",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_14.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_3",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_3.bin",
+          "size": 6656
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_4",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_4.bin",
+          "size": 7168
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_5",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_5.bin",
+          "size": 8192
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_6",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_6.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_7",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_7.bin",
+          "size": 5632
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_8",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_8.bin",
+          "size": 6144
+        }
+      ]
+    },
+    {
+      "code": "Pop_Chapman_9",
+      "family": "Drum",
+      "sources": [
+        {
+          "type": "bin",
+          "kind": "drum_model",
+          "path": "rhythm_midi_patterns/ota_sound_c2/OTA-SOUND_C2/sub_files/dmachine_model_Pop_Chapman_9.bin",
+          "size": 6144
+        }
+      ]
+    }
+  ]
+}

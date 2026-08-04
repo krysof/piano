@@ -1,0 +1,1034 @@
+{
+  "schema": "liberlive_official_rhythm_catalog.v1",
+  "source_endpoints": [
+    "/rhythmic/pick/getTree",
+    "/rhythmic/drum/getAll"
+  ],
+  "pick_count": 81,
+  "drum_count": 21,
+  "picks": [
+    {
+      "id": 1,
+      "code": "001",
+      "name": "基础琶音",
+      "nameEn": "Single Strum",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 4,
+      "category": "吉他/基础"
+    },
+    {
+      "id": 2,
+      "code": "002",
+      "name": "通用分解 1",
+      "nameEn": "Basic Picking 1",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 4,
+      "category": "吉他/基础"
+    },
+    {
+      "id": 3,
+      "code": "003",
+      "name": "通用分解 2",
+      "nameEn": "Basic Picking 2",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 4,
+      "category": "吉他/基础"
+    },
+    {
+      "id": 5,
+      "code": "005",
+      "name": "通用柱式",
+      "nameEn": "Basic Column",
+      "beat": "4/4",
+      "tempo": 65,
+      "categoryId": 4,
+      "category": "吉他/基础"
+    },
+    {
+      "id": 4,
+      "code": "004",
+      "name": "通用柱式2",
+      "nameEn": "Basic Column 2",
+      "beat": "4/4",
+      "tempo": 65,
+      "categoryId": 4,
+      "category": "吉他/基础"
+    },
+    {
+      "id": 6,
+      "code": "101",
+      "name": "地铁",
+      "nameEn": "Subway",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 7,
+      "code": "102",
+      "name": "纸飞机",
+      "nameEn": "Paper Plane",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 8,
+      "code": "103",
+      "name": "旅馆",
+      "nameEn": "Hotel",
+      "beat": "4/4",
+      "tempo": 67,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 9,
+      "code": "104",
+      "name": "回忆",
+      "nameEn": "Memory",
+      "beat": "4/4",
+      "tempo": 95,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 10,
+      "code": "105",
+      "name": "想起",
+      "nameEn": "Remember",
+      "beat": "4/4",
+      "tempo": 86,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 11,
+      "code": "106",
+      "name": "看过来",
+      "nameEn": "Glance",
+      "beat": "4/4",
+      "tempo": 65,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 12,
+      "code": "107",
+      "name": "麻烦",
+      "nameEn": "Trouble",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 13,
+      "code": "108",
+      "name": "宝贝",
+      "nameEn": "Honey",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 14,
+      "code": "109",
+      "name": "鬼迷心窍",
+      "nameEn": "Obsessed",
+      "beat": "4/4",
+      "tempo": 110,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 15,
+      "code": "111",
+      "name": "时光",
+      "nameEn": "Lapse",
+      "beat": "4/4",
+      "tempo": 110,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 16,
+      "code": "113",
+      "name": "房屋",
+      "nameEn": "Family",
+      "beat": "4/4",
+      "tempo": 110,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 17,
+      "code": "114",
+      "name": "小鬼",
+      "nameEn": "Kid",
+      "beat": "4/4",
+      "tempo": 126,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 18,
+      "code": "120",
+      "name": "华尔兹",
+      "nameEn": "Waltz",
+      "beat": "3/4",
+      "tempo": 80,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 19,
+      "code": "122",
+      "name": "平凡",
+      "nameEn": "Mortal",
+      "beat": "6/8",
+      "tempo": 110,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 20,
+      "code": "123",
+      "name": "日记",
+      "nameEn": "Diary",
+      "beat": "6/8",
+      "tempo": 130,
+      "categoryId": 5,
+      "category": "吉他/分解"
+    },
+    {
+      "id": 21,
+      "code": "201",
+      "name": "天际",
+      "nameEn": "Skyline",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 22,
+      "code": "202",
+      "name": "自由",
+      "nameEn": "Freedom",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 23,
+      "code": "203",
+      "name": "散文",
+      "nameEn": "Verse",
+      "beat": "4/4",
+      "tempo": 70,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 24,
+      "code": "204",
+      "name": "远方",
+      "nameEn": "Away",
+      "beat": "4/4",
+      "tempo": 150,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 25,
+      "code": "206",
+      "name": "莫名其妙",
+      "nameEn": "Strange",
+      "beat": "4/4",
+      "tempo": 130,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 26,
+      "code": "207",
+      "name": "随风飘荡",
+      "nameEn": "Wind",
+      "beat": "4/4",
+      "tempo": 150,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 27,
+      "code": "208",
+      "name": "分离",
+      "nameEn": "Apart",
+      "beat": "4/4",
+      "tempo": 150,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 28,
+      "code": "209",
+      "name": "背包",
+      "nameEn": "Luggage",
+      "beat": "4/4",
+      "tempo": 70,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 29,
+      "code": "232",
+      "name": "火车",
+      "nameEn": "Train",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 30,
+      "code": "233",
+      "name": "下课",
+      "nameEn": "After School",
+      "beat": "4/4",
+      "tempo": 128,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 82,
+      "code": "236",
+      "name": "通用摇滚",
+      "nameEn": "rock",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 31,
+      "code": "238",
+      "name": "老街",
+      "nameEn": "Old town",
+      "beat": "6/8",
+      "tempo": 120,
+      "categoryId": 6,
+      "category": "吉他/扫弦"
+    },
+    {
+      "id": 32,
+      "code": "301",
+      "name": "轻轻",
+      "nameEn": "Nibble",
+      "beat": "4/4",
+      "tempo": 140,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 33,
+      "code": "302",
+      "name": "高跟鞋",
+      "nameEn": "Heels",
+      "beat": "4/4",
+      "tempo": 140,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 34,
+      "code": "303",
+      "name": "朱丽叶",
+      "nameEn": "Juliet",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 35,
+      "code": "304",
+      "name": "花园",
+      "nameEn": "Garden",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 36,
+      "code": "305",
+      "name": "战斗",
+      "nameEn": "Battle",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 37,
+      "code": "306",
+      "name": "柠檬",
+      "nameEn": "Lemon",
+      "beat": "4/4",
+      "tempo": 100,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 38,
+      "code": "307",
+      "name": "初遇",
+      "nameEn": "Encounter",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 39,
+      "code": "308",
+      "name": "心动",
+      "nameEn": "Heartbeat",
+      "beat": "4/4",
+      "tempo": 110,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 40,
+      "code": "309",
+      "name": "旅途",
+      "nameEn": "Journey",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 41,
+      "code": "310",
+      "name": "等待",
+      "nameEn": "Waiting",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 42,
+      "code": "311",
+      "name": "风雨",
+      "nameEn": "Seasoned",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 43,
+      "code": "313",
+      "name": "海潮",
+      "nameEn": "Tide",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 44,
+      "code": "315",
+      "name": "微醺",
+      "nameEn": "Tipsy",
+      "beat": "4/4",
+      "tempo": 115,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 45,
+      "code": "317",
+      "name": "毒药",
+      "nameEn": "Drug",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 46,
+      "code": "318",
+      "name": "钟声",
+      "nameEn": "Bell",
+      "beat": "4/4",
+      "tempo": 130,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 47,
+      "code": "319",
+      "name": "月球",
+      "nameEn": "Moon",
+      "beat": "4/4",
+      "tempo": 110,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 48,
+      "code": "320",
+      "name": "漫游",
+      "nameEn": "Wander",
+      "beat": "4/4",
+      "tempo": 110,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 49,
+      "code": "321",
+      "name": "红酒",
+      "nameEn": "RedWine",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 83,
+      "code": "331",
+      "name": "扫切",
+      "nameEn": "text",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 7,
+      "category": "吉他/技巧"
+    },
+    {
+      "id": 50,
+      "code": "400",
+      "name": "基本柱式 1",
+      "nameEn": "Basic Column 1",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 8,
+      "category": "钢琴/基础"
+    },
+    {
+      "id": 51,
+      "code": "403",
+      "name": "基本柱式 2",
+      "nameEn": "Basic Column 2",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 8,
+      "category": "钢琴/基础"
+    },
+    {
+      "id": 52,
+      "code": "404",
+      "name": "基本分解 1",
+      "nameEn": "Basic Arpeggio 1",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 8,
+      "category": "钢琴/基础"
+    },
+    {
+      "id": 53,
+      "code": "405",
+      "name": "基本分解 2",
+      "nameEn": "Basic Arpeggio 2",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 8,
+      "category": "钢琴/基础"
+    },
+    {
+      "id": 57,
+      "code": "412",
+      "name": "脚步",
+      "nameEn": "Footprint",
+      "beat": "4/4",
+      "tempo": 60,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 54,
+      "code": "407",
+      "name": "信封",
+      "nameEn": "Letter",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 55,
+      "code": "410",
+      "name": "犹豫",
+      "nameEn": "Hesitate",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 68,
+      "code": "433",
+      "name": "眷恋",
+      "nameEn": "Attached",
+      "beat": "6/8",
+      "tempo": 70,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 67,
+      "code": "432",
+      "name": "舞步",
+      "nameEn": "Dance Step",
+      "beat": "6/8",
+      "tempo": 120,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 66,
+      "code": "431",
+      "name": "阳光",
+      "nameEn": "Sunshine",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 64,
+      "code": "429",
+      "name": "烟枪",
+      "nameEn": "Pipe",
+      "beat": "4/4",
+      "tempo": 65,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 56,
+      "code": "411",
+      "name": "勇气",
+      "nameEn": "Courage",
+      "beat": "4/4",
+      "tempo": 100,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 58,
+      "code": "423",
+      "name": "曾经",
+      "nameEn": "Past",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 59,
+      "code": "424",
+      "name": "拥抱",
+      "nameEn": "Embrace",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 60,
+      "code": "425",
+      "name": "棉花糖",
+      "nameEn": "Cotton",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 61,
+      "code": "426",
+      "name": "云梯",
+      "nameEn": "Cloud Ladder",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 62,
+      "code": "427",
+      "name": "暖冬",
+      "nameEn": "Warm Winter",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 63,
+      "code": "428",
+      "name": "月光",
+      "nameEn": "Moonlight",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 65,
+      "code": "430",
+      "name": "火花",
+      "nameEn": "Spark",
+      "beat": "4/4",
+      "tempo": 65,
+      "categoryId": 9,
+      "category": "钢琴/进阶"
+    },
+    {
+      "id": 69,
+      "code": "501",
+      "name": "基础单音",
+      "nameEn": "Basic Bass",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 10,
+      "category": "贝斯/基础"
+    },
+    {
+      "id": 70,
+      "code": "502",
+      "name": "短音单音",
+      "nameEn": "Basic Short Bass",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 10,
+      "category": "贝斯/基础"
+    },
+    {
+      "id": 75,
+      "code": "503",
+      "name": "八分单音",
+      "nameEn": "text",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 10,
+      "category": "贝斯/基础"
+    },
+    {
+      "id": 76,
+      "code": "504",
+      "name": "八分连奏",
+      "nameEn": "text",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 10,
+      "category": "贝斯/基础"
+    },
+    {
+      "id": 77,
+      "code": "511",
+      "name": "流行1",
+      "nameEn": "text",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 11,
+      "category": "贝斯/进阶"
+    },
+    {
+      "id": 78,
+      "code": "512",
+      "name": "流行2",
+      "nameEn": "text",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 11,
+      "category": "贝斯/进阶"
+    },
+    {
+      "id": 79,
+      "code": "513",
+      "name": "流行3",
+      "nameEn": "text",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 11,
+      "category": "贝斯/进阶"
+    },
+    {
+      "id": 71,
+      "code": "514",
+      "name": "流行4",
+      "nameEn": "Skipping Bass",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 11,
+      "category": "贝斯/进阶"
+    },
+    {
+      "id": 80,
+      "code": "517",
+      "name": "R&B",
+      "nameEn": "text",
+      "beat": "4/4",
+      "tempo": 115,
+      "categoryId": 11,
+      "category": "贝斯/进阶"
+    },
+    {
+      "id": 81,
+      "code": "519",
+      "name": "blues",
+      "nameEn": "blues",
+      "beat": "4/4",
+      "tempo": 140,
+      "categoryId": 11,
+      "category": "贝斯/进阶"
+    },
+    {
+      "id": 72,
+      "code": "521",
+      "name": "三连贝斯",
+      "nameEn": "Triple Bass",
+      "beat": "6/8",
+      "tempo": 120,
+      "categoryId": 11,
+      "category": "贝斯/进阶"
+    }
+  ],
+  "drums": [
+    {
+      "id": 8,
+      "code": "6110",
+      "name": "流行 1",
+      "nameEn": "Pop 1",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 3,
+      "category": "流行"
+    },
+    {
+      "id": 20,
+      "code": "6120",
+      "name": "流行 2",
+      "nameEn": "Pop 2",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 3,
+      "category": "流行"
+    },
+    {
+      "id": 12,
+      "code": "6130",
+      "name": "流行 3",
+      "nameEn": "Pop 3",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 3,
+      "category": "流行"
+    },
+    {
+      "id": 11,
+      "code": "6140",
+      "name": "流行 4",
+      "nameEn": "Pop 4",
+      "beat": "4/4",
+      "tempo": 75,
+      "categoryId": 3,
+      "category": "流行"
+    },
+    {
+      "id": 14,
+      "code": "6150",
+      "name": "流行 5",
+      "nameEn": "Pop 5",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 3,
+      "category": "流行"
+    },
+    {
+      "id": 18,
+      "code": "7210",
+      "name": "流行 6 ",
+      "nameEn": "Pop 6 （6/8）",
+      "beat": "6/8",
+      "tempo": 120,
+      "categoryId": 3,
+      "category": "流行"
+    },
+    {
+      "id": 22,
+      "code": "7250",
+      "name": "流行 7",
+      "nameEn": "Pop 7 （6/8）",
+      "beat": "6/8",
+      "tempo": 80,
+      "categoryId": 3,
+      "category": "流行"
+    },
+    {
+      "id": 9,
+      "code": "6160",
+      "name": "摇滚 1",
+      "nameEn": "Rock 1",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 4,
+      "category": "摇滚"
+    },
+    {
+      "id": 26,
+      "code": "6170",
+      "name": "摇滚 2",
+      "nameEn": "Rock 2",
+      "beat": "4/4",
+      "tempo": 115,
+      "categoryId": 4,
+      "category": "摇滚"
+    },
+    {
+      "id": 27,
+      "code": "6180",
+      "name": "摇滚 3",
+      "nameEn": "Rock 3",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 4,
+      "category": "摇滚"
+    },
+    {
+      "id": 24,
+      "code": "6190",
+      "name": "摇滚 4",
+      "nameEn": "Rock 4",
+      "beat": "4/4",
+      "tempo": 110,
+      "categoryId": 4,
+      "category": "摇滚"
+    },
+    {
+      "id": 28,
+      "code": "6280",
+      "name": "摇滚 5",
+      "nameEn": "Rock 5",
+      "beat": "4/4",
+      "tempo": 72,
+      "categoryId": 4,
+      "category": "摇滚"
+    },
+    {
+      "id": 23,
+      "code": "6200",
+      "name": "清唱 1",
+      "nameEn": "vocal 1",
+      "beat": "4/4",
+      "tempo": 70,
+      "categoryId": 5,
+      "category": "清唱"
+    },
+    {
+      "id": 10,
+      "code": "6210",
+      "name": "清唱 2",
+      "nameEn": "vocal 2",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 5,
+      "category": "清唱"
+    },
+    {
+      "id": 21,
+      "code": "6220",
+      "name": "清唱 3",
+      "nameEn": "vocal 3",
+      "beat": "4/4",
+      "tempo": 80,
+      "categoryId": 5,
+      "category": "清唱"
+    },
+    {
+      "id": 17,
+      "code": "6230",
+      "name": "乡村 1",
+      "nameEn": "country 1",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 6,
+      "category": "更多"
+    },
+    {
+      "id": 16,
+      "code": "6260",
+      "name": "布鲁斯 1",
+      "nameEn": "Blues 1",
+      "beat": "4/4",
+      "tempo": 140,
+      "categoryId": 6,
+      "category": "更多"
+    },
+    {
+      "id": 15,
+      "code": "6250",
+      "name": "布鲁斯 2",
+      "nameEn": "Blues 2",
+      "beat": "4/4",
+      "tempo": 90,
+      "categoryId": 6,
+      "category": "更多"
+    },
+    {
+      "id": 13,
+      "code": "6240",
+      "name": "爵士 1",
+      "nameEn": "Jazz 1",
+      "beat": "4/4",
+      "tempo": 120,
+      "categoryId": 6,
+      "category": "更多"
+    },
+    {
+      "id": 25,
+      "code": "6270",
+      "name": "放克 1",
+      "nameEn": "Funk 1",
+      "beat": "4/4",
+      "tempo": 130,
+      "categoryId": 6,
+      "category": "更多"
+    },
+    {
+      "id": 19,
+      "code": "7220",
+      "name": "华尔兹 1",
+      "nameEn": "waltz 1",
+      "beat": "3/4",
+      "tempo": 80,
+      "categoryId": 6,
+      "category": "更多"
+    }
+  ],
+  "note": "These are official rhythm/style patterns from server. They are not raw timbre samples. Top-level categories include Guitar/Piano/Bass and Drum machine patterns."
+}
