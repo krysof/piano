@@ -78,6 +78,33 @@
     '检测到持续高电平，可能正在产生啸叫。麦克风录音仍然保持开启，仅关闭了人声回放。': 'Sustained high input may indicate feedback. Microphone recording remains active; only live monitoring was stopped.',
     '检测到当前输出为扬声器。为防止啸叫，人声不会外放；麦克风录音和美声处理仍然正常。': 'The current output is a speaker. Vocal monitoring is blocked to prevent feedback; recording and vocal effects remain active.',
     '浏览器无法判断当前是否连接耳机，因此没有自动打开人声回放。进入演奏后可使用“人声回放”开关手动控制，麦克风录音不受影响。': 'The browser cannot confirm headphones, so monitoring was not enabled automatically. Use Vocal Monitor during performance; recording is unaffected.',
+    '播放 Freeza Live 标志音效': 'Play the Freeza Live logo sound', '界面语言': 'Interface language', '演奏设置': 'Performance setup',
+    '播放演奏方式提示音': 'Play the performance-mode cue', '播放混音器提示音': 'Play the mixer cue',
+    '主旋律音量': 'Melody volume', '伴奏音量': 'Backing volume', '鼓机音量': 'Drum volume',
+    '自由模式 BPM': 'Free-mode BPM', '降低 BPM': 'Decrease BPM', '直接输入 BPM': 'Enter BPM directly', '提高 BPM': 'Increase BPM',
+    '打开麦克风效果设置': 'Open microphone effects', '关闭人声效果': 'Close vocal effects', '麦克风人声效果': 'Microphone vocal effects',
+    '人声效果模板': 'Vocal effect presets', '连接 MIDI 键盘': 'Connect MIDI keyboard', '保存演奏录音': 'Save performance recording',
+    'MIDI 键盘已连接': 'MIDI keyboard connected', '重唱': 'Restart song', '当前连击': 'Current combo', '点击测速': 'Tap tempo',
+    '自由模式 BPM 拉动条': 'Free-mode BPM slider', '素材预览，轻触操作，可拖动': 'Media preview; tap to operate and drag to move',
+    '选择语言': 'Choose language', '输入文字过滤': 'Type to filter', '当前风格': 'Current style', '跟随歌曲事件': 'Follow song events',
+    '全部': 'All', '还有': 'remaining', '正在载入': 'Loading', '已载入': 'loaded',
+    '快捷键': 'Shortcut', '左下拨片': 'lower-left pick', '右上拨片': 'upper-right pick',
+    '整首降Key': 'Transpose song down', '整首升Key': 'Transpose song up', '当前': 'current',
+    '切换拨片音色': 'Switch pick voice', '切换鼓机节奏': 'Switch drum rhythm', '点击切换': 'click to switch',
+    '鼓机状态': 'Drum state', '鼓组': 'kit', '当前 Key': 'Current key', '完成度': 'completion',
+    '自由演奏 · 当前风格': 'Free Play · Current style', '使用当前歌曲的伴奏风格': 'Use the current song backing style',
+    '经典版': 'Classic', '日文版': 'Japanese version', '自定义日文版': 'Custom Japanese version',
+    '主旋律＋和弦': 'Melody + chords', '主旋律+和弦': 'Melody + chords',
+    '鼓机音色 A': 'Drum voice A', '鼓机音色 B': 'Drum voice B',
+    '只控制本机人声监听，不影响麦克风录音': 'Controls local vocal monitoring only; microphone recording is unaffected',
+    '总判定': 'TOTAL', '手动弹奏': 'Manual note', '回放': 'monitoring', '人声回放': 'Vocal monitor',
+    '初露锋芒': 'First spark', '渐入佳境': 'Finding the groove', '节奏在线': 'In the groove',
+    '火力全开': 'Full power', '舞台主宰': 'Stage master', '传奇演奏': 'Legendary performance',
+    '音量': 'Volume', '半音': 'semitones', '已收到': 'Received', '力度': 'velocity',
+    '已连接': 'Connected', '台设备': 'devices',
+    '使用': 'Use', '的': 'of', '请选择': 'Please choose',
+    '选择歌手': 'Choose artist', '搜索歌手（支持简繁体）': 'Search artists (Simplified/Traditional supported)',
+    '选择谱面版本': 'Choose chart version',
   };
 
   const ja = {
@@ -149,11 +176,36 @@
     '检测到持续高电平，可能正在产生啸叫。麦克风录音仍然保持开启，仅关闭了人声回放。': '持続する高レベルを検出しました。マイク録音は継続し、ボーカルモニターのみ停止しました。',
     '检测到当前输出为扬声器。为防止啸叫，人声不会外放；麦克风录音和美声处理仍然正常。': '現在の出力はスピーカーです。ハウリング防止のためモニターを止めますが、録音とボーカル処理は継続します。',
     '浏览器无法判断当前是否连接耳机，因此没有自动打开人声回放。进入演奏后可使用“人声回放”开关手动控制，麦克风录音不受影响。': 'ブラウザがヘッドホンを確認できないため、自動モニターは開始しません。演奏画面で手動操作でき、録音には影響しません。',
+    '播放 Freeza Live 标志音效': 'Freeza Liveのロゴ音を再生', '界面语言': '表示言語', '演奏设置': '演奏設定',
+    '播放演奏方式提示音': '演奏モードのサウンドを再生', '播放混音器提示音': 'ミキサーのサウンドを再生',
+    '主旋律音量': 'メロディー音量', '伴奏音量': '伴奏音量', '鼓机音量': 'ドラム音量',
+    '自由模式 BPM': '自由モードBPM', '降低 BPM': 'BPMを下げる', '直接输入 BPM': 'BPMを直接入力', '提高 BPM': 'BPMを上げる',
+    '打开麦克风效果设置': 'マイクエフェクト設定を開く', '关闭人声效果': 'ボーカルエフェクトを閉じる', '麦克风人声效果': 'マイク・ボーカルエフェクト',
+    '人声效果模板': 'ボーカルエフェクトプリセット', '连接 MIDI 键盘': 'MIDIキーボードを接続', '保存演奏录音': '演奏録音を保存',
+    'MIDI 键盘已连接': 'MIDIキーボード接続済み', '重唱': '最初から演奏', '当前连击': '現在のコンボ', '点击测速': 'タップテンポ',
+    '自由模式 BPM 拉动条': '自由モードBPMスライダー', '素材预览，轻触操作，可拖动': '素材プレビュー・タップ操作・ドラッグ移動',
+    '选择语言': '言語を選択', '输入文字过滤': '文字を入力して絞り込み', '当前风格': '現在のスタイル', '跟随歌曲事件': '曲のイベントに追従',
+    '全部': 'すべて', '还有': '残り', '正在载入': '読み込み中', '已载入': '読み込み完了',
+    '快捷键': 'ショートカット', '左下拨片': '左下ピック', '右上拨片': '右上ピック',
+    '整首降Key': '曲全体をキー下げ', '整首升Key': '曲全体をキー上げ', '当前': '現在',
+    '切换拨片音色': 'ピック音色を切替', '切换鼓机节奏': 'ドラムリズムを切替', '点击切换': 'クリックで切替',
+    '鼓机状态': 'ドラム状態', '鼓组': 'ドラムキット', '当前 Key': '現在のキー', '完成度': '達成率',
+    '自由演奏 · 当前风格': '自由演奏・現在のスタイル', '使用当前歌曲的伴奏风格': '現在の曲の伴奏スタイルを使用',
+    '经典版': 'クラシック版', '日文版': '日本語版', '自定义日文版': 'カスタム日本語版',
+    '主旋律＋和弦': 'メロディー＋コード', '主旋律+和弦': 'メロディー＋コード',
+    '鼓机音色 A': 'ドラム音色 A', '鼓机音色 B': 'ドラム音色 B',
+    '只控制本机人声监听，不影响麦克风录音': '端末のボーカルモニターのみを制御し、マイク録音には影響しません',
+    '总判定': '総判定', '手动弹奏': '手動演奏', '回放': 'モニター', '人声回放': 'ボーカルモニター',
+    '初露锋芒': '最初の輝き', '渐入佳境': '調子上昇', '节奏在线': 'グルーヴ良好',
+    '火力全开': 'フルパワー', '舞台主宰': 'ステージマスター', '传奇演奏': '伝説の演奏',
+    '音量': '音量', '半音': '半音', '已收到': '受信', '力度': 'ベロシティ',
+    '已连接': '接続済み', '台设备': '台のデバイス',
+    '使用': '使用', '的': 'の', '请选择': '選択してください',
+    '选择歌手': '歌手を選択', '搜索歌手（支持简繁体）': '歌手を検索（簡体字・繁体字対応）',
+    '选择谱面版本': '譜面バージョンを選択',
   };
 
-  const traditionalChars = new Map(Object.entries({
-    '选':'選','择':'擇','乐':'樂','词':'詞','进':'進','设':'設','调':'調','节':'節','单':'單','与':'與','声':'聲','关':'關','开':'開','启':'啟','击':'擊','键':'鍵','发':'發','动':'動','辅':'輔','随':'隨','净':'淨','拨':'撥','换':'換','当':'當','触':'觸','机':'機','组':'組','录':'錄','频':'頻','摄':'攝','头':'頭','处':'處','连':'連','场':'場','厅':'廳','润':'潤','迟':'遲','蓝':'藍','备':'備','载':'載','显':'顯','总':'總','结':'結','数':'數','这':'這','还':'還','试':'試','缩':'縮','简':'簡','条':'條','优':'優','复':'複','体':'體','滤':'濾','输':'輸','过':'過','个':'個','从':'從','写':'寫','图':'圖','灯':'燈','标':'標','页':'頁','画':'畫','听':'聽','览':'覽','视':'視','并':'並','长':'長','应':'應','华':'華','说':'說','对':'對','时':'時','间':'間','万':'萬','无':'無','为':'為','将':'將','实':'實','现':'現','测':'測','样':'樣','览':'覽','查':'查','习':'習','爱':'愛','让':'讓','边':'邊','里':'裡','后':'後','达':'達','请':'請','闭':'閉','统':'統','码':'碼','毕':'畢','库':'庫','曲':'曲','该':'該','术':'術','从':'從','么':'麼','种':'種','广':'廣','东':'東','网':'網','称':'稱','显':'顯','乐':'樂','纯':'純','滤':'濾','继':'繼','续':'續','暂':'暫','认':'認','确':'確','会':'會','写':'寫','盘':'盤','气':'氣','览':'覽','户':'戶','镜':'鏡','择':'擇'
-  }));
+  const traditionalChars = new Map(Object.entries({'与':'與','个':'個','为':'為','义':'義','乐':'樂','产':'產','仅':'僅','会':'會','传':'傳','体':'體','关':'關','写':'寫','净':'淨','准':'準','击':'擊','动':'動','区':'區','单':'單','厅':'廳','发':'發','台':'臺','号':'號','后':'後','听':'聽','启':'啟','响':'響','啸':'嘯','声':'聲','处':'處','备':'備','复':'復','头':'頭','实':'實','导':'導','将':'將','并':'並','库':'庫','开':'開','弹':'彈','当':'當','录':'錄','态':'態','总':'總','扬':'揚','拨':'撥','择':'擇','换':'換','摄':'攝','断':'斷','无':'無','时':'時','显':'顯','暂':'暫','机':'機','权':'權','条':'條','来':'來','标':'標','样':'樣','检':'檢','没':'沒','测':'測','浏':'瀏','润':'潤','渐':'漸','温':'溫','滤':'濾','点':'點','热':'熱','状':'狀','电':'電','画':'畫','监':'監','盘':'盤','确':'確','筛':'篩','简':'簡','纯':'純','线':'線','组':'組','经':'經','结':'結','统':'統','继':'繼','绪':'緒','续':'續','缓':'緩','缩':'縮','节':'節','荐':'薦','获':'獲','蓝':'藍','装':'裝','视':'視','览':'覽','触':'觸','认':'認','设':'設','词':'詞','试':'試','该':'該','语':'語','请':'請','调':'調','谱':'譜','败':'敗','资':'資','轻':'輕','载':'載','辅':'輔','输':'輸','过':'過','还':'還','这':'這','进':'進','连':'連','迟':'遲','选':'選','采':'採','里':'裡','钢':'鋼','锋':'鋒','键':'鍵','镜':'鏡','闭':'閉','间':'間','阶':'階','随':'隨','页':'頁','项':'項','预':'預','频':'頻','风':'風','麦':'麥'}));
   const toTraditional = text => Array.from(text, char => traditionalChars.get(char) || char).join('');
   const zhHant = Object.fromEntries(Object.keys(en).map(key => [key, toTraditional(key)]));
   Object.assign(zhHant, {
@@ -192,15 +244,89 @@
     const plain = String(source ?? '');
     const direct = dictionaries[effective]?.[plain];
     if (direct) return direct;
+    const term = key => dictionaries[effective]?.[key] || (effective === 'zh-Hant' || effective === 'yue' ? toTraditional(key) : key);
     const songs = plain.match(/^(\d+)\s*首$/);
     if (songs) return effective === 'en' ? `${songs[1]} tracks` : effective === 'ja' ? `${songs[1]}曲` : `${songs[1]} 首`;
     const options = plain.match(/^(\d+)\s*个选项$/);
     if (options) return effective === 'en' ? `${options[1]} options` : effective === 'ja' ? `${options[1]}項目` : `${options[1]} 個選項`;
+    const filterCount = plain.match(/^(全部歌手|全部语言|全部版本|中文|日文|纯音乐|标准版|进阶版)\s*·\s*(\d+)$/);
+    if (filterCount) return `${term(filterCount[1])} · ${filterCount[2]}`;
+    const allCount = plain.match(/^全部\s+(\d+)$/);
+    if (allCount) return `${term('全部')} ${allCount[1]}`;
+    const more = plain.match(/^显示更多\s*·\s*还有\s*(\d+)\s*首$/);
+    if (more) {
+      if (effective === 'en') return `Show ${more[1]} more`;
+      if (effective === 'ja') return `残り ${more[1]} 曲を表示`;
+      return `${term('显示更多')} · ${term('还有')} ${more[1]} ${effective === 'zh-Hans' ? '首' : '首'}`;
+    }
+    const loadingSong = plain.match(/^正在载入《(.+)》…$/);
+    if (loadingSong) return effective === 'en' ? `Loading “${loadingSong[1]}”…` : effective === 'ja' ? `「${loadingSong[1]}」を読み込み中…` : `${term('正在载入')}《${loadingSong[1]}》…`;
+    const loadingItem = plain.match(/^正在载入(.+)…$/);
+    if (loadingItem) return effective === 'en' ? `Loading ${term(loadingItem[1])}…` : effective === 'ja' ? `${term(loadingItem[1])}を読み込み中…` : `${term('正在载入')}${term(loadingItem[1])}…`;
+    const loadedSong = plain.match(/^《(.+)》已载入$/);
+    if (loadedSong) return effective === 'en' ? `“${loadedSong[1]}” loaded` : effective === 'ja' ? `「${loadedSong[1]}」を読み込みました` : `《${loadedSong[1]}》${term('已载入')}`;
+    const loadFailure = plain.match(/^载入失败[：:]\s*(.+)$/);
+    if (loadFailure) return effective === 'en' ? `Loading failed: ${loadFailure[1]}` : effective === 'ja' ? `読み込みに失敗しました：${loadFailure[1]}` : `${term('载入失败，请重试')}：${loadFailure[1]}`;
+    const freeStyle = plain.match(/^自由演奏\s*·\s*(.+)风格$/);
+    if (freeStyle) return effective === 'en' ? `Free Play · ${freeStyle[1]} style` : effective === 'ja' ? `自由演奏・${freeStyle[1]}スタイル` : `${term('自由演奏')} · ${freeStyle[1]}${term('风格')}`;
+    const useStyle = plain.match(/^使用《(.+)》的伴奏风格$/);
+    if (useStyle) return effective === 'en' ? `Use the backing style from “${useStyle[1]}”` : effective === 'ja' ? `「${useStyle[1]}」の伴奏スタイルを使用` : `${term('使用')}《${useStyle[1]}》${term('的')}${term('伴奏')}${term('风格')}`;
+    const currentKey = plain.match(/^当前 Key\s*([+−-]?\d+)$/);
+    if (currentKey) return `${term('当前 Key')} ${currentKey[1]}`;
+    const transpose = plain.match(/^(整首降Key|整首升Key)\s*·\s*当前\s*(.+)$/);
+    if (transpose) return `${term(transpose[1])} · ${term('当前')} ${transpose[2]}`;
+    const switchVoice = plain.match(/^(切换拨片音色|切换鼓机节奏)，当前\s*([AB])$/);
+    if (switchVoice) return `${term(switchVoice[1])}, ${term('当前')} ${switchVoice[2]}`;
+    const clickPick = plain.match(/^点击切换到拨片\s*([AB])$/);
+    if (clickPick) return `${term('点击切换')} ${term('拨片音色')} ${clickPick[1]}`;
+    const drumState = plain.match(/^鼓机状态：(智能|开|关)，点击切换$/);
+    if (drumState) return `${term('鼓机状态')}: ${term(drumState[1])}, ${term('点击切换')}`;
+    const drumMode = plain.match(/^鼓机：(智能|开|关)\s*·\s*(跟随歌曲事件|鼓组\s*[AB])$/);
+    if (drumMode) {
+      const detail = drumMode[2].startsWith('鼓组') ? `${term('鼓组')} ${drumMode[2].slice(-1)}` : term(drumMode[2]);
+      return `${term('鼓机')}: ${term(drumMode[1])} · ${detail}`;
+    }
+    const shiftedKey = plain.match(/^当前 Key：(.+)（升降\s*([+−-]?\d+)）$/);
+    if (shiftedKey) return `${term('当前 Key')}: ${shiftedKey[1]} (${term('降')}/${term('升')} ${shiftedKey[2]})`;
+    const totalJudgements = plain.match(/^总判定\s*(\d+)$/);
+    if (totalJudgements) return `${term('总判定')} ${totalJudgements[1]}`;
+    const playingNote = plain.match(/^(手动弹奏|主旋律)：(.+)$/);
+    if (playingNote) return `${term(playingNote[1])}: ${playingNote[2]}`;
+    const slotButton = plain.match(/^(拨|鼓)([AB])$/);
+    if (slotButton) return `${term(slotButton[1] === '拨' ? '拨片音色' : '鼓机')} ${slotButton[2]}`;
+    const vocalMonitor = plain.match(/^人声回放\s*(开|关)$/);
+    if (vocalMonitor) return `${term('人声回放')} ${term(vocalMonitor[1])}`;
+    const presetMonitor = plain.match(/^(原声|美声|清亮|温暖|KTV|舞台|大厅|自定义)\s*·\s*回放$/);
+    if (presetMonitor) return `${term(presetMonitor[1])} · ${term('回放')}`;
+    const comboAria = plain.match(/^当前连击\s*(\d+)\s*\/\s*(\d+)，完成度\s*(\d+)%[，,](.+)$/);
+    if (comboAria) return `${term('当前连击')} ${comboAria[1]} / ${comboAria[2]}, ${term('完成度')} ${comboAria[3]}%, ${term(comboAria[4])}`;
+    const comboResult = plain.match(/^(尚未连击|初露锋芒|渐入佳境|节奏在线|火力全开|舞台主宰|传奇演奏)\s*·\s*([\d.]+%)$/);
+    if (comboResult) return `${term(comboResult[1])} · ${comboResult[2]}`;
+    const midiNote = plain.match(/^已收到 Note On：(.+)，力度\s*(\d+)$/);
+    if (midiNote) return `${term('已收到')} Note On: ${midiNote[1]}, ${term('力度')} ${midiNote[2]}`;
+    const midiConnected = plain.match(/^MIDI 已连接：(.+)$/);
+    if (midiConnected) return `MIDI ${term('已连接')}: ${midiConnected[1]}`;
+    const connectedDevices = plain.match(/^已连接\s*(\d+)\s*台设备$/);
+    if (connectedDevices) return `${term('已连接')} ${connectedDevices[1]} ${term('台设备')}`;
+    const deviceSummary = plain.match(/^(.+)\s+等\s+(\d+)\s+台$/);
+    if (deviceSummary) return effective === 'en' ? `${deviceSummary[1]} and ${deviceSummary[2] - 1} more` : effective === 'ja' ? `${deviceSummary[1]} ほか${deviceSummary[2] - 1}台` : `${deviceSummary[1]} 等 ${deviceSummary[2]} 台`;
+    const midiControls = plain.match(/^音量\s*(\d+)%\s*·\s*Pitch\s*([+−\d.]+)\s*半音\s*·\s*Mod\s*(\d+)%$/);
+    if (midiControls) return `${term('音量')} ${midiControls[1]}% · Pitch ${midiControls[2]} ${term('半音')} · Mod ${midiControls[3]}%`;
+    const chordShortcut = plain.match(/^(.+) \((.+)\) · 快捷键 ([A-Z]) · 左下拨片 A \/ 右上拨片 B$/);
+    if (chordShortcut) return `${chordShortcut[1]} (${chordShortcut[2]}) · ${term('快捷键')} ${chordShortcut[3]} · ${term('左下拨片')} A / ${term('右上拨片')} B`;
     return plain;
   }
 
+  function isProtected(node) {
+    const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    if (!element) return false;
+    if (element.closest('[data-i18n-skip], .karaoke-line, [id^="lyricLine"]')) return true;
+    const artistOption = element.closest('#songArtistFilter option');
+    return Boolean(artistOption && artistOption.value !== 'all');
+  }
+
   function applyText(node) {
-    if (!node?.nodeValue || !node.parentElement || /^(SCRIPT|STYLE|TEXTAREA)$/.test(node.parentElement.tagName)) return;
+    if (!node?.nodeValue || !node.parentElement || isProtected(node) || /^(SCRIPT|STYLE|TEXTAREA)$/.test(node.parentElement.tagName)) return;
     let state = textState.get(node);
     if (!state) state = { source: node.nodeValue, last: node.nodeValue };
     else if (node.nodeValue !== state.last) state.source = node.nodeValue;
@@ -211,7 +337,7 @@
   }
 
   function applyAttributes(element) {
-    if (!(element instanceof Element)) return;
+    if (!(element instanceof Element) || isProtected(element)) return;
     let states = attrState.get(element);
     if (!states) states = new Map();
     for (const name of ['aria-label', 'placeholder', 'title']) {
@@ -305,10 +431,17 @@
     observer = new MutationObserver(records => {
       for (const record of records) {
         if (record.type === 'characterData') applyText(record.target);
+        else if (record.type === 'attributes') applyAttributes(record.target);
         else for (const node of record.addedNodes) applyTree(node);
       }
     });
-    observer.observe(document.body, { subtree: true, childList: true, characterData: true });
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['aria-label', 'placeholder', 'title'],
+    });
     const saved = localStorage.getItem(STORAGE_KEY);
     setMode(MODES.includes(saved) ? saved : 'auto', { persist: false });
   }

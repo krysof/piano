@@ -22,7 +22,10 @@
     const trigger = triggerFor(select);
     const selected = select.selectedOptions?.[0];
     const label = trigger?.querySelector('[data-filter-label]');
-    if (label) label.textContent = selected?.textContent || '请选择';
+    if (label) {
+      label.toggleAttribute('data-i18n-skip', select.id === 'songArtistFilter' && selected?.value !== 'all');
+      label.textContent = selected?.textContent || '请选择';
+    }
     trigger?.classList.toggle('has-selection', Boolean(select.value && select.value !== 'all'));
   }
 
@@ -44,6 +47,7 @@
       button.setAttribute('role', 'option');
       button.setAttribute('aria-selected', String(option.value === activeSelect?.value));
       const label = document.createElement('span');
+      if (activeSelect?.id === 'songArtistFilter' && option.value !== 'all') label.dataset.i18nSkip = 'true';
       const pieces = option.label.split(/\s*·\s*/);
       label.textContent = pieces[0];
       const count = document.createElement('small');

@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-13';
+const ASSET_VERSION = 'reset-20260805-14';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -3466,6 +3466,7 @@ function createSongCard(config) {
 
   const art = document.createElement('span');
   art.className = 'song-art';
+  art.dataset.i18nSkip = 'true';
   art.setAttribute('aria-hidden', 'true');
   const artPrimary = document.createElement('i');
   const artSecondary = document.createElement('i');
@@ -3484,10 +3485,13 @@ function createSongCard(config) {
   content.className = 'song-card-content';
   const kicker = document.createElement('span');
   kicker.className = 'song-card-kicker';
+  kicker.dataset.i18nSkip = 'true';
   kicker.textContent = config.collection || 'PERFORMANCE';
   const title = document.createElement('strong');
+  title.dataset.i18nSkip = 'true';
   title.textContent = config.title;
   const artist = document.createElement('em');
+  artist.dataset.i18nSkip = 'true';
   artist.textContent = config.artist;
   const tags = document.createElement('span');
   tags.className = 'song-tags';
@@ -3557,8 +3561,13 @@ function renderSongLibraryFilters() {
   const select = $('songArtistFilter');
   if (select) {
     const languageTotal = [...counts.values()].reduce((total, value) => total + value, 0);
-    select.replaceChildren(new Option(`全部歌手 · ${languageTotal}`, 'all'),
-      ...artists.map(([artist, total]) => new Option(`${artist} · ${total}`, artist)));
+    const allArtists = new Option(`全部歌手 · ${languageTotal}`, 'all');
+    const artistOptions = artists.map(([artist, total]) => {
+      const option = new Option(`${artist} · ${total}`, artist);
+      option.dataset.i18nSkip = 'true';
+      return option;
+    });
+    select.replaceChildren(allArtists, ...artistOptions);
     select.value = songLibraryState.artist;
   }
   const chips = $('songArtistChips');
@@ -3569,6 +3578,7 @@ function renderSongLibraryFilters() {
       button.type = 'button';
       button.dataset.artist = value;
       button.className = value === songLibraryState.artist ? 'selected' : '';
+      if (value !== 'all') button.dataset.i18nSkip = 'true';
       button.textContent = value === 'all' ? `全部 ${[...counts.values()].reduce((total, item) => total + item, 0)}` : `${value} ${counts.get(value)}`;
       return button;
     }));
@@ -3593,11 +3603,13 @@ async function selectSong(songId, { mode = null, freeEntry = false } = {}) {
   try {
     await midiReadyPromise;
     const selectedStatus = $('selectedSongStatus');
-    if (selectedStatus) selectedStatus.textContent = freeEntry
-      ? `自由演奏 · ${config.title}风格`
-      : `${config.title} · ${config.artist}`;
+    if (selectedStatus) {
+      selectedStatus.toggleAttribute('data-i18n-skip', !freeEntry);
+      selectedStatus.textContent = freeEntry ? `自由演奏 · ${config.title}风格` : `${config.title} · ${config.artist}`;
+    }
     const gameTitle = $('gameSongTitle');
     if (gameTitle) {
+      gameTitle.toggleAttribute('data-i18n-skip', !freeEntry);
       gameTitle.textContent = freeEntry ? '自由演奏' : config.title;
       gameTitle.title = freeEntry ? `使用《${config.title}》的伴奏风格` : `${config.title} · ${config.artist}`;
     }
@@ -5950,9 +5962,11 @@ async function startGameFromMenu() {
   if ($('freeBpmGame')) $('freeBpmGame').hidden = !isFreeMode();
   if ($('freePerformancePanel')) $('freePerformancePanel').hidden = !isFreeMode();
   if (isFreeMode() && $('gameSongTitle')) {
+    $('gameSongTitle').removeAttribute('data-i18n-skip');
     $('gameSongTitle').textContent = `自由演奏 · ${song?.catalog?.title || '当前风格'}`;
     $('gameSongTitle').title = `使用《${song?.catalog?.title || '当前歌曲'}》的伴奏风格`;
   } else if ($('gameSongTitle') && song?.catalog) {
+    $('gameSongTitle').setAttribute('data-i18n-skip', 'true');
     $('gameSongTitle').textContent = song.catalog.title;
     $('gameSongTitle').title = `${song.catalog.title} · ${song.catalog.artist}`;
   }
