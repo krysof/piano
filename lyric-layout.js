@@ -4,6 +4,14 @@
       || (line?.events || []).some(event => String(event?.text || '').trim());
   }
 
+  function shouldAlignExplicitLineText(text) {
+    // A whitespace-only LLLYRIC_LINE describes a chord-only/prelude span.
+    // Its spaces are layout metadata, not lyric glyphs. Actual chord blocks
+    // are inserted later from chordCues; turning these spaces into glyph
+    // events creates fake red C cues that can never be pressed.
+    return String(text || '').trim().length > 0;
+  }
+
   function redistributeChordSpaceLines(inputLines, options = {}) {
     const maxBlocksPerLine = Math.max(1, Number(options.maxBlocksPerLine) || 10);
     const bridgeMax = Math.max(2, Number(options.bridgeMax) || 3);
@@ -101,7 +109,7 @@
     return next ? { ...next, distance: Number(next.event.time) - Number(cue.time) } : null;
   }
 
-  const api = { redistributeChordSpaceLines, findLyricEventForChordCue };
+  const api = { redistributeChordSpaceLines, findLyricEventForChordCue, shouldAlignExplicitLineText };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.FreezaLyricLayout = api;
 })(typeof window !== 'undefined' ? window : globalThis);

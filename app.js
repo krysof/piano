@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-21';
+const ASSET_VERSION = 'reset-20260805-22';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -3025,7 +3025,10 @@ function buildLyricLines() {
       const end = Math.max(line.end, explicitLines[i + 1]?.start ?? line.end);
       const raw = lyricEvents.filter(e => e.time >= line.start - 0.001 && e.time < end - 0.001);
       const fullLine = { ...line, end };
-      return { ...fullLine, events: alignLineEventsToText(fullLine, raw) };
+      const events = FreezaLyricLayout.shouldAlignExplicitLineText(fullLine.text)
+        ? alignLineEventsToText(fullLine, raw)
+        : [];
+      return { ...fullLine, events };
     });
     const firstStart = lyricLines[0]?.start ?? 0;
     const preludeCues = (song?.chordCues || []).filter(c => c.time < firstStart - 0.001);
