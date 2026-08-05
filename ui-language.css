@@ -1,0 +1,84 @@
+/* Global interface-language picker. Locale content is managed by ui-language.js. */
+
+.song-header-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.ui-language-picker { position: relative; }
+
+.ui-language-button {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(174, 145, 255, .3);
+  border-radius: 13px;
+  color: #d9ccff;
+  background: linear-gradient(145deg, rgba(77, 51, 139, .62), rgba(19, 22, 34, .94));
+  box-shadow: inset 0 1px rgba(255, 255, 255, .07), 0 10px 24px rgba(0, 0, 0, .22);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.ui-language-button:hover,
+.ui-language-button[aria-expanded="true"] {
+  border-color: rgba(174, 145, 255, .68);
+  background: linear-gradient(145deg, rgba(119, 76, 221, .78), rgba(31, 26, 57, .96));
+}
+
+.ui-language-button:active { transform: scale(.94); }
+.ui-language-button:focus-visible { outline: 2px solid #a98aff; outline-offset: 3px; }
+.ui-language-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+
+.ui-language-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 9px);
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(44px, 1fr));
+  gap: 6px;
+  width: 188px;
+  padding: 9px;
+  border: 1px solid rgba(174, 145, 255, .28);
+  border-radius: 16px;
+  background: rgba(13, 15, 25, .97);
+  box-shadow: 0 22px 58px rgba(0, 0, 0, .52), inset 0 1px rgba(255, 255, 255, .06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.ui-language-menu[hidden] { display: none; }
+
+.ui-language-menu button {
+  appearance: none;
+  min-height: 42px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 11px;
+  color: #aeb4c8;
+  background: rgba(255, 255, 255, .035);
+  font: 800 13px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.ui-language-menu button:hover { color: #fff; border-color: rgba(174, 145, 255, .35); }
+.ui-language-menu button.selected { color: #fff; border-color: rgba(181, 151, 255, .72); background: linear-gradient(135deg, #8151eb, #5d39ba); box-shadow: 0 7px 18px rgba(102, 63, 204, .32); }
+.ui-language-menu button:focus-visible { outline: 2px solid #a98aff; outline-offset: 2px; }
+
+@media (max-width: 520px) {
+  .song-header-actions { gap: 7px; }
+  .ui-language-button { width: 36px; height: 36px; border-radius: 12px; }
+  .ui-language-button svg { width: 19px; height: 19px; }
+  .ui-language-menu { width: 174px; }
+}
+
+@media (max-width: 370px) {
+  .song-library-summary { display: none; }
+}
