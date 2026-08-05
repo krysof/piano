@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-14';
+const ASSET_VERSION = 'reset-20260805-15';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
