@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-09';
+const ASSET_VERSION = 'reset-20260805-10';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -3539,7 +3539,7 @@ function renderSongLibraryFilters() {
   }
   const chips = $('songArtistChips');
   if (chips) {
-    const preferred = ['all', '周杰伦', '王菲', '卫兰', '张学友'].filter(value => value === 'all' || counts.has(value));
+    const preferred = ['all', ...artists.slice(0, 30).map(([artist]) => artist)];
     chips.replaceChildren(...preferred.map(value => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -3549,6 +3549,7 @@ function renderSongLibraryFilters() {
       return button;
     }));
   }
+  globalThis.FreezaSongFilterFrame?.syncAll();
 }
 
 async function selectSong(songId, { mode = null, freeEntry = false } = {}) {
@@ -3603,6 +3604,7 @@ function setupSongScreen() {
   const screen = $('songScreen');
   if (!screen) return;
   renderSongLibraryFilters();
+  globalThis.FreezaSongFilterFrame?.mount();
   renderSongCatalog();
   setupLaunchUiSounds(screen);
   $('songGrid')?.addEventListener('click', event => {
