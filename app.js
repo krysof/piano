@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-16';
+const ASSET_VERSION = 'reset-20260805-17';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -3168,16 +3168,11 @@ function lyricLineForTime(time) {
 }
 
 function lyricEventForChordCue(cue, maxDistance = 0.008) {
-  const events = allLyricEvents().filter(x => String(x.ev.text || '').trim());
-  if (!events.length || !cue) return null;
-  let best = null;
-  for (const item of events) {
-    const d = Math.abs(item.ev.time - cue.time);
-    // 只绑定“同一时间点/同一拍”的歌词字；有和弦但没字，就插入空格。
-    // 这里的 8ms 只用于 MIDI tick/浮点转换误差，不用于抓附近歌词。
-    if (d <= maxDistance && (!best || d < best.distance)) best = { ...item, distance: d };
-  }
-  return best;
+  const hit = window.FreezaLyricLayout.findLyricEventForChordCue(lyricLines, cue, {
+    exactTolerance: maxDistance,
+    beatSeconds: beatMs() / 1000,
+  });
+  return hit ? { ev: hit.event, line: hit.line, index: hit.index, distance: hit.distance } : null;
 }
 
 function splitTrailingChordSpaceLines(maxBlocksPerLine = 10) {

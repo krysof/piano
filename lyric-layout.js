@@ -66,7 +66,41 @@
     return output.sort((a, b) => a.start - b.start);
   }
 
-  const api = { redistributeChordSpaceLines };
+  function findLyricEventForChordCue(inputLines, cue, options = {}) {
+    if (!cue || !Number.isFinite(Number(cue.time))) return null;
+    const exactTolerance = Math.max(0, Number(options.exactTolerance) || 0.008);
+    const beatSeconds = Math.max(0, Number(options.beatSeconds) || 0);
+    const sameBeatLimit = beatSeconds * 0.76;
+    const events = (inputLines || [])
+      .flatMap(line => (line?.events || []).map((event, index) => ({ event, line, index })))
+      .filter(item => String(item.event?.text || '').trim())
+      .sort((left, right) => Number(left.event.time) - Number(right.event.time));
+    if (!events.length) return null;
+
+    // Standard lyric events normally share the exact tick with their chord.
+    // Prefer that authoritative match before applying beat-aware recovery.
+    let exact = null;
+    for (const item of events) {
+      const distance = Math.abs(Number(item.event.time) - Number(cue.time));
+      if (distance <= exactTolerance && (!exact || distance < exact.distance)) {
+        exact = { ...item, distance };
+      }
+    }
+    if (exact) return exact;
+
+    // LiberLive JSON attaches a chord to a beat, while the first sung note in
+    // that beat may start at subdivision 1/2/3. The enhanced MIDI therefore
+    // places the chord before its lyric glyph. Bind it to the first glyph still
+    // inside the same beat; a true lyric-less beat remains a square cue.
+    if (!sameBeatLimit) return null;
+    const next = events.find(item => {
+      const distance = Number(item.event.time) - Number(cue.time);
+      return distance > exactTolerance && distance <= sameBeatLimit + exactTolerance;
+    });
+    return next ? { ...next, distance: Number(next.event.time) - Number(cue.time) } : null;
+  }
+
+  const api = { redistributeChordSpaceLines, findLyricEventForChordCue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.FreezaLyricLayout = api;
 })(typeof window !== 'undefined' ? window : globalThis);
