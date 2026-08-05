@@ -522,27 +522,25 @@
     "instrumental": false
   },
   {
-    "id": "lixianglan-main-melody",
+    "id": "lixianglan-rebuild",
     "title": "李香兰",
-    "subtitle": "主旋律补全版",
+    "subtitle": "全新钢琴谱重制版",
     "artist": "张学友",
     "collection": "张学友",
     "aliases": [
       "李香蘭",
-      "Li Xiang Lan",
-      "行かないで",
-      "Ikanaide"
+      "Li Xiang Lan"
     ],
-    "path": "music/李香兰_张学友_716802.flm",
+    "path": "music/李香兰_张学友_重制版_716804.flm",
     "language": "zh",
     "melodyOnly": false,
     "featured": true,
     "order": 13,
     "theme": "midnight",
     "hot": 0,
-    "duration": "04:10",
+    "duration": "03:42",
     "bpm": 78,
-    "tone": "C",
+    "tone": "Am",
     "hue": 163,
     "instrumental": false
   },
@@ -564,25 +562,25 @@
     "instrumental": false
   },
   {
-    "aliases": [
-      "李香兰",
-      "李香蘭",
-      "Ikanaide",
-      "不要走"
-    ],
-    "language": "ja",
-    "featured": true,
-    "order": 14,
-    "theme": "midnight",
-    "hot": 0,
-    "id": "ikanaide-japanese",
+    "id": "ikanaide-rebuild",
     "title": "行かないで",
-    "subtitle": "日文版",
+    "subtitle": "全新原调重制版",
     "artist": "玉置浩二",
     "collection": "玉置浩二",
-    "path": "music/行かないで_玉置浩二_716803.flm",
-    "duration": "04:01",
-    "bpm": 81,
+    "aliases": [
+      "不要走",
+      "Ikanaide",
+      "李香兰日文版"
+    ],
+    "path": "music/行かないで_玉置浩二_重制版_716805.flm",
+    "language": "ja",
+    "melodyOnly": false,
+    "featured": true,
+    "order": 14,
+    "theme": "moon",
+    "hot": 0,
+    "duration": "03:36",
+    "bpm": 80,
     "tone": "Bm",
     "hue": 107,
     "instrumental": false
