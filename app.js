@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-28';
+const ASSET_VERSION = 'reset-20260805-29';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -213,13 +213,24 @@ function startClockLoop(includeLyrics = false, fps = 30) {
   stopClockLoop();
   const frameMs = 1000 / Math.max(1, fps);
   let previous = -Infinity;
+  let lastErrorAt = -Infinity;
   const tick = timestamp => {
-    if (timestamp - previous >= frameMs - 1) {
-      previous = timestamp;
-      updateClock();
-      if (includeLyrics) updateLyrics();
+    try {
+      if (timestamp - previous >= frameMs - 1) {
+        previous = timestamp;
+        updateClock();
+        if (includeLyrics) updateLyrics();
+      }
+    } catch (error) {
+      // One bad visual frame must never stop the playback clock permanently.
+      // Keep the RAF alive and throttle diagnostics to avoid flooding Safari.
+      if (timestamp - lastErrorAt >= 1000) {
+        lastErrorAt = timestamp;
+        console.error('Playback frame failed:', error);
+      }
+    } finally {
+      clockTimer = requestAnimationFrame(tick);
     }
-    clockTimer = requestAnimationFrame(tick);
   };
   clockTimer = requestAnimationFrame(tick);
 }
@@ -3339,9 +3350,13 @@ function lyricCharAt(time) {
 }
 
 function emitLyricParticles(visualProgress) {
+  if (!visualProgress) return;
   const now = performance.now();
   const progress = Number(visualProgress?.progress);
-  if (now - lastLyricParticleAt < 95 || progress <= 0 || progress >= 99.5) return;
+  if (!Number.isFinite(progress)
+      || now - lastLyricParticleAt < 95
+      || progress <= 0
+      || progress >= 99.5) return;
   const x = Number(visualProgress.x);
   const y = Number(visualProgress.y);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
