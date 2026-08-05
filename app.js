@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-30';
+const ASSET_VERSION = 'reset-20260806-01';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -973,6 +973,9 @@ function returnToSongScreen() {
   playOffset = 0;
   nextManualMelodyIndex = 0;
   startRequested = false;
+  playbackNeedsFocusResync = false;
+  focusGestureUnlockPending = false;
+  focusResumePosition = null;
   clearTimers();
   if (recorder.active) stopRecording(false);
   resetInteractiveSequencer();
@@ -5969,12 +5972,24 @@ function setupStartScreen() {
 async function startGameFromMenu() {
   if (startRequested) return;
   startRequested = true;
+  // This function is entered directly from the start button's trusted user
+  // gesture.  Re-unlock both native WebAudio and Tone *before* the first
+  // await.  iOS may revoke the previous activation after a finished take;
+  // waiting for MIDI/sample preparation first makes the second selected song
+  // visually run while its audio context remains silent.
+  ensureAudio();
+  const audioUnlock = window.FreezaAudioFocusRecovery?.resume?.(
+    audio.ctx,
+    window.Tone,
+    { userGesture: true },
+  ) || Promise.resolve(audio.ctx?.state === 'running');
   const screen = $('startScreen');
   resetLoadingProgress();
   screen?.classList.add('loading');
   requestWakeLock();
   setLoadingStatus('准备载入…');
   try {
+    await audioUnlock;
     await prepareStartAssets();
   } catch (err) {
     console.warn('start waits for midi failed', err);

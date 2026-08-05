@@ -274,6 +274,31 @@
     "instrumental": false
   },
   {
+    "id": "suteki-da-ne",
+    "title": "素敵だね",
+    "subtitle": "FINAL FANTASY X・主旋律＋和弦",
+    "artist": "RIKKI",
+    "collection": "RIKKI",
+    "aliases": [
+      "素敌",
+      "素敵だね featured in FINAL FANTASY X",
+      "Suteki Da Ne",
+      "Isn't It Wonderful"
+    ],
+    "path": "music/素敵だね_RIKKI_114610.flm",
+    "language": "ja",
+    "melodyOnly": false,
+    "featured": true,
+    "order": 9,
+    "theme": "aurora",
+    "hot": 0,
+    "duration": "05:32",
+    "bpm": 70,
+    "tone": "D",
+    "hue": 343,
+    "instrumental": false
+  },
+  {
     "featured": true,
     "order": 9,
     "theme": "summer",
