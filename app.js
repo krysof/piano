@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-25';
+const ASSET_VERSION = 'reset-20260805-26';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -4544,7 +4544,14 @@ async function playPlayback() {
 
 function currentPlayTime() {
   if (!song) return 0;
-  return playing ? playOffset + (performance.now() - playStartedAt) / 1000 : playOffset;
+  return window.FreezaInteractiveClock.currentSongTime({
+    now: performance.now(),
+    playing,
+    playOffset,
+    playStartedAt,
+    manualMode: isManualMode(),
+    phrase: interactiveSession.phrase,
+  });
 }
 
 function playTrack2At(root) {
@@ -5024,6 +5031,8 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
   if (isManualMode()) {
     phrase.musicStartAt = phraseStartedAt;
     phrase.musicEndAt = phraseStartedAt + naturalDurationMs;
+    phrase.timelineStart = Number(cue?.time || 0);
+    phrase.timelineEnd = Number(scheduleTiming.boundary);
     cue._id ||= `interactive-${oneKeyNextCueIndex}-${cue.time}-${cue.chord}`;
     const phraseMidi = NATURAL_TO_MIDI[cue.root || rootFromChord(cue.chord) || root];
     activeCue = { cue, midi: phraseMidi, hit: true, pressed: true, interactive: true };
