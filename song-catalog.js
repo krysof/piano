@@ -257,6 +257,32 @@
     "instrumental": false
   },
   {
+    "id": "blue-bird-ikimonogakari",
+    "title": "ブルーバード",
+    "subtitle": "NARUTO-ナルト-疾風伝 OP・TV版",
+    "artist": "いきものがかり",
+    "collection": "いきものがかり",
+    "aliases": [
+      "青鸟",
+      "青鳥",
+      "Blue Bird",
+      "火影忍者青鸟",
+      "Naruto Shippuden OP3"
+    ],
+    "path": "music/ブルーバード_いきものがかり_669611.flm",
+    "language": "ja",
+    "melodyOnly": false,
+    "featured": true,
+    "order": 8,
+    "theme": "sky",
+    "hot": 0,
+    "duration": "01:28",
+    "bpm": 150,
+    "tone": "F♯m",
+    "hue": 15,
+    "instrumental": false
+  },
+  {
     "id": "anhe-bridge",
     "title": "安和桥",
     "subtitle": "进阶版",
