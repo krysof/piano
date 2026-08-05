@@ -30,11 +30,11 @@
       const blankEvents = events.slice(trailingStart);
       const nextLine = lines[index + 1];
 
-      // 两三个无字和弦处在两句歌词之间时，不应独占一整行：
+      // 一至三个无字和弦处在两句歌词之间时，不应独占一整行：
       // 最后一个作为下一句的起拍，其余留在上一句结尾。
       if (
         hasVisibleLyrics(line)
-        && blankEvents.length >= 2
+        && blankEvents.length >= 1
         && blankEvents.length <= bridgeMax
         && hasVisibleLyrics(nextLine)
       ) {

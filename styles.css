@@ -5,7 +5,7 @@
     radial-gradient(circle at 10% 10%, rgba(111, 74, 255, .23), transparent 31%),
     radial-gradient(circle at 88% 84%, rgba(79, 209, 197, .13), transparent 34%),
     linear-gradient(145deg, #15132d, #0d1019 48%, #0d171b);
-  background-color: #15132d;
+  background-color: #080a11;
 }
 
 *,
@@ -40,9 +40,11 @@ body {
   html,
   body {
     width: 100vw;
-    min-height: 100dvh;
-    height: 100dvh;
-    background-color: transparent;
+    min-height: 100vh;
+    min-height: 100lvh;
+    height: 100vh;
+    height: 100lvh;
+    background-color: #080a11;
   }
 }
 

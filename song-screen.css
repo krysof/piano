@@ -10,7 +10,13 @@
   --song-cyan: #4fd1c5;
   position: fixed;
   z-index: 12000;
-  inset: 0;
+  inset: 0 0 auto;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  height: 100lvh;
   display: grid;
   overflow: auto;
   padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
