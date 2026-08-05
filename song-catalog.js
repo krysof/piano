@@ -189,6 +189,32 @@
     "instrumental": false
   },
   {
+    "id": "just-communication-two-mix",
+    "title": "JUST COMMUNICATION",
+    "subtitle": "新機動戦記ガンダムW OP・完全版",
+    "artist": "TWO-MIX",
+    "collection": "TWO-MIX",
+    "aliases": [
+      "Just Communication",
+      "ジャストコミュニケーション",
+      "高达W",
+      "鋼彈W",
+      "Gundam Wing OP"
+    ],
+    "path": "music/JUST COMMUNICATION_TWO-MIX_199504.flm",
+    "language": "ja",
+    "melodyOnly": false,
+    "featured": true,
+    "order": 6,
+    "theme": "sky",
+    "hot": 0,
+    "duration": "03:58",
+    "bpm": 132,
+    "tone": "Dm",
+    "hue": 148,
+    "instrumental": false
+  },
+  {
     "featured": true,
     "order": 7,
     "theme": "river",
