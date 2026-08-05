@@ -1,6 +1,9 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-08';
-const SONG_CATALOG = Object.freeze(Array.from(window.FreezaSongCatalog || []));
+const ASSET_VERSION = 'reset-20260805-09';
+const SONG_CATALOG = Object.freeze([
+  ...Array.from(window.FreezaSongCatalog || []),
+  ...Array.from(window.FreezaVaultSongCatalog || []),
+]);
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', language: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
