@@ -3,6 +3,7 @@
   const MODES = Object.freeze(['auto', 'yue', 'zh-Hant', 'ja', 'en', 'zh-Hans']);
 
   const en = {
+    '作者': 'Creator',
     '今晚想演奏哪一首？': 'What would you like to play?',
     '选择自由演奏，或搜索歌曲和歌手进入演奏设置。': 'Choose Free Play, or search for a song or artist.',
     '自由演奏': 'Free Play',
@@ -108,6 +109,7 @@
   };
 
   const ja = {
+    '作者': '作者',
     '今晚想演奏哪一首？': '今夜はどの曲を演奏しますか？',
     '选择自由演奏，或搜索歌曲和歌手进入演奏设置。': '自由演奏、または曲・歌手を検索して演奏設定へ進みます。',
     '自由演奏': '自由演奏', '不限时间 · BPM 自由调节 · 单音与和弦伴奏': '時間無制限・BPM調整・単音とコード伴奏',

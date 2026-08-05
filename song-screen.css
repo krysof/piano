@@ -65,6 +65,8 @@ body:not(.song-selected) #startScreen { display: none; }
 .song-freeza-eyebrow { color: #ae92ff; font-size: 9px; font-weight: 850; letter-spacing: .24em; }
 .song-freeza-brand h1 { margin: 4px 0 0; font-size: clamp(23px,5vw,30px); line-height: 1; letter-spacing: -.035em; }
 .song-freeza-brand h1 em { color: #a78bfa; font-style: normal; }
+.song-freeza-author { margin-top: 5px; color: #74788f; font-size: 9px; font-weight: 650; letter-spacing: .08em; }
+.song-freeza-author b { color: #a9a0c7; font-weight: 760; letter-spacing: .06em; }
 
 .song-library-summary {
   display: grid;
