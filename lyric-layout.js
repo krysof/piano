@@ -4,74 +4,6 @@
       || (line?.events || []).some(event => String(event?.text || '').trim());
   }
 
-  function mergeOrphanPickupLines(inputLines, options = {}) {
-    const beatSeconds = Math.max(0.001, Number(options.beatSeconds) || 0.5);
-    const maxGap = beatSeconds * Math.max(0.01, Number(options.maxGapBeats) || 0.35);
-    const zeroDurationLimit = Math.max(0.012, beatSeconds * 0.02);
-    const chordTolerance = Math.max(0.002, Number(options.chordTolerance) || 0.012);
-    const chordTimes = (options.chordTimes || [])
-      .map(Number)
-      .filter(Number.isFinite);
-    const lines = (inputLines || []).map(line => ({
-      ...line,
-      furigana: Array.isArray(line?.furigana) ? line.furigana.map(item => ({ ...item })) : [],
-      events: [...(line?.events || [])],
-    }));
-    const output = [];
-
-    for (let index = 0; index < lines.length; index++) {
-      const line = lines[index];
-      const next = lines[index + 1];
-      const text = String(line?.text || '').trim();
-      const glyphs = [...text];
-      const start = Number(line?.start);
-      const end = Number(line?.end);
-      const nextStart = Number(next?.start);
-      const hasChord = chordTimes.some(time => Math.abs(time - start) <= chordTolerance);
-      const isCjkGlyph = glyphs.length === 1
-        && /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(glyphs[0]);
-      const isZeroDurationPickup = Number.isFinite(start)
-        && Number.isFinite(end)
-        && end - start <= zeroDurationLimit;
-      const isImmediateNextLine = Number.isFinite(nextStart)
-        && nextStart > start
-        && nextStart - start <= maxGap;
-
-      // Some LiberLive line markers place a one-glyph pickup at the end of the
-      // previous bar, then begin the real lyric line a subdivision later. When
-      // that pickup has no chord of its own, showing it as a standalone line is
-      // misleading. Fold it into the following line while retaining its time.
-      if (
-        next
-        && isCjkGlyph
-        && isZeroDurationPickup
-        && isImmediateNextLine
-        && !hasChord
-        && Number(line.paragraphType) === 4
-        && Number(next.paragraphType) === 2
-      ) {
-        const prefixLength = [...String(line.text || '')].length;
-        const shiftedNextFurigana = (next.furigana || []).map(item => ({
-          ...item,
-          start: Number(item.start) + prefixLength,
-        }));
-        lines[index + 1] = {
-          ...next,
-          start,
-          text: `${line.text || ''}${next.text || ''}`,
-          reading: `${line.reading || ''}${next.reading || ''}`,
-          furigana: [...(line.furigana || []), ...shiftedNextFurigana],
-          events: [...(line.events || []), ...(next.events || [])],
-        };
-        continue;
-      }
-
-      output.push(line);
-    }
-
-    return output;
-  }
-
   function redistributeChordSpaceLines(inputLines, options = {}) {
     const maxBlocksPerLine = Math.max(1, Number(options.maxBlocksPerLine) || 10);
     const bridgeMax = Math.max(2, Number(options.bridgeMax) || 3);
@@ -169,7 +101,7 @@
     return next ? { ...next, distance: Number(next.event.time) - Number(cue.time) } : null;
   }
 
-  const api = { mergeOrphanPickupLines, redistributeChordSpaceLines, findLyricEventForChordCue };
+  const api = { redistributeChordSpaceLines, findLyricEventForChordCue };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.FreezaLyricLayout = api;
 })(typeof window !== 'undefined' ? window : globalThis);

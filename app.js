@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-20';
+const ASSET_VERSION = 'reset-20260805-21';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -2996,7 +2996,7 @@ function alignLineEventsToText(line, rawEvents) {
 
 function buildLyricLines() {
   const beatSec = beatMs() / 1000;
-  let explicitLines = (song?.lyricLineEvents || [])
+  const explicitLines = (song?.lyricLineEvents || [])
     .map(e => {
       const data = e.data || {};
       const startBeat = Number(data.time);
@@ -3015,10 +3015,6 @@ function buildLyricLines() {
     })
     .filter(line => line && line.text)
     .sort((a, b) => a.start - b.start);
-  explicitLines = window.FreezaLyricLayout.mergeOrphanPickupLines(explicitLines, {
-    beatSeconds: beatSec,
-    chordTimes: (song?.chordCues || []).map(cue => cue.time),
-  });
   if (explicitLines.length) {
     const lyricEvents = (song?.noteTracks?.find(t => (t.texts || []).some(e => e.type === 0x03 && e.text === 'Lyrics'))?.texts || song?.noteTracks?.[3]?.texts || [])
       .filter(e => e.type === 0x05 || e.type === 0x01)
