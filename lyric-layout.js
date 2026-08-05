@@ -12,6 +12,52 @@
     return String(text || '').trim().length > 0;
   }
 
+  function mergeSingleCharacterLines(inputLines) {
+    const output = [];
+    for (const source of inputLines || []) {
+      const line = {
+        ...source,
+        furigana: [...(source?.furigana || [])],
+        events: [...(source?.events || [])],
+      };
+      const visibleText = String(line.text || '').trim();
+      const previous = output.at(-1);
+      const previousText = String(previous?.text || '');
+
+      // 单独一个字会让歌词光标突然换到只有一字的新行，也会把这个字
+      // 与原句的和弦提示拆开。中日文都把它并回上一句；空白和弦行、
+      // 前奏行不参与，避免把纯伴奏色块并进歌词。
+      if (
+        [...visibleText].length === 1
+        && previous
+        && String(previousText).trim()
+        && !previous.chordOnly
+        && !previous.prelude
+      ) {
+        const textOffset = [...previousText].length;
+        previous.text = `${previousText}${visibleText}`;
+        const previousReading = String(previous.reading || '');
+        const lineReading = String(line.reading || '');
+        previous.reading = previousReading || lineReading
+          ? `${previousReading || previousText}${lineReading || visibleText}`
+          : '';
+        previous.furigana = [
+          ...(previous.furigana || []),
+          ...(line.furigana || []).map(item => ({
+            ...item,
+            start: textOffset + Number(item.start || 0),
+          })),
+        ];
+        previous.events = [...(previous.events || []), ...(line.events || [])]
+          .sort((left, right) => Number(left.time) - Number(right.time));
+        previous.end = Math.max(Number(previous.end) || 0, Number(line.end) || 0);
+        continue;
+      }
+      output.push(line);
+    }
+    return output;
+  }
+
   function redistributeChordSpaceLines(inputLines, options = {}) {
     const maxBlocksPerLine = Math.max(1, Number(options.maxBlocksPerLine) || 10);
     const bridgeMax = Math.max(2, Number(options.bridgeMax) || 3);
@@ -109,7 +155,12 @@
     return next ? { ...next, distance: Number(next.event.time) - Number(cue.time) } : null;
   }
 
-  const api = { redistributeChordSpaceLines, findLyricEventForChordCue, shouldAlignExplicitLineText };
+  const api = {
+    mergeSingleCharacterLines,
+    redistributeChordSpaceLines,
+    findLyricEventForChordCue,
+    shouldAlignExplicitLineText,
+  };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   global.FreezaLyricLayout = api;
 })(typeof window !== 'undefined' ? window : globalThis);

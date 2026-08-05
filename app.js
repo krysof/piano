@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-26';
+const ASSET_VERSION = 'reset-20260805-27';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -3030,6 +3030,7 @@ function buildLyricLines() {
         : [];
       return { ...fullLine, events };
     });
+    lyricLines = FreezaLyricLayout.mergeSingleCharacterLines(lyricLines);
     const firstStart = lyricLines[0]?.start ?? 0;
     const preludeCues = (song?.chordCues || []).filter(c => c.time < firstStart - 0.001);
     if (preludeCues.length) {
@@ -3085,6 +3086,7 @@ function buildLyricLines() {
     ...line,
     end: Math.max(line.end + 0.65, lines[i + 1]?.start ?? song?.duration ?? line.end + 2),
   }));
+  lyricLines = FreezaLyricLayout.mergeSingleCharacterLines(lyricLines);
 }
 
 
