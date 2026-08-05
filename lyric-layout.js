@@ -70,10 +70,11 @@
     if (!cue || !Number.isFinite(Number(cue.time))) return null;
     const exactTolerance = Math.max(0, Number(options.exactTolerance) || 0.008);
     const beatSeconds = Math.max(0, Number(options.beatSeconds) || 0);
+    const usedEvents = options.usedEvents instanceof Set ? options.usedEvents : null;
     const sameBeatLimit = beatSeconds * 0.76;
     const events = (inputLines || [])
       .flatMap(line => (line?.events || []).map((event, index) => ({ event, line, index })))
-      .filter(item => String(item.event?.text || '').trim())
+      .filter(item => String(item.event?.text || '').trim() && !usedEvents?.has(item.event))
       .sort((left, right) => Number(left.event.time) - Number(right.event.time));
     if (!events.length) return null;
 

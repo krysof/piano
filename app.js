@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-17';
+const ASSET_VERSION = 'reset-20260805-18';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -3167,10 +3167,11 @@ function lyricLineForTime(time) {
     || null;
 }
 
-function lyricEventForChordCue(cue, maxDistance = 0.008) {
+function lyricEventForChordCue(cue, maxDistance = 0.008, usedEvents = null) {
   const hit = window.FreezaLyricLayout.findLyricEventForChordCue(lyricLines, cue, {
     exactTolerance: maxDistance,
     beatSeconds: beatMs() / 1000,
+    usedEvents,
   });
   return hit ? { ev: hit.event, line: hit.line, index: hit.index, distance: hit.distance } : null;
 }
@@ -3189,11 +3190,12 @@ function bindChordCuesToLyrics() {
       delete ev.cueEndTime;
     });
   });
+  const usedLyricEvents = new Set();
   (song?.chordCues || []).forEach((cue, i) => {
     cue._lyricChar = '';
     cue._lyricEventTime = null;
     const id = `${i}-${cue.time}-${cue.chord}`;
-    const hit = lyricEventForChordCue(cue);
+    const hit = lyricEventForChordCue(cue, 0.008, usedLyricEvents);
     let ev = hit?.ev || null;
     if (!ev) {
       const line = lyricLineForTime(cue.time);
@@ -3203,6 +3205,7 @@ function bindChordCuesToLyrics() {
       line.events.sort((a, b) => a.time - b.time);
     } else {
       ev.root = cue.root;
+      usedLyricEvents.add(ev);
     }
     ev.cueId = id;
     // 下方提示：65% = cue.time - 71ms，70% = cue.time，75% = cue.time + 71ms。
