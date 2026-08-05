@@ -1,6 +1,11 @@
 :root {
   color-scheme: dark;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(111, 74, 255, .23), transparent 31%),
+    radial-gradient(circle at 88% 84%, rgba(79, 209, 197, .13), transparent 34%),
+    linear-gradient(145deg, #15132d, #0d1019 48%, #0d171b);
+  background-color: #15132d;
 }
 
 *,
@@ -15,15 +20,30 @@ body {
   min-width: 320px;
   height: 100%;
   margin: 0;
+  background-color: transparent;
 }
 
 body {
+  min-height: 100dvh;
   overflow: hidden;
   color: #f6f7fb;
-  background: #080a10;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(111, 74, 255, .23), transparent 31%),
+    radial-gradient(circle at 88% 84%, rgba(79, 209, 197, .13), transparent 34%),
+    linear-gradient(145deg, #07080d, #0d1019 48%, #080a11);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+}
+
+@media (display-mode: standalone) {
+  html,
+  body {
+    width: 100vw;
+    min-height: 100dvh;
+    height: 100dvh;
+    background-color: transparent;
+  }
 }
 
 button,

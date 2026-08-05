@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260805-10';
+const ASSET_VERSION = 'reset-20260805-11';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -25,12 +25,23 @@ const audio = {
 const sampled = {
   piano: null,
   ready: false,
+  mainSettled: false,
   midiPiano: null,
   midiReady: false,
+  midiPromise: null,
   midiPitch: null,
   midiVibrato: null,
   midiVolume: null,
 };
+const PIANO_SAMPLE_URLS = Object.freeze({
+  A0: 'A0.mp3', C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3', A1: 'A1.mp3',
+  C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
+  C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
+  C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
+  C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3',
+  C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', A6: 'A6.mp3',
+  C7: 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3', A7: 'A7.mp3', C8: 'C8.mp3',
+});
 const wasmParser = { promise: null, exports: null };
 const patterns = { manifest: null, byCode: new Map(), promise: null };
 const audioScheduler = window.FreezaAudioScheduler.create({ lookaheadMs: 90 });
@@ -314,27 +325,35 @@ function initSamplePiano() {
     sampleReadyPromise = Promise.resolve(false);
     return sampleReadyPromise;
   }
-  const urls = {
-      A0: 'A0.mp3', C1: 'C1.mp3', 'D#1': 'Ds1.mp3', 'F#1': 'Fs1.mp3', A1: 'A1.mp3',
-      C2: 'C2.mp3', 'D#2': 'Ds2.mp3', 'F#2': 'Fs2.mp3', A2: 'A2.mp3',
-      C3: 'C3.mp3', 'D#3': 'Ds3.mp3', 'F#3': 'Fs3.mp3', A3: 'A3.mp3',
-      C4: 'C4.mp3', 'D#4': 'Ds4.mp3', 'F#4': 'Fs4.mp3', A4: 'A4.mp3',
-      C5: 'C5.mp3', 'D#5': 'Ds5.mp3', 'F#5': 'Fs5.mp3', A5: 'A5.mp3',
-      C6: 'C6.mp3', 'D#6': 'Ds6.mp3', 'F#6': 'Fs6.mp3', A6: 'A6.mp3',
-      C7: 'C7.mp3', 'D#7': 'Ds7.mp3', 'F#7': 'Fs7.mp3', A7: 'A7.mp3', C8: 'C8.mp3',
-  };
   sampleReadyPromise = new Promise(resolve => {
+    let timeout = null;
+    const finish = ready => {
+      if (sampled.mainSettled) return;
+      sampled.mainSettled = true;
+      clearTimeout(timeout);
+      resolve(ready);
+    };
     sampled.piano = new Tone.Sampler({
-      urls,
-    release: 1.25,
-    baseUrl: 'samples/salamander/',
+      urls: PIANO_SAMPLE_URLS,
+      release: 1.25,
+      baseUrl: 'samples/salamander/',
       onload: () => {
         sampled.ready = true;
         setPill('sampleStatus', '✅ Salamander Grand Piano 采样音色', 'ok');
-        resolve(true);
+        finish(true);
       },
+      onerror: () => finish(false),
     }).toDestination();
     Tone.Destination.volume.value = -5;
+    timeout = setTimeout(() => finish(false), 15000);
+  });
+  return sampleReadyPromise;
+}
+
+function initMidiPreviewPiano() {
+  if (sampled.midiPromise) return sampled.midiPromise;
+  if (!window.Tone) return Promise.resolve(false);
+  sampled.midiPromise = new Promise(resolve => {
     try {
       sampled.midiVolume = new Tone.Volume(0).toDestination();
       sampled.midiPitch = new Tone.PitchShift({ pitch: 0, windowSize: 0.055 });
@@ -342,17 +361,22 @@ function initSamplePiano() {
       sampled.midiVibrato.connect(sampled.midiPitch);
       sampled.midiPitch.connect(sampled.midiVolume);
       sampled.midiPiano = new Tone.Sampler({
-        urls,
+        urls: PIANO_SAMPLE_URLS,
         release: 1.25,
         baseUrl: 'samples/salamander/',
-        onload: () => { sampled.midiReady = true; },
+        onload: () => {
+          sampled.midiReady = true;
+          resolve(true);
+        },
+        onerror: () => resolve(false),
       }).connect(sampled.midiVibrato);
     } catch (error) {
       console.warn('MIDI piano preview effects unavailable:', error);
       sampled.midiPiano = null;
+      resolve(false);
     }
   });
-  return sampleReadyPromise;
+  return sampled.midiPromise;
 }
 function ensureAudio() {
   if (!audio.ctx) {
@@ -4381,13 +4405,13 @@ async function prepareStartAssets() {
     // startRecording() 会自动退回 MediaRecorder，绝不能卡住开始按钮。
     console.warn('PCM recorder preload skipped:', error);
   }
-  setLoadingCategory('piano', 0.05, '缓存双路真实钢琴采样');
-  const salamanderReady = Promise.resolve(sampleReadyPromise).then(ready => {
-    if (!ready) throw new Error('Salamander piano unavailable');
-    return 'Salamander Grand Piano';
-  });
+  setLoadingCategory('piano', 0.05, '缓存真实钢琴采样');
   const pianoTask = loadingTaskTimeout(
-    Promise.any([salamanderReady, warmMainPianoFallback().then(() => 'MusyngKite Acoustic Piano')]),
+    Promise.resolve(sampleReadyPromise).then(async ready => {
+      if (ready) return 'Salamander Grand Piano';
+      await warmMainPianoFallback();
+      return 'MusyngKite Acoustic Piano';
+    }),
     'piano',
   )
     .then(name => setLoadingCategory('piano', 1, `${name} 已缓存`))
@@ -5588,6 +5612,7 @@ function updateExternalMidiUi(status = window.FreezaMidiInput?.snapshot?.() || {
     gameStatus.title = status.connected ? `MIDI 已连接：${deviceSummary}` : text;
   }
   if (gameLabel) gameLabel.textContent = status.count > 1 ? `MIDI ×${status.count}` : 'MIDI';
+  if (status.connected) void initMidiPreviewPiano();
 }
 
 function rootForExternalMidiNote(note) {
