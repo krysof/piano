@@ -11,7 +11,10 @@
     'electric-jazz': Object.freeze({ sourceLufs: -15.5, routeDb: -6.38 }),
     'electric-distorted': Object.freeze({ sourceLufs: -12.8, routeDb: -6.38 }),
   });
-  const TARGET_LUFS = -34;
+  // 旧目标 -34 LUFS 对网页现场演奏过于保守：拨片虽然不会削波，但在手机、
+  // 蓝牙音箱和歌曲主旋律旁会明显偏小。统一提高 4 dB，仍保留 A/B 音色库
+  // 之间的离线响度校准，而不是只把某一把吉他单独放大。
+  const TARGET_LUFS = -30;
   const PLAN_TARGET_RMS = 0.60;
   const PLAN_GAIN_MIN = 0.40;
   const PLAN_GAIN_MAX = 2.15;
@@ -30,7 +33,9 @@
     const profile = LIBRARIES[libraryForCode(code)];
     if (!profile) return Number(fallback) || 0.65;
     const gain = Math.pow(10, (TARGET_LUFS - profile.sourceLufs - profile.routeDb) / 20);
-    return Math.max(0.08, Math.min(1, gain));
+    // 钢琴的源采样本身较轻，达到统一目标需要略高于 unity。最终输出仍经过
+    // WebAudio 主总线限制器，因此这里允许与 GuitarSampler 相同的 1.4 上限。
+    return Math.max(0.08, Math.min(1.4, gain));
   }
 
   function estimatedRms(events = []) {
