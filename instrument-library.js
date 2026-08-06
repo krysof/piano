@@ -16,7 +16,7 @@
     { match: /^StringSet1(?:_|$)/i, displayName: 'MusyngKite String Ensemble', fallbackName: 'string_ensemble_1', soundfont: MUSYNG_KITE, gain: 0.28 },
     { match: /^EGsolo1(?:_|$)/i, displayName: 'FSBS Electric Guitar Distorted', fallbackName: 'distortion_guitar', guitarLibrary: true, sampleCode: 'GED', gain: 0.58, fallbackGain: 0.55 },
     { match: /^LGsolo2(?:_|$)/i, displayName: 'FSBS Electric Guitar Clean', fallbackName: 'electric_guitar_clean', guitarLibrary: true, sampleCode: 'GEC1', gain: 0.64, fallbackGain: 0.62 },
-    { match: /^BlindingLead(?:_|$)/i, displayName: 'MusyngKite Saw Lead', fallbackName: 'lead_2_sawtooth', soundfont: MUSYNG_KITE, gain: 0.74 },
+    { match: /^BlindingLead(?:_|$)/i, displayName: 'Freeza Analog Unison Lead', synthLead: 'blinding', gain: 0.86 },
     { match: /^80sSynthBrass(?:_|$)/i, displayName: 'MusyngKite Synth Brass', fallbackName: 'synth_brass_1', soundfont: MUSYNG_KITE, gain: 0.62 },
     { match: /^MoonSailor(?:_|$)/i, displayName: 'MusyngKite Warm Pad', fallbackName: 'pad_2_warm', soundfont: MUSYNG_KITE, gain: 0.37 },
     { match: /^Key1(?:_|$)/i, displayName: 'MusyngKite Electric Piano', fallbackName: 'electric_piano_1', soundfont: MUSYNG_KITE, gain: 0.61 },
@@ -43,6 +43,7 @@
       fallbackGain: definition.fallbackGain ?? baseGain,
       ...(definition.localPiano ? { localPiano: true } : {}),
       ...(definition.guitarLibrary ? { guitarLibrary: true, sampleCode: definition.sampleCode } : {}),
+      ...(definition.synthLead ? { synthLead: definition.synthLead } : {}),
     };
   }
 
@@ -52,7 +53,7 @@
       name: item.displayName,
       soundfont: item.soundfont,
       instrument: item.fallbackName,
-      engine: item.localPiano ? 'ToneSampler' : item.guitarLibrary ? 'FreezaGuitarSampler' : 'Soundfont',
+        engine: item.localPiano ? 'ToneSampler' : item.guitarLibrary ? 'FreezaGuitarSampler' : item.synthLead ? 'FreezaSynthLead' : 'Soundfont',
     }));
   }
 

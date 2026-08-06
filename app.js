@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260806-08';
+const ASSET_VERSION = 'reset-20260806-09';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -675,6 +675,11 @@ async function warmMelodyTone() {
     }
     return preset.name || preset.code;
   }
+  if (preset.synthLead) {
+    if (!window.FreezaSynthLead) throw new Error(`${preset.name || preset.code} synthesizer unavailable`);
+    await window.FreezaSynthLead.warm(audio.ctx, preset.synthLead);
+    return preset.name || preset.code;
+  }
   if (preset.guitarLibrary) {
     if (!window.FreezaGuitarSampler) {
       throw new Error(`${preset.name || preset.code} sampler unavailable`);
@@ -706,6 +711,12 @@ function playMelodyToneNote(midi, duration = 0.65, velocity = 0.6, when = null) 
       Math.max(0.025, Math.min(1, velocity * (preset?.gain || 0.42) * melodyGain)),
     );
     return null;
+  }
+  if (preset.synthLead) {
+    return window.FreezaSynthLead?.play(
+      audio.ctx, audio.master, preset.synthLead, midi, duration, velocity,
+      (preset.gain || 0.86) * melodyGain, scheduledWhen,
+    ) || null;
   }
   if (preset.guitarLibrary) {
     if (!window.FreezaGuitarSampler) return null;
