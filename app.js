@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260806-05';
+const ASSET_VERSION = 'reset-20260806-06';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -146,6 +146,7 @@ let HARMONY_TONES = [
   { label: 'A', code: 'GS_3', name: 'FSS Steel String Guitar', fallbackName: 'acoustic_guitar_steel', guitarLibrary: true, gain: balancedHarmonyGain('GS_3', 0.70), fallbackGain: 0.65 },
   { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: balancedHarmonyGain('PianoStudio_4', 0.42) },
 ];
+let melodyTonePreset = null;
 const soundfont = { instruments: new Map(), promises: new Map(), ready: false };
 // Salamander 是默认钢琴；部分 iOS/PWA 环境偶尔会在多文件解码阶段失败。
 // 必须准备一个同样基于真实采样的本地备用钢琴，不能退回三角波合成音。
@@ -627,6 +628,77 @@ function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5, when = null) {
   osc.start(now);
   osc.stop(now + Math.max(0.15, duration) + 0.04);
   return osc;
+}
+
+function fallbackLeadNote(midi, duration = 0.65, velocity = 0.6, when = null) {
+  ensureAudio();
+  const now = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const osc = audio.ctx.createOscillator();
+  const filter = audio.ctx.createBiquadFilter();
+  const gain = audio.ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(midiToFreq(midi), now);
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(4200, now);
+  filter.frequency.exponentialRampToValueAtTime(1400, now + Math.max(0.08, duration));
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.025, Math.min(0.22, velocity * melodyGain * 0.18)), now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.08, duration));
+  osc.connect(filter).connect(gain).connect(audio.master);
+  osc.start(now);
+  osc.stop(now + Math.max(0.08, duration) + 0.04);
+  return osc;
+}
+
+function refreshMelodyToneFromStyle(styleInfo) {
+  const code = String(styleInfo?.midiPrograms?.leadCode || '').trim();
+  melodyTonePreset = code
+    ? (window.FreezaInstrumentLibrary?.sampledPreset(code, 'Lead') || null)
+    : null;
+}
+
+async function warmMelodyTone() {
+  ensureAudio();
+  const preset = melodyTonePreset;
+  if (!preset || preset.localPiano) {
+    const ready = await Promise.resolve(sampleReadyPromise);
+    if (!ready) await warmMainPianoFallback();
+    return preset?.name || (ready ? 'Salamander Grand Piano' : 'MusyngKite Acoustic Piano');
+  }
+  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+    const notes = [...new Set((song?.melodyTrack?.notes || []).map(note => shiftedMidi(note.note)))];
+    await window.FreezaGuitarSampler.preload(audio.ctx, preset.sampleCode || preset.code, notes);
+    return preset.name || preset.code;
+  }
+  const instrument = await getSoundfontInstrument(preset);
+  if (!instrument) throw new Error(`${preset.name || preset.code} unavailable`);
+  return preset.name || preset.code;
+}
+
+function playMelodyToneNote(midi, duration = 0.65, velocity = 0.6, when = null) {
+  const preset = melodyTonePreset;
+  if (!preset || preset.localPiano) return playNote(midi, duration, velocity, when);
+  ensureAudio();
+  const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
+  const level = Math.max(0.025, Math.min(1, velocity * (preset.gain || 0.72) * melodyGain));
+  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+    const source = window.FreezaGuitarSampler.play(
+      audio.ctx, audio.master, preset.sampleCode || preset.code,
+      midi, duration, velocity, (preset.gain || 0.72) * melodyGain, scheduledWhen,
+    );
+    if (source) return source;
+  }
+  const soundfontName = preset.fallbackName || preset.name;
+  const soundfontBank = preset.soundfont || 'FluidR3_GM';
+  const cached = soundfont.instruments.get(`${soundfontBank}:${soundfontName}`);
+  if (cached) {
+    return cached.play(midi, scheduledWhen, Math.max(0.08, duration), { gain: level });
+  }
+  // Loading normally completes before 3-2-1.  If Safari evicts the decoded
+  // bank, use a short saw lead for this note rather than silently reverting
+  // the song's vocal guide to the default piano.
+  getSoundfontInstrument(preset).catch(() => null);
+  return fallbackLeadNote(midi, duration, velocity, scheduledWhen);
 }
 
 function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = harmonyToneMode, when = null) {
@@ -3399,6 +3471,7 @@ async function loadSongMidi(songConfig) {
     const summary = song.noteTracks.map(t => `Track ${t.number}:${t.notes.length}`).join(' / ');
     setPill('midiStatus', `✅ 加密曲谱已加载：${song.trackCount} 轨 · WASM`, 'ok');
     setPill('trackStatus', `只播放 Track 1 主旋律 · ${song.melodyTrack.notes.length} 音 · ${summary}`, song.melodyTrack.notes.length ? 'ok' : 'warn');
+    refreshMelodyToneFromStyle(song.styleInfo);
     refreshHarmonyTonesFromStyle(song.styleInfo);
     updateCurrentKeyStatus();
     buildLyricLines();
@@ -3724,7 +3797,12 @@ function scheduleSongMelodyNote(note, delay) {
   ensureAudio();
   const midi = shiftedMidi(note.note);
   const duration = Math.max(0.03, Number(note.duration) || 0.65);
-  audioScheduler.scheduleAudio(audio.ctx, delay, when => playNote(midi, duration, note.velocity, when), 'song-melody');
+  audioScheduler.scheduleAudio(
+    audio.ctx,
+    delay,
+    when => playMelodyToneNote(midi, duration, note.velocity, when),
+    'song-melody',
+  );
   timers.push(setTimeout(() => showVisualNote(midi, 'playback'), delay));
 }
 
@@ -4438,19 +4516,16 @@ async function prepareStartAssets() {
     // startRecording() 会自动退回 MediaRecorder，绝不能卡住开始按钮。
     console.warn('PCM recorder preload skipped:', error);
   }
-  setLoadingCategory('piano', 0.05, '缓存真实钢琴采样');
+  const melodyToneName = melodyTonePreset?.name || '真实钢琴';
+  setLoadingCategory('piano', 0.05, `缓存${melodyToneName}`);
   const pianoTask = loadingTaskTimeout(
-    Promise.resolve(sampleReadyPromise).then(async ready => {
-      if (ready) return 'Salamander Grand Piano';
-      await warmMainPianoFallback();
-      return 'MusyngKite Acoustic Piano';
-    }),
-    'piano',
+    warmMelodyTone(),
+    'melody tone',
   )
     .then(name => setLoadingCategory('piano', 1, `${name} 已缓存`))
     .catch(error => {
-      console.warn('Piano preload failed:', error);
-      setLoadingCategory('piano', 1, '真实钢琴载入失败', 'error');
+      console.warn('Melody tone preload failed:', error);
+      setLoadingCategory('piano', 1, `${melodyToneName}载入失败`, 'error');
     });
   const categoryTasks = [
     pianoTask,
@@ -4880,7 +4955,7 @@ function scheduleInteractiveMelodyEvent(note, idx, delay) {
   const event = { note, idx, dueAt: performance.now() + delay, fired: false, timer: null, audioTask: null };
   event.audioTask = audioScheduler.scheduleAudio(audio.ctx, delay, when => {
     event.fired = true;
-    return playNote(midi, 0.65, velocity, when);
+    return playMelodyToneNote(midi, Math.max(0.03, Number(note.duration) || 0.65), velocity, when);
   }, 'interactive-melody');
   event.timer = setTimeout(() => {
     playOffset = note.time;
