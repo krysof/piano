@@ -208,7 +208,7 @@
     "order": 6,
     "theme": "sky",
     "hot": 0,
-    "duration": "03:58",
+    "duration": "04:16",
     "bpm": 132,
     "tone": "Dm",
     "hue": 148,
