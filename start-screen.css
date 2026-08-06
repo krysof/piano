@@ -962,6 +962,23 @@ body.game-started #startScreen {
   text-align: center;
 }
 
+.launch-loading-retry {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 10px;
+  border: 1px solid rgba(240, 164, 109, .46);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(112, 54, 36, .92), rgba(83, 48, 91, .92));
+  color: #ffe6d4;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 760;
+  cursor: pointer;
+}
+
+.launch-loading-retry[hidden] { display: none; }
+.launch-loading-retry:active { transform: translateY(1px); }
+
 @media (max-width: 680px) {
   #startScreen {
     display: grid;

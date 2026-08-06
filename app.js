@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260806-07';
+const ASSET_VERSION = 'reset-20260806-08';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -26,6 +26,7 @@ const sampled = {
   piano: null,
   ready: false,
   mainSettled: false,
+  mainGeneration: 0,
   midiPiano: null,
   midiReady: false,
   midiPromise: null,
@@ -147,6 +148,7 @@ let HARMONY_TONES = [
   { label: 'B', code: 'PianoStudio_4', name: 'Salamander Grand Piano', localPiano: true, gain: balancedHarmonyGain('PianoStudio_4', 0.42) },
 ];
 let melodyTonePreset = null;
+let melodyToneCode = '';
 const soundfont = { instruments: new Map(), promises: new Map(), ready: false };
 // Salamander 是默认钢琴；部分 iOS/PWA 环境偶尔会在多文件解码阶段失败。
 // 必须准备一个同样基于真实采样的本地备用钢琴，不能退回三角波合成音。
@@ -331,16 +333,25 @@ async function releaseWakeLock() {
   wakeLock = null;
 }
 
-function initSamplePiano() {
+function initSamplePiano(forceReload = false) {
   if (!window.Tone) {
-    setPill('sampleStatus', '⚠️ Tone.js 未加载，使用内置音色', 'warn');
+    setPill('sampleStatus', '⚠️ Tone.js 未加载，钢琴音色不可用', 'warn');
     sampleReadyPromise = Promise.resolve(false);
     return sampleReadyPromise;
   }
+  if (forceReload) {
+    try { sampled.piano?.dispose?.(); } catch {}
+    sampled.piano = null;
+    sampled.ready = false;
+    sampled.mainSettled = false;
+  }
+  const generation = ++sampled.mainGeneration;
   sampleReadyPromise = new Promise(resolve => {
     let timeout = null;
+    let settled = false;
     const finish = ready => {
-      if (sampled.mainSettled) return;
+      if (settled || generation !== sampled.mainGeneration) return;
+      settled = true;
       sampled.mainSettled = true;
       clearTimeout(timeout);
       resolve(ready);
@@ -350,11 +361,15 @@ function initSamplePiano() {
       release: 1.25,
       baseUrl: 'samples/salamander/',
       onload: () => {
+        if (generation !== sampled.mainGeneration) return;
         sampled.ready = true;
         setPill('sampleStatus', '✅ Salamander Grand Piano 采样音色', 'ok');
         finish(true);
       },
-      onerror: () => finish(false),
+      onerror: () => {
+        if (generation === sampled.mainGeneration) sampled.ready = false;
+        finish(false);
+      },
     }).toDestination();
     Tone.Destination.volume.value = -5;
     timeout = setTimeout(() => finish(false), 15000);
@@ -590,6 +605,8 @@ function getSoundfontInstrument(preset) {
       soundfont.instruments.set(cacheKey, inst);
       return inst;
     }).catch(err => {
+      // 失败的 Promise 不能留在缓存里，否则“重试”仍只会拿到上一次的 null。
+      soundfont.promises.delete(cacheKey);
       console.warn('SoundFont load failed:', soundfontName, err);
       return null;
     });
@@ -630,28 +647,9 @@ function fallbackSoftNote(midi, duration = 0.75, velocity = 0.5, when = null) {
   return osc;
 }
 
-function fallbackLeadNote(midi, duration = 0.65, velocity = 0.6, when = null) {
-  ensureAudio();
-  const now = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
-  const osc = audio.ctx.createOscillator();
-  const filter = audio.ctx.createBiquadFilter();
-  const gain = audio.ctx.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(midiToFreq(midi), now);
-  filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(4200, now);
-  filter.frequency.exponentialRampToValueAtTime(1400, now + Math.max(0.08, duration));
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(Math.max(0.025, Math.min(0.22, velocity * melodyGain * 0.18)), now + 0.008);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.08, duration));
-  osc.connect(filter).connect(gain).connect(audio.master);
-  osc.start(now);
-  osc.stop(now + Math.max(0.08, duration) + 0.04);
-  return osc;
-}
-
 function refreshMelodyToneFromStyle(styleInfo) {
   const code = String(styleInfo?.midiPrograms?.leadCode || '').trim();
+  melodyToneCode = code;
   melodyTonePreset = code
     ? (window.FreezaInstrumentLibrary?.sampledPreset(code, 'Lead') || null)
     : null;
@@ -660,14 +658,32 @@ function refreshMelodyToneFromStyle(styleInfo) {
 async function warmMelodyTone() {
   ensureAudio();
   const preset = melodyTonePreset;
-  if (!preset || preset.localPiano) {
-    const ready = await Promise.resolve(sampleReadyPromise);
-    if (!ready) await warmMainPianoFallback();
-    return preset?.name || (ready ? 'Salamander Grand Piano' : 'MusyngKite Acoustic Piano');
+  if (melodyToneCode && !preset) {
+    throw new Error(`${melodyToneCode} is not mapped to an available instrument`);
   }
-  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+  if (!preset) {
+    const ready = await Promise.resolve(sampleReadyPromise);
+    if (!ready || !sampled.ready || !sampled.piano) {
+      throw new Error('Salamander Grand Piano unavailable');
+    }
+    return 'Salamander Grand Piano';
+  }
+  if (preset.localPiano) {
+    const ready = await Promise.resolve(sampleReadyPromise);
+    if (!ready || !sampled.ready || !sampled.piano) {
+      throw new Error(`${preset.name || preset.code} unavailable`);
+    }
+    return preset.name || preset.code;
+  }
+  if (preset.guitarLibrary) {
+    if (!window.FreezaGuitarSampler) {
+      throw new Error(`${preset.name || preset.code} sampler unavailable`);
+    }
     const notes = [...new Set((song?.melodyTrack?.notes || []).map(note => shiftedMidi(note.note)))];
-    await window.FreezaGuitarSampler.preload(audio.ctx, preset.sampleCode || preset.code, notes);
+    const results = await window.FreezaGuitarSampler.preload(audio.ctx, preset.sampleCode || preset.code, notes);
+    if (!results.length || results.some(result => result.status !== 'fulfilled')) {
+      throw new Error(`${preset.name || preset.code} unavailable`);
+    }
     return preset.name || preset.code;
   }
   const instrument = await getSoundfontInstrument(preset);
@@ -677,16 +693,28 @@ async function warmMelodyTone() {
 
 function playMelodyToneNote(midi, duration = 0.65, velocity = 0.6, when = null) {
   const preset = melodyTonePreset;
-  if (!preset || preset.localPiano) return playNote(midi, duration, velocity, when);
+  if (!preset && melodyToneCode) return null;
   ensureAudio();
   const scheduledWhen = Math.max(audio.ctx.currentTime, Number(when) || audio.ctx.currentTime);
-  const level = Math.max(0.025, Math.min(1, velocity * (preset.gain || 0.72) * melodyGain));
-  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+  const level = Math.max(0.025, Math.min(1, velocity * (preset?.gain || 0.72) * melodyGain));
+  if (!preset || preset.localPiano) {
+    if (!sampled.ready || !sampled.piano || !window.Tone) return null;
+    Tone.start();
+    const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
+    sampled.piano.triggerAttackRelease(
+      toneNoteOf(midi), duration, toneWhen,
+      Math.max(0.025, Math.min(1, velocity * (preset?.gain || 0.42) * melodyGain)),
+    );
+    return null;
+  }
+  if (preset.guitarLibrary) {
+    if (!window.FreezaGuitarSampler) return null;
     const source = window.FreezaGuitarSampler.play(
       audio.ctx, audio.master, preset.sampleCode || preset.code,
       midi, duration, velocity, (preset.gain || 0.72) * melodyGain, scheduledWhen,
     );
     if (source) return source;
+    return null;
   }
   const soundfontName = preset.fallbackName || preset.name;
   const soundfontBank = preset.soundfont || 'FluidR3_GM';
@@ -694,11 +722,8 @@ function playMelodyToneNote(midi, duration = 0.65, velocity = 0.6, when = null) 
   if (cached) {
     return cached.play(midi, scheduledWhen, Math.max(0.08, duration), { gain: level });
   }
-  // Loading normally completes before 3-2-1.  If Safari evicts the decoded
-  // bank, use a short saw lead for this note rather than silently reverting
-  // the song's vocal guide to the default piano.
-  getSoundfontInstrument(preset).catch(() => null);
-  return fallbackLeadNote(midi, duration, velocity, scheduledWhen);
+  // 指定音色没有就绪时必须保持静音；绝不能偷偷回退钢琴或振荡器。
+  return null;
 }
 
 function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = harmonyToneMode, when = null) {
@@ -4408,6 +4433,28 @@ function setLoadingStatus(text) {
 const loadingCategoryProgress = new Map();
 const LOADING_CATEGORY_IDS = ['core', 'piano', 'pickA', 'pickB', 'drums', 'mic'];
 
+class RequiredMelodyToneError extends Error {
+  constructor(toneName, cause = null) {
+    super(`${toneName || '主旋律音色'} loading failed`);
+    this.name = 'RequiredMelodyToneError';
+    this.code = 'REQUIRED_MELODY_TONE_FAILED';
+    this.toneName = toneName || '主旋律音色';
+    this.cause = cause;
+  }
+}
+
+function showLoadingRetry(visible) {
+  const button = $('loadingRetryBtn');
+  if (button) button.hidden = !visible;
+}
+
+function retryRequiredMelodyTone() {
+  // Salamander 的首次 Promise 已经失败时，必须新建 Sampler；重复等待旧 Promise
+  // 不会产生任何网络请求。SoundFont 与吉他采样各自会清理失败缓存。
+  if (!melodyTonePreset || melodyTonePreset.localPiano) initSamplePiano(true);
+  startGameFromMenu();
+}
+
 function updateLoadingOverall() {
   const values = LOADING_CATEGORY_IDS.map(id => loadingCategoryProgress.get(id) || 0);
   const progress = values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
@@ -4418,7 +4465,7 @@ function updateLoadingOverall() {
   if (bar) bar.style.width = `${percent}%`;
 }
 
-function setLoadingCategory(id, progress, detail = '', state = '') {
+function setLoadingCategory(id, progress, detail = '', state = '', statusText = '') {
   const normalized = Math.max(0, Math.min(1, Number(progress) || 0));
   loadingCategoryProgress.set(id, normalized);
   const item = document.querySelector(`.launch-loading-item[data-load-id="${id}"]`);
@@ -4430,7 +4477,7 @@ function setLoadingCategory(id, progress, detail = '', state = '') {
     const description = item.querySelector('small');
     const status = item.querySelector('b');
     if (description && detail) description.textContent = detail;
-    if (status) status.textContent = state === 'error' ? '部分可用' : normalized >= 1 ? '完成' : normalized > 0 ? `${Math.round(normalized * 100)}%` : '等待';
+    if (status) status.textContent = statusText || (state === 'error' ? '部分可用' : normalized >= 1 ? '完成' : normalized > 0 ? `${Math.round(normalized * 100)}%` : '等待');
   }
   updateLoadingOverall();
 }
@@ -4438,6 +4485,7 @@ function setLoadingCategory(id, progress, detail = '', state = '') {
 function resetLoadingProgress() {
   loadingCategoryProgress.clear();
   LOADING_CATEGORY_IDS.forEach(id => setLoadingCategory(id, 0));
+  showLoadingRetry(false);
   setLoadingStatus('正在检查演奏资源…');
 }
 
@@ -4516,8 +4564,9 @@ async function prepareStartAssets() {
     // startRecording() 会自动退回 MediaRecorder，绝不能卡住开始按钮。
     console.warn('PCM recorder preload skipped:', error);
   }
-  const melodyToneName = melodyTonePreset?.name || '真实钢琴';
+  const melodyToneName = melodyTonePreset?.name || melodyToneCode || '真实钢琴';
   setLoadingCategory('piano', 0.05, `缓存${melodyToneName}`);
+  let melodyToneError = null;
   const pianoTask = loadingTaskTimeout(
     warmMelodyTone(),
     'melody tone',
@@ -4525,7 +4574,8 @@ async function prepareStartAssets() {
     .then(name => setLoadingCategory('piano', 1, `${name} 已缓存`))
     .catch(error => {
       console.warn('Melody tone preload failed:', error);
-      setLoadingCategory('piano', 1, `${melodyToneName}载入失败`, 'error');
+      melodyToneError = new RequiredMelodyToneError(melodyToneName, error);
+      setLoadingCategory('piano', 0.05, `${melodyToneName}载入失败`, 'error', '失败');
     });
   const categoryTasks = [
     pianoTask,
@@ -4551,6 +4601,7 @@ async function prepareStartAssets() {
     setLoadingCategory('mic', 1, '当前未启用');
   }
   await Promise.all(categoryTasks);
+  if (melodyToneError) throw melodyToneError;
   setLoadingStatus('全部演奏资源已就绪');
 }
 
@@ -6041,6 +6092,7 @@ function setupStartScreen() {
     updatePlaybackToggles();
   });
   $('startGameBtn')?.addEventListener('click', startGameFromMenu);
+  $('loadingRetryBtn')?.addEventListener('click', retryRequiredMelodyTone);
   $('changeSongBtn')?.addEventListener('click', () => { playLaunchUiSound('select'); returnToSongScreen(); });
 }
 
@@ -6069,6 +6121,11 @@ async function startGameFromMenu() {
   } catch (err) {
     console.warn('start waits for midi failed', err);
     startRequested = false;
+    if (err?.code === 'REQUIRED_MELODY_TONE_FAILED') {
+      setLoadingStatus('主旋律音色加载失败，请检查网络后重试。');
+      showLoadingRetry(true);
+      return;
+    }
     screen?.classList.remove('loading');
     return;
   }
