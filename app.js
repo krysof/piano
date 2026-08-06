@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260807-01';
+const ASSET_VERSION = 'reset-20260807-02';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -680,6 +680,14 @@ async function warmMelodyTone() {
     await window.FreezaSynthLead.warm(audio.ctx, preset.synthLead);
     return preset.name || preset.code;
   }
+  if (preset.samplePack) {
+    if (!window.FreezaSampleInstrument) {
+      throw new Error(`${preset.name || preset.code} sampler unavailable`);
+    }
+    const notes = [...new Set((song?.melodyTrack?.notes || []).map(note => shiftedMidi(note.note)))];
+    await window.FreezaSampleInstrument.preload(audio.ctx, preset.samplePack, notes);
+    return preset.name || preset.code;
+  }
   if (preset.guitarLibrary) {
     if (!window.FreezaGuitarSampler) {
       throw new Error(`${preset.name || preset.code} sampler unavailable`);
@@ -718,6 +726,12 @@ function playMelodyToneNote(midi, duration = 0.65, velocity = 0.6, when = null) 
       (preset.gain || 0.86) * melodyGain, scheduledWhen,
     ) || null;
   }
+  if (preset.samplePack) {
+    return window.FreezaSampleInstrument?.play(
+      audio.ctx, audio.master, preset.samplePack, midi, duration, velocity,
+      (preset.gain || 0.72) * melodyGain, scheduledWhen, preset.profile,
+    ) || null;
+  }
   if (preset.guitarLibrary) {
     if (!window.FreezaGuitarSampler) return null;
     const source = window.FreezaGuitarSampler.play(
@@ -744,11 +758,18 @@ function playHarmonyToneNote(midi, duration = 0.75, velocity = 0.5, toneMode = h
   const fallbackLevel = Math.max(0.05, Math.min(1,
     velocity * (preset.fallbackGain || preset.gain || 0.65) * harmonyGain));
   const sampleCode = preset.sampleCode || preset.code;
-  const guitarSource = preset.guitarLibrary && window.FreezaGuitarSampler?.play(
-    audio.ctx, audio.master, sampleCode, midi, duration, velocity,
-    (preset.gain || 0.78) * harmonyGain, scheduledWhen,
-  );
-  if (guitarSource) return guitarSource;
+  if (preset.samplePack) {
+    return window.FreezaSampleInstrument?.play(
+      audio.ctx, audio.master, preset.samplePack, midi, duration, velocity,
+      (preset.gain || 0.72) * harmonyGain, scheduledWhen, preset.profile,
+    ) || null;
+  }
+  if (preset.guitarLibrary) {
+    return window.FreezaGuitarSampler?.play(
+      audio.ctx, audio.master, sampleCode, midi, duration, velocity,
+      (preset.gain || 0.78) * harmonyGain, scheduledWhen,
+    ) || null;
+  }
   if (preset.localPiano && sampled.ready && sampled.piano && window.Tone) {
     Tone.start();
     const toneWhen = Tone.now() + Math.max(0, scheduledWhen - audio.ctx.currentTime);
@@ -2744,7 +2765,12 @@ function warmSoundfontPreset(preset) {
 function warmHarmonyPreset(preset) {
   if (!preset) return Promise.resolve();
   ensureAudio();
-  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+  if (preset.samplePack) {
+    if (!window.FreezaSampleInstrument) return Promise.reject(new Error(`${preset.name} sampler unavailable`));
+    return window.FreezaSampleInstrument.preload(audio.ctx, preset.samplePack, warmHarmonyMidiSet());
+  }
+  if (preset.guitarLibrary) {
+    if (!window.FreezaGuitarSampler) return Promise.reject(new Error(`${preset.name} sampler unavailable`));
     // 只缓存当前歌曲实际会触发的音区与力度层。后台再下载整套 120 个
     // 电吉他采样会在 iPhone 上占满连接并卡住 Loading/后续音频请求。
     return window.FreezaGuitarSampler.preload(audio.ctx, preset.sampleCode || preset.code, warmHarmonyMidiSet());
@@ -2759,7 +2785,12 @@ function warmHarmonyPreset(preset) {
 function fullyWarmHarmonyPreset(preset, onProgress = null) {
   if (!preset) return Promise.resolve([]);
   ensureAudio();
-  if (preset.guitarLibrary && window.FreezaGuitarSampler) {
+  if (preset.samplePack) {
+    if (!window.FreezaSampleInstrument) return Promise.reject(new Error(`${preset.name} sampler unavailable`));
+    return window.FreezaSampleInstrument.preload(audio.ctx, preset.samplePack, warmHarmonyMidiSet(), onProgress);
+  }
+  if (preset.guitarLibrary) {
+    if (!window.FreezaGuitarSampler) return Promise.reject(new Error(`${preset.name} sampler unavailable`));
     return window.FreezaGuitarSampler.preloadStartup(audio.ctx, preset.sampleCode || preset.code, onProgress);
   }
   if (typeof onProgress === 'function') onProgress(0, 1);
