@@ -663,6 +663,30 @@
     "instrumental": false
   },
   {
+    "id": "autumn-dont-come",
+    "title": "秋天别来",
+    "subtitle": "原版主旋律＋钢琴弦乐和弦",
+    "artist": "侯湘婷",
+    "collection": "侯湘婷",
+    "aliases": [
+      "秋天別來",
+      "Autumn Don't Come",
+      "Qiu Tian Bie Lai"
+    ],
+    "path": "music/秋天别来_侯湘婷_104736.flm",
+    "language": "zh",
+    "melodyOnly": false,
+    "featured": true,
+    "order": 18,
+    "theme": "autumn",
+    "hot": 0,
+    "duration": "04:45",
+    "bpm": 136,
+    "tone": "♯D",
+    "hue": 29,
+    "instrumental": true
+  },
+  {
     "id": "only-care-you",
     "title": "我只在乎你",
     "subtitle": "进阶版",
