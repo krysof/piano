@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260807-11';
+const ASSET_VERSION = 'reset-20260807-12';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -53,6 +53,7 @@ const lyricParticlePool = [];
 let song = null;
 let lyricLines = [];
 let lastLyricIndex = -1;
+let manualLyricView = null;
 let lastLyricParticleAt = 0;
 let timers = [];
 let cueTimers = [];
@@ -3148,6 +3149,7 @@ function alignLineEventsToText(line, rawEvents) {
 }
 
 function buildLyricLines() {
+  manualLyricView = null;
   const beatSec = beatMs() / 1000;
   const explicitLines = (song?.lyricLineEvents || [])
     .map(e => {
@@ -3455,8 +3457,11 @@ function updateLyrics() {
     lines.forEach(l => setKaraokeLine(l, '', 0, false, now));
     return;
   }
-  let idx = lyricLines.findIndex((line, i) => now >= line.start && now < (lyricLines[i + 1]?.start ?? line.end));
-  if (idx < 0) idx = now < lyricLines[0].start ? 0 : lyricLines.length - 1;
+  let autoIdx = lyricLines.findIndex((line, i) => now >= line.start && now < (lyricLines[i + 1]?.start ?? line.end));
+  if (autoIdx < 0) autoIdx = now < lyricLines[0].start ? 0 : lyricLines.length - 1;
+  // 手动浏览只保持到歌曲自然进入下一行；不会改播放时间、Key 或和弦调度。
+  if (manualLyricView && manualLyricView.anchor !== autoIdx) manualLyricView = null;
+  const idx = manualLyricView?.index ?? autoIdx;
   const cur = lyricLines[idx];
   if (idx !== lastLyricIndex) {
     lastLyricIndex = idx;
@@ -3484,6 +3489,17 @@ function updateLyrics() {
   }
   const visualProgress = syncActiveKaraokeProgress(activeEl, cur, progressState);
   if (playing) emitLyricParticles(visualProgress);
+}
+
+function stepLyricLine(delta) {
+  if (!lyricLines.length || isFreeMode()) return;
+  const now = currentPlayTime();
+  let autoIdx = lyricLines.findIndex((line, i) => now >= line.start && now < (lyricLines[i + 1]?.start ?? line.end));
+  if (autoIdx < 0) autoIdx = now < lyricLines[0].start ? 0 : lyricLines.length - 1;
+  const base = manualLyricView?.anchor === autoIdx ? manualLyricView.index : autoIdx;
+  const index = Math.max(0, Math.min(lyricLines.length - 1, base + Math.sign(delta || 0)));
+  manualLyricView = index === autoIdx ? null : { index, anchor: autoIdx };
+  updateLyrics();
 }
 
 function lyricCharAt(time) {
@@ -6365,10 +6381,10 @@ updatePlaybackToggles();
 setupSongScreen();
 setupStartScreen();
 setupGameUiSounds();
-window.FreezaPerformanceKeyShift?.bind({
+window.FreezaPerformanceLyricNavigation?.bind({
   surface: document.querySelector('.karaoke'),
   active: () => document.body.classList.contains('game-started'),
-  onShift: delta => applyKeyShift(delta),
+  onStep: delta => stepLyricLine(delta),
 });
 setupMicWave();
 initSamplePiano();

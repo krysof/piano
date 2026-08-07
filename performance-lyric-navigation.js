@@ -1,4 +1,4 @@
-(function attachPerformanceKeyShift(global) {
+(function attachPerformanceLyricNavigation(global) {
   'use strict';
 
   const DEFAULT_THRESHOLD = 46;
@@ -8,13 +8,14 @@
     return Boolean(target.closest('input, textarea, select, [contenteditable="true"]'));
   }
 
-  function shiftForSwipe(deltaX, deltaY, threshold = DEFAULT_THRESHOLD) {
+  function stepForSwipe(deltaX, deltaY, threshold = DEFAULT_THRESHOLD) {
     if (Math.abs(deltaY) < threshold || Math.abs(deltaY) <= Math.abs(deltaX) * 1.2) return 0;
+    // 手指向上推，歌词向下一行推进；向下拉则回到上一行。
     return deltaY < 0 ? 1 : -1;
   }
 
-  function bind({ surface, onShift, active = () => true } = {}) {
-    if (!surface || typeof onShift !== 'function') return () => {};
+  function bind({ surface, onStep, active = () => true } = {}) {
+    if (!surface || typeof onStep !== 'function') return () => {};
     let drag = null;
     const previousTouchAction = surface.style.touchAction;
     surface.style.touchAction = 'none';
@@ -27,18 +28,18 @@
     };
     const finishPointer = event => {
       if (!drag || event.pointerId !== drag.id) return;
-      const shift = shiftForSwipe(event.clientX - drag.x, event.clientY - drag.y);
+      const step = stepForSwipe(event.clientX - drag.x, event.clientY - drag.y);
       drag = null;
-      if (!shift || !active()) return;
+      if (!step || !active()) return;
       event.preventDefault();
-      onShift(shift);
+      onStep(step);
     };
     const cancelPointer = () => { drag = null; };
     const onKeyDown = event => {
       if (!active() || event.repeat || isEditable(event.target)) return;
       if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
       event.preventDefault();
-      onShift(event.key === 'ArrowUp' ? 1 : -1);
+      onStep(event.key === 'ArrowDown' ? 1 : -1);
     };
 
     surface.addEventListener('pointerdown', onPointerDown);
@@ -54,5 +55,5 @@
     };
   }
 
-  global.FreezaPerformanceKeyShift = Object.freeze({ bind, shiftForSwipe });
+  global.FreezaPerformanceLyricNavigation = Object.freeze({ bind, stepForSwipe });
 })(window);
