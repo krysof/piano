@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260807-10';
+const ASSET_VERSION = 'reset-20260807-11';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -6365,6 +6365,11 @@ updatePlaybackToggles();
 setupSongScreen();
 setupStartScreen();
 setupGameUiSounds();
+window.FreezaPerformanceKeyShift?.bind({
+  surface: document.querySelector('.karaoke'),
+  active: () => document.body.classList.contains('game-started'),
+  onShift: delta => applyKeyShift(delta),
+});
 setupMicWave();
 initSamplePiano();
 midiReadyPromise = Promise.resolve(null);
