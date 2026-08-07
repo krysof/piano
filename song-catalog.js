@@ -665,7 +665,7 @@
   {
     "id": "autumn-dont-come",
     "title": "秋天别来",
-    "subtitle": "鸣流吉他谱和弦＋《后来》同款 A／B 吉他",
+    "subtitle": "鸣流和弦＋官方录音时间轴＋《后来》同款 A／B 吉他",
     "artist": "侯湘婷",
     "collection": "侯湘婷",
     "aliases": [
