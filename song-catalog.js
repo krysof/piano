@@ -684,7 +684,7 @@
     "bpm": 136,
     "tone": "♯D",
     "hue": 29,
-    "instrumental": true
+    "instrumental": false
   },
   {
     "id": "only-care-you",
