@@ -665,7 +665,7 @@
   {
     "id": "autumn-dont-come",
     "title": "秋天别来",
-    "subtitle": "含前奏主旋律＋钢弦木吉他／温暖电钢琴",
+    "subtitle": "含前奏主旋律＋《后来》同款 A／B 吉他",
     "artist": "侯湘婷",
     "collection": "侯湘婷",
     "aliases": [
