@@ -14,6 +14,15 @@
     return deltaY < 0 ? 1 : -1;
   }
 
+  function targetIndex(lines, time, step) {
+    if (!Array.isArray(lines) || !lines.length) return -1;
+    const now = Number(time) || 0;
+    let current = lines.findIndex((line, index) => now >= Number(line.start || 0)
+      && now < Number(lines[index + 1]?.start ?? line.end ?? Infinity));
+    if (current < 0) current = now < Number(lines[0]?.start || 0) ? 0 : lines.length - 1;
+    return Math.max(0, Math.min(lines.length - 1, current + Math.sign(Number(step) || 0)));
+  }
+
   function bind({ surface, onStep, active = () => true } = {}) {
     if (!surface || typeof onStep !== 'function') return () => {};
     let drag = null;
@@ -55,5 +64,5 @@
     };
   }
 
-  global.FreezaPerformanceLyricNavigation = Object.freeze({ bind, stepForSwipe });
+  global.FreezaPerformanceLyricNavigation = Object.freeze({ bind, stepForSwipe, targetIndex });
 })(window);

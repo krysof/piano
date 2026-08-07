@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260807-12';
+const ASSET_VERSION = 'reset-20260807-13';
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -53,7 +53,6 @@ const lyricParticlePool = [];
 let song = null;
 let lyricLines = [];
 let lastLyricIndex = -1;
-let manualLyricView = null;
 let lastLyricParticleAt = 0;
 let timers = [];
 let cueTimers = [];
@@ -3149,7 +3148,6 @@ function alignLineEventsToText(line, rawEvents) {
 }
 
 function buildLyricLines() {
-  manualLyricView = null;
   const beatSec = beatMs() / 1000;
   const explicitLines = (song?.lyricLineEvents || [])
     .map(e => {
@@ -3457,11 +3455,8 @@ function updateLyrics() {
     lines.forEach(l => setKaraokeLine(l, '', 0, false, now));
     return;
   }
-  let autoIdx = lyricLines.findIndex((line, i) => now >= line.start && now < (lyricLines[i + 1]?.start ?? line.end));
-  if (autoIdx < 0) autoIdx = now < lyricLines[0].start ? 0 : lyricLines.length - 1;
-  // 手动浏览只保持到歌曲自然进入下一行；不会改播放时间、Key 或和弦调度。
-  if (manualLyricView && manualLyricView.anchor !== autoIdx) manualLyricView = null;
-  const idx = manualLyricView?.index ?? autoIdx;
+  let idx = lyricLines.findIndex((line, i) => now >= line.start && now < (lyricLines[i + 1]?.start ?? line.end));
+  if (idx < 0) idx = now < lyricLines[0].start ? 0 : lyricLines.length - 1;
   const cur = lyricLines[idx];
   if (idx !== lastLyricIndex) {
     lastLyricIndex = idx;
@@ -3493,13 +3488,51 @@ function updateLyrics() {
 
 function stepLyricLine(delta) {
   if (!lyricLines.length || isFreeMode()) return;
-  const now = currentPlayTime();
-  let autoIdx = lyricLines.findIndex((line, i) => now >= line.start && now < (lyricLines[i + 1]?.start ?? line.end));
-  if (autoIdx < 0) autoIdx = now < lyricLines[0].start ? 0 : lyricLines.length - 1;
-  const base = manualLyricView?.anchor === autoIdx ? manualLyricView.index : autoIdx;
-  const index = Math.max(0, Math.min(lyricLines.length - 1, base + Math.sign(delta || 0)));
-  manualLyricView = index === autoIdx ? null : { index, anchor: autoIdx };
-  updateLyrics();
+  const index = window.FreezaPerformanceLyricNavigation?.targetIndex(
+    lyricLines,
+    currentPlayTime(),
+    delta,
+  );
+  if (!Number.isInteger(index) || index < 0) return;
+  seekPlaybackToLyricLine(index);
+}
+
+function seekPlaybackToLyricLine(index) {
+  const line = lyricLines[index];
+  if (!line || !song || isFreeMode()) return;
+  const target = Math.max(0, Math.min(Number(song.duration) || Infinity, Number(line.start) || 0));
+  const resume = playing;
+
+  // 切行是时间轴跳转：先撤销旧时间点尚未发出的全部任务，再由目标行重排
+  // 主旋律、和弦、鼓机和提示，防止旧行声音与新行叠加。
+  playing = false;
+  clearTimers();
+  resetInteractiveSequencer();
+  resetHarmonyHalfSequence();
+  playOffset = target;
+  playStartedAt = performance.now();
+  lastLyricIndex = -1;
+  const notes = song?.melodyTrack?.notes || [];
+  const melodyIndex = notes.findIndex(note => Number(note.time) >= target - 0.001);
+  nextManualMelodyIndex = melodyIndex < 0 ? notes.length : melodyIndex;
+  const accompaniment = song?.accompanimentTrack?.notes || [];
+  lastTrack2Index = -1;
+  for (let i = 0; i < accompaniment.length; i++) {
+    if (Number(accompaniment[i].time) >= target - 0.001) break;
+    lastTrack2Index = i;
+  }
+
+  if (resume) {
+    scheduleFrom(target);
+    if (isManualMode()) {
+      const cue = (song?.chordCues || []).find(item => Number(item.time) >= target - 0.02);
+      if (cue) showManualNextCuePreview(cue);
+    }
+  } else {
+    updatePlayButton();
+    updateClock();
+    updateLyrics();
+  }
 }
 
 function lyricCharAt(time) {
@@ -6383,7 +6416,7 @@ setupStartScreen();
 setupGameUiSounds();
 window.FreezaPerformanceLyricNavigation?.bind({
   surface: document.querySelector('.karaoke'),
-  active: () => document.body.classList.contains('game-started'),
+  active: () => document.body.classList.contains('game-started') && !countdownActive,
   onStep: delta => stepLyricLine(delta),
 });
 setupMicWave();
