@@ -19,7 +19,9 @@
     devices: [],
     error: '',
     gatt: null,
+    readCharacteristic: null,
     writeCharacteristic: null,
+    uploading: false,
     listenersReady: false,
     counter: Date.now() >>> 0,
     subscribers: new Set(),
@@ -124,6 +126,7 @@
       device: state.device ? { ...state.device } : null,
       devices: state.devices.map(device => ({ ...device })),
       error: state.error,
+      uploading: state.uploading,
     });
   }
 
@@ -224,12 +227,14 @@
           state.connected = false;
           state.connecting = false;
           state.gatt = null;
+          state.readCharacteristic = null;
           state.writeCharacteristic = null;
           emit();
         }, { once: true });
         state.gatt = await device.gatt.connect();
         const service = await state.gatt.getPrimaryService(SERVICE);
         const notify = await service.getCharacteristic(NOTIFY);
+        state.readCharacteristic = await service.getCharacteristic(READ);
         state.writeCharacteristic = await service.getCharacteristic(WRITE);
         await notify.startNotifications();
         notify.addEventListener('characteristicvaluechanged', event => {
@@ -238,8 +243,7 @@
           ingestDeviceData('notify', data);
         });
         try {
-          const read = await service.getCharacteristic(READ);
-          const value = await read.readValue();
+          const value = await state.readCharacteristic.readValue();
           ingestDeviceData('read', new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
         } catch { /* A101 notifications are sufficient after setup. */ }
       }
@@ -264,6 +268,7 @@
     state.connecting = false;
     state.device = null;
     state.gatt = null;
+    state.readCharacteristic = null;
     state.writeCharacteristic = null;
     emit();
   }
@@ -279,6 +284,77 @@
 
   async function writeBody(body, counter) {
     return writeRaw(makeMFrame(xor(Uint8Array.from(body), KEY_A), counter));
+  }
+
+  async function readResponse() {
+    if (!state.connected) throw new Error('LiberLive 琴尚未连接');
+    if (nativeSupported()) {
+      const result = await nativePlugin().readLiberLive();
+      const data = fromBase64(result?.data || '');
+      return data;
+    }
+    if (!state.readCharacteristic) throw new Error('LiberLive 读取特征不可用');
+    const value = await state.readCharacteristic.readValue();
+    const data = new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice();
+    ingestDeviceData('read', data);
+    return data;
+  }
+
+  function parseDevicePayload(input) {
+    const bytes = Uint8Array.from(input || []);
+    if (bytes.length < 12 || String.fromCharCode(...bytes.subarray(0, 4)) !== 'LLD1') {
+      throw new Error('原琴载荷不是 LLD1');
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (view.getUint16(4, true) !== 1 || view.getUint16(6, true) !== 0) {
+      throw new Error('不支持的原琴载荷版本');
+    }
+    const count = view.getUint32(8, true);
+    const records = [];
+    let offset = 12;
+    for (let index = 0; index < count; index += 1) {
+      if (offset + 7 > bytes.length) throw new Error('原琴载荷记录被截断');
+      const flags = bytes[offset];
+      const delayMs = view.getUint16(offset + 1, true);
+      const length = view.getUint32(offset + 3, true);
+      offset += 7;
+      if (flags & ~1 || length === 0 || offset + length > bytes.length) throw new Error('原琴载荷记录无效');
+      records.push({
+        needsResponse: Boolean(flags & 1),
+        delayMs,
+        body: bytes.slice(offset, offset + length),
+      });
+      offset += length;
+    }
+    if (offset !== bytes.length) throw new Error('原琴载荷包含多余数据');
+    return records;
+  }
+
+  async function sendDevicePayload(payload, { onProgress } = {}) {
+    if (state.uploading) throw new Error('已有曲谱正在发送');
+    const records = parseDevicePayload(payload);
+    if (!records.length) throw new Error('原琴载荷为空');
+    state.uploading = true;
+    state.error = '';
+    emit();
+    try {
+      for (let index = 0; index < records.length; index += 1) {
+        const record = records[index];
+        await writeRaw(makeMFrame(record.body));
+        if (record.needsResponse) await readResponse();
+        onProgress?.((index + 1) / records.length, index + 1, records.length);
+        if (record.delayMs > 0 && index + 1 < records.length) {
+          await new Promise(resolve => setTimeout(resolve, record.delayMs));
+        }
+      }
+    } catch (error) {
+      state.error = error?.message || '原琴曲谱发送失败';
+      throw error;
+    } finally {
+      state.uploading = false;
+      emit();
+    }
+    return { frames: records.length };
   }
 
   async function sendFrames(frames, { delay = 45, onProgress } = {}) {
@@ -306,7 +382,8 @@
   window.FreezaLiberLive = Object.freeze({
     SERVICE, NOTIFY, READ, WRITE,
     crc8, crc16, xor, makeMFrame, counterFromAFrame,
-    scan, connect, disconnect, writeRaw, writeBody, sendFrames, sendBodies,
+    scan, connect, disconnect, writeRaw, writeBody, readResponse,
+    parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
     snapshot, subscribe,
   });
 })();

@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260808-02';
+const ASSET_VERSION = 'reset-20260808-03';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -127,6 +127,8 @@ let midiReadyPromise = null;
 let sampleReadyPromise = Promise.resolve(false);
 let startRequested = false;
 let selectedSongId = null;
+let selectedEncryptedSongBytes = null;
+let selectedSongDevicePayloadPromise = null;
 let songSelectionPending = false;
 let freeLibraryEntrySelected = false;
 let countdownTimer = null;
@@ -3487,6 +3489,48 @@ function updateLyrics() {
   if (playing) emitLyricParticles(visualProgress);
 }
 
+async function extractCurrentSongDevicePayload() {
+  if (!selectedEncryptedSongBytes) return new Uint8Array();
+  const wasm = await loadWasmParser();
+  const bytes = selectedEncryptedSongBytes;
+  const cap = wasm.input_capacity ? wasm.input_capacity() : 0;
+  if (!wasm.memory || !wasm.input_ptr || !wasm.extract_flm_device_payload || bytes.length > cap) {
+    throw new Error('WASM 原琴载荷读取器不可用');
+  }
+  new Uint8Array(wasm.memory.buffer, wasm.input_ptr(), bytes.length).set(bytes);
+  const len = wasm.extract_flm_device_payload(bytes.length);
+  const output = new Uint8Array(wasm.memory.buffer, wasm.output_ptr(), len).slice();
+  if (output.length && output[0] === 0x7b) {
+    try {
+      const error = JSON.parse(new TextDecoder().decode(output));
+      if (error?.error) throw new Error(error.error);
+    } catch (error) {
+      if (error instanceof SyntaxError) throw new Error('WASM 原琴载荷损坏');
+      throw error;
+    }
+  }
+  if (output.length && (output.length < 12 || new TextDecoder().decode(output.subarray(0, 4)) !== 'LLD1')) {
+    throw new Error('原琴载荷格式不正确');
+  }
+  return output;
+}
+
+window.FreezaCurrentSongDevicePayload = async () => {
+  if (!selectedSongDevicePayloadPromise) {
+    selectedSongDevicePayloadPromise = extractCurrentSongDevicePayload().catch(error => {
+      selectedSongDevicePayloadPromise = null;
+      throw error;
+    });
+  }
+  const bytes = await selectedSongDevicePayloadPromise;
+  return {
+    bytes: bytes.slice(),
+    songId: selectedSongId,
+    title: song?.catalog?.title || '',
+    artist: song?.catalog?.artist || '',
+  };
+};
+
 function stepLyricLine(delta) {
   if (!lyricLines.length || isFreeMode()) return;
   const index = window.FreezaPerformanceLyricNavigation?.targetIndex(
@@ -3580,6 +3624,8 @@ async function loadSongMidi(songConfig) {
     const res = await fetch(songConfig.path, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = await res.arrayBuffer();
+    selectedEncryptedSongBytes = new Uint8Array(buffer.slice(0));
+    selectedSongDevicePayloadPromise = null;
     song = await parseEncryptedSongWithWasm(buffer);
     song.catalog = songConfig;
     // MIDI、歌词、和弦与全部 LiberLive 私有事件只有 WASM 一个权威解析器。
@@ -3598,8 +3644,13 @@ async function loadSongMidi(songConfig) {
     updateClock();
     updateLyrics();
     midiReady = true;
+    window.dispatchEvent(new CustomEvent('freeza-song-loaded', {
+      detail: { id: songConfig.id, title: songConfig.title, artist: songConfig.artist },
+    }));
     return song;
   } catch (err) {
+    selectedEncryptedSongBytes = null;
+    selectedSongDevicePayloadPromise = null;
     console.warn(err);
     setPill('midiStatus', `⚠️ 加密曲谱加载失败：${err.message}`, 'warn');
     setPill('trackStatus', '音轨：-', 'warn');
@@ -3806,6 +3857,8 @@ async function selectSong(songId, { mode = null, freeEntry = false } = {}) {
   selectedSongId = config.id;
   songSelectionPending = true;
   midiReady = false;
+  selectedEncryptedSongBytes = null;
+  selectedSongDevicePayloadPromise = null;
   song = null;
   lyricLines = [];
   const selectionName = freeEntry ? '自由演奏' : `《${config.title}》`;
