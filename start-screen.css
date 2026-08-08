@@ -751,11 +751,14 @@ body.game-started #startScreen {
 }
 
 .launch-footer-signals {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(145px, 1fr));
   align-items: center;
   gap: 12px;
   min-width: 0;
 }
+
+.launch-footer-signals .launch-footnote { grid-column: 1 / -1; }
 
 .launch-midi-status {
   appearance: none;
@@ -809,6 +812,63 @@ body.game-started #startScreen {
 .launch-midi-status.connected small { color: #80cfad; }
 .launch-midi-status.unsupported { cursor: not-allowed; opacity: .48; }
 @keyframes launchMidiPulse { to { opacity: .45; transform: scale(.92); } }
+
+.launch-liberlive-status.connected svg {
+  color: #68e1d0;
+  background: rgba(57, 199, 187, .14);
+}
+
+.liberlive-dialog {
+  position: fixed;
+  z-index: 1400;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+}
+.liberlive-dialog[hidden] { display: none; }
+.liberlive-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(3, 4, 12, .76);
+  backdrop-filter: blur(16px);
+}
+.liberlive-dialog-card {
+  position: relative;
+  width: min(480px, 100%);
+  max-height: min(680px, 86dvh);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(154, 123, 255, .35);
+  border-radius: 24px;
+  color: #eef0fa;
+  background: linear-gradient(145deg, rgba(28, 29, 47, .98), rgba(10, 13, 25, .98));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .55), 0 0 42px rgba(119, 79, 230, .12);
+}
+.liberlive-dialog-card header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.liberlive-dialog-card header div { display: grid; gap: 5px; }
+.liberlive-dialog-card header small { color: #aa8cff; font-size: 9px; font-weight: 900; letter-spacing: .22em; }
+.liberlive-dialog-card header strong { font-size: 22px; }
+.liberlive-dialog-card header > button {
+  width: 38px; height: 38px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px;
+  color: #d6d8e4; background: rgba(255,255,255,.04); font-size: 24px;
+}
+.liberlive-dialog-card > p { margin: 15px 0; color: #8e95a9; font-size: 12px; line-height: 1.6; }
+.liberlive-dialog-card > p b { color: #c6b6ff; }
+.liberlive-device-list { display: grid; gap: 9px; min-height: 72px; }
+.liberlive-device-item {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center;
+  width: 100%; padding: 14px 15px; border: 1px solid rgba(255,255,255,.09); border-radius: 15px;
+  text-align: left; color: #e9ebf4; background: rgba(255,255,255,.035);
+}
+.liberlive-device-item b { font-size: 14px; }
+.liberlive-device-item small { overflow: hidden; color: #71798e; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.liberlive-device-item i { grid-column: 2; grid-row: 1 / span 2; padding: 7px 11px; border-radius: 10px; color: #fff; background: #7650e8; font-size: 10px; font-style: normal; }
+.liberlive-device-item:disabled { opacity: .55; }
+.liberlive-device-empty { display: grid; place-items: center; min-height: 82px; color: #7b8296; font-size: 11px; text-align: center; }
+.liberlive-device-empty.error { min-height: auto; padding: 10px; color: #ff9da6; }
+.liberlive-scan-btn { width: 100%; margin-top: 13px; padding: 12px; border: 1px solid rgba(150,113,255,.32); border-radius: 13px; color: #c9baff; background: rgba(114,74,225,.12); font-weight: 800; }
 
 .launch-footnote {
   display: flex;
@@ -1232,7 +1292,7 @@ body.game-started #startScreen {
     margin-top: 12px;
   }
 
-  .launch-footer-signals { gap: 7px; }
+  .launch-footer-signals { gap: 7px; grid-template-columns: repeat(2, minmax(140px, 1fr)); }
   .launch-midi-status { min-width: 150px; min-height: 46px; }
 
   .launch-footnote {
@@ -1264,8 +1324,8 @@ body.game-started #startScreen {
   .launch-pick-row small,
   .launch-toggle-item small,
   .launch-footnote { display: none; }
-  .launch-footer { display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.15fr); gap: 7px; }
-  .launch-footer-signals { min-width: 0; }
+  .launch-footer { display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px; }
+  .launch-footer-signals { min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .launch-midi-status { grid-template-columns: 27px minmax(0, 1fr); min-width: 0; width: 100%; padding-inline: 5px; }
   .launch-midi-status svg { width: 27px; height: 27px; }
   .launch-midi-status small { display: none; }
