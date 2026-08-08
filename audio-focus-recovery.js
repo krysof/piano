@@ -31,6 +31,7 @@
     try { attempts.push(Promise.resolve(context.resume?.())); } catch {}
     try { attempts.push(Promise.resolve(tone?.start?.())); } catch {}
     try { attempts.push(Promise.resolve(tone?.getContext?.()?.resume?.())); } catch {}
+    try { attempts.push(Promise.resolve(global.FreezaMobileRuntime?.activateAudio?.(Boolean(options.recording)))); } catch {}
     if (userGesture) startSilentUnlockPulse(context);
     if (attempts.length) await Promise.allSettled(attempts);
     if (userGesture) startSilentUnlockPulse(context);

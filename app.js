@@ -1,5 +1,6 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260807-13';
+const ASSET_VERSION = 'reset-20260808-01';
+const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
   ...Array.from(window.FreezaVaultSongCatalog || []),
@@ -359,7 +360,7 @@ function initSamplePiano(forceReload = false) {
     sampled.piano = new Tone.Sampler({
       urls: PIANO_SAMPLE_URLS,
       release: 1.25,
-      baseUrl: 'samples/salamander/',
+      baseUrl: runtimeAssetUrl('samples/salamander/'),
       onload: () => {
         if (generation !== sampled.mainGeneration) return;
         sampled.ready = true;
@@ -390,7 +391,7 @@ function initMidiPreviewPiano() {
       sampled.midiPiano = new Tone.Sampler({
         urls: PIANO_SAMPLE_URLS,
         release: 1.25,
-        baseUrl: 'samples/salamander/',
+        baseUrl: runtimeAssetUrl('samples/salamander/'),
         onload: () => {
           sampled.midiReady = true;
           resolve(true);
@@ -582,7 +583,7 @@ function midiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 function localSoundfontUrl(name, soundfont, format) {
   const fmt = format === 'ogg' ? 'ogg' : 'mp3';
   const bank = soundfont === 'MusyngKite' ? 'MusyngKite' : 'FluidR3_GM';
-  return `soundfonts/${bank}/${name}-${fmt}.js`;
+  return runtimeAssetUrl(`soundfonts/${bank}/${name}-${fmt}.js`);
 }
 
 function getSoundfontInstrument(preset) {

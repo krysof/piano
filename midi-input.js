@@ -4,6 +4,8 @@
   const AUTO_CONNECT_KEY = 'freeza-midi-autoconnect-v1';
   const state = {
     access: null,
+    nativeConnected: false,
+    nativeListenersReady: false,
     connecting: false,
     restoring: false,
     authorized: false,
@@ -17,8 +19,10 @@
     onStatus: null,
   };
 
-  const supported = () => typeof navigator !== 'undefined'
-    && typeof navigator.requestMIDIAccess === 'function';
+  const nativePlugin = () => window.FreezaMobileRuntime?.plugin || null;
+  const nativeSupported = () => Boolean(window.FreezaMobileRuntime?.native && nativePlugin()?.connectMidi);
+  const supported = () => nativeSupported() || (typeof navigator !== 'undefined'
+    && typeof navigator.requestMIDIAccess === 'function');
 
   function snapshot() {
     const devices = Array.from(state.inputs.values()).map(input => ({
@@ -92,6 +96,52 @@
     });
   }
 
+  async function ensureNativeListeners() {
+    const plugin = nativePlugin();
+    if (!plugin?.addListener || state.nativeListenersReady) return;
+    state.nativeListenersReady = true;
+    await plugin.addListener('midiMessage', event => {
+      const input = {
+        id: event?.inputId || 'native-midi',
+        name: event?.inputName || 'MIDI 键盘',
+        manufacturer: event?.manufacturer || '',
+      };
+      handleMessage(input, {
+        data: Uint8Array.from(event?.data || []),
+        receivedTime: Number(event?.receivedAt || globalThis.performance?.now?.() || Date.now()),
+      });
+    });
+    await plugin.addListener('midiDevicesChanged', event => {
+      updateNativeDevices(event?.devices || []);
+    });
+  }
+
+  function updateNativeDevices(devices = []) {
+    const next = new Map();
+    for (const [index, device] of Array.from(devices).entries()) {
+      const input = {
+        id: String(device?.id || `native-${index}`),
+        name: String(device?.name || 'MIDI 键盘'),
+        manufacturer: String(device?.manufacturer || ''),
+        state: 'connected',
+        type: 'input',
+      };
+      next.set(inputKey(input, index), input);
+    }
+    state.inputs = next;
+    state.nativeConnected = true;
+    state.pressed.clear();
+    emitStatus();
+  }
+
+  async function connectNative() {
+    await ensureNativeListeners();
+    await window.FreezaMobileRuntime?.activateAudio?.(false);
+    const result = await nativePlugin().connectMidi();
+    state.authorized = result?.authorized !== false;
+    updateNativeDevices(result?.devices || []);
+  }
+
   function refreshInputs() {
     const next = new Map();
     for (const input of state.access?.inputs?.values?.() || []) {
@@ -141,11 +191,16 @@
     state.error = '';
     emitStatus();
     try {
-      state.access = await navigator.requestMIDIAccess({ sysex: false });
-      state.authorized = true;
-      rememberAutoConnect();
-      state.access.onstatechange = refreshInputs;
-      refreshInputs();
+      if (nativeSupported()) {
+        await connectNative();
+        rememberAutoConnect();
+      } else {
+        state.access = await navigator.requestMIDIAccess({ sysex: false });
+        state.authorized = true;
+        rememberAutoConnect();
+        state.access.onstatechange = refreshInputs;
+        refreshInputs();
+      }
     } catch (error) {
       state.error = error?.name === 'SecurityError'
         ? '需要 HTTPS 才能连接 MIDI'
