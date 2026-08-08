@@ -8,6 +8,8 @@
   let transferGeneration = 0;
   let currentPayload = null;
   let lastConnected = false;
+  let sentPayloadKey = '';
+  let sendPromise = null;
 
   function closeDialog() {
     const frame = dialog();
@@ -67,7 +69,7 @@
     connectButton.classList.toggle('connected', status.connected);
     connectButton.classList.toggle('connecting', status.connecting || status.scanning);
     connectButton.classList.toggle('unsupported', !status.supported);
-    if (status.connected) label.textContent = status.device?.name || '原版琴已连接';
+    if (status.connected) label.textContent = '原琴发声 · App 静音 · 手动模式';
     else if (status.connecting) label.textContent = '正在建立控制连接…';
     else if (status.scanning) label.textContent = '正在扫描原版琴…';
     else if (status.error) label.textContent = status.error;
@@ -82,9 +84,10 @@
     const justConnected = status.connected && !lastConnected;
     lastConnected = status.connected;
     if (justConnected) refreshTransfer(status);
-    else {
+    else if (!status.connected) {
       transferGeneration += 1;
       currentPayload = null;
+      sentPayloadKey = '';
     }
     renderDevices(status);
   }
@@ -110,6 +113,34 @@
       if (generation !== transferGeneration) return;
       currentPayload = null;
       if (detail) detail.textContent = error?.message || '无法读取原琴载荷';
+    }
+  }
+
+  function payloadKey(payload) {
+    if (!payload?.bytes?.length) return '';
+    return `${payload.title || ''}:${payload.bytes.length}`;
+  }
+
+  async function ensureCurrentSongOnInstrument({ onProgress } = {}) {
+    const status = window.FreezaLiberLive?.snapshot?.();
+    if (!status?.connected) throw new Error('LiberLive 琴尚未连接');
+    if (sendPromise) return sendPromise;
+    sendPromise = (async () => {
+      if (!currentPayload?.bytes?.length) {
+        const result = await window.FreezaCurrentSongDevicePayload?.();
+        currentPayload = result?.bytes?.length ? result : null;
+      }
+      if (!currentPayload) throw new Error('当前歌曲没有原琴载荷，不能由原琴演奏');
+      const key = payloadKey(currentPayload);
+      if (key && sentPayloadKey === key) return { frames: 0, cached: true };
+      const result = await window.FreezaLiberLive.sendDevicePayload(currentPayload.bytes, { onProgress });
+      sentPayloadKey = key;
+      return result;
+    })();
+    try {
+      return await sendPromise;
+    } finally {
+      sendPromise = null;
     }
   }
 
@@ -144,7 +175,7 @@
       send.disabled = true;
       if (progress) progress.value = 0;
       try {
-        const result = await window.FreezaLiberLive.sendDevicePayload(currentPayload.bytes, {
+        const result = await ensureCurrentSongOnInstrument({
           onProgress(value, current, total) {
             if (progress) progress.value = Math.round(value * 100);
             if (detail) detail.textContent = `正在发送 ${current} / ${total}`;
@@ -160,6 +191,11 @@
     window.addEventListener('freeza-song-loaded', () => refreshTransfer());
     document.querySelectorAll('[data-close-liberlive]').forEach(node => node.addEventListener('click', closeDialog));
   }
+
+  window.FreezaLiberLiveUI = Object.freeze({
+    ensureCurrentSongOnInstrument,
+    refreshTransfer,
+  });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

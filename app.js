@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260808-03';
+const ASSET_VERSION = 'reset-20260809-01';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -8,6 +8,7 @@ const SONG_CATALOG = Object.freeze([
 const SONG_PAGE_SIZE = 24;
 const songLibraryState = { query: '', artist: 'all', language: 'all', version: 'all', sort: 'recommended', limit: SONG_PAGE_SIZE };
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const APP_MASTER_GAIN = 0.48;
 
 const audio = {
   ctx: null,
@@ -111,6 +112,8 @@ let drumMode = 'auto';
 let drumModeBeforeOff = 'auto';
 let drumPatternSlot = 0;
 let playMode = 'semi';
+let liberLiveInstrumentOutput = false;
+let playModeBeforeLiberLive = null;
 let freeDrumTimer = null;
 let freeDrumStarted = false;
 let freeDrumNextBarAt = 0;
@@ -416,7 +419,7 @@ function ensureAudio() {
     const toneRawContext = toneContext?.rawContext || toneContext?._context || null;
     audio.ctx = toneRawContext || new (window.AudioContext || window.webkitAudioContext)();
     audio.master = audio.ctx.createGain();
-    audio.master.gain.value = 0.48;
+    audio.master.gain.value = liberLiveInstrumentOutput ? 0 : APP_MASTER_GAIN;
     audio.master.connect(audio.ctx.destination);
     audio.recordDest = audio.ctx.createMediaStreamDestination();
     audio.recordBus = audio.ctx.createGain();
@@ -445,6 +448,7 @@ function ensureAudio() {
       audio.gameRecordGain.connect(audio.recordBus);
     }
   }
+  syncLiberLiveAudioOutput();
   // iOS Safari 从后台回来时可能把 Context 标记为 suspended 或
   // interrupted。两种状态都要主动恢复，不能只处理 suspended。
   if (audio.ctx.state !== 'running' && audio.ctx.state !== 'closed') {
@@ -2515,9 +2519,62 @@ function syncFreeModeMenu() {
   updateFreePerformanceUi();
 }
 
-function setPlayMode(mode) {
+function isLiberLiveInstrumentOutput() {
+  return liberLiveInstrumentOutput;
+}
+
+function syncLiberLiveAudioOutput() {
+  const muted = isLiberLiveInstrumentOutput();
+  if (audio.master && audio.ctx) {
+    const now = audio.ctx.currentTime;
+    audio.master.gain.cancelScheduledValues(now);
+    audio.master.gain.setTargetAtTime(muted ? 0 : APP_MASTER_GAIN, now, 0.012);
+  }
+  if (window.Tone) {
+    const destination = Tone.getDestination ? Tone.getDestination() : Tone.Destination;
+    if (destination) destination.mute = muted;
+  }
+  document.body.classList.toggle('liberlive-instrument-output', muted);
+}
+
+function syncLiberLiveModeControls() {
   const screen = $('startScreen');
-  playMode = ['auto', 'one-key', 'semi', 'manual', 'free'].includes(mode) ? mode : 'semi';
+  const locked = isLiberLiveInstrumentOutput();
+  screen?.classList.toggle('liberlive-manual-locked', locked);
+  screen?.querySelectorAll('[data-mode]').forEach(button => {
+    button.disabled = locked;
+    button.setAttribute('aria-disabled', locked ? 'true' : 'false');
+  });
+}
+
+function setLiberLiveInstrumentOutput(enabled) {
+  const active = Boolean(enabled);
+  if (active === liberLiveInstrumentOutput) {
+    syncLiberLiveAudioOutput();
+    syncLiberLiveModeControls();
+    return;
+  }
+  if (active) {
+    playModeBeforeLiberLive = playMode;
+    liberLiveInstrumentOutput = true;
+    setPlayMode('manual', { force: true });
+  } else {
+    liberLiveInstrumentOutput = false;
+    const previous = playModeBeforeLiberLive;
+    playModeBeforeLiberLive = null;
+    if (!document.body.classList.contains('game-started') && previous) {
+      setPlayMode(previous, { force: true });
+    }
+  }
+  syncLiberLiveAudioOutput();
+  syncLiberLiveModeControls();
+  updatePlaybackToggles();
+}
+
+function setPlayMode(mode, { force = false } = {}) {
+  const screen = $('startScreen');
+  const requested = ['auto', 'one-key', 'semi', 'manual', 'free'].includes(mode) ? mode : 'semi';
+  playMode = isLiberLiveInstrumentOutput() && !force ? 'manual' : requested;
   if (isFreeMode()) guideMode = false;
   screen?.querySelectorAll('[data-mode]').forEach(button => {
     button.classList.toggle('selected', button.dataset.mode === playMode);
@@ -2525,6 +2582,7 @@ function setPlayMode(mode) {
   syncMelodyGuideMenu(screen);
   syncFreeModeMenu();
   updateGamePickControls();
+  syncLiberLiveModeControls();
 }
 
 function setFreeBpm(value, { restartDrums = true } = {}) {
@@ -4596,7 +4654,7 @@ function showLoadingRetry(visible) {
 function retryRequiredMelodyTone() {
   // Salamander 的首次 Promise 已经失败时，必须新建 Sampler；重复等待旧 Promise
   // 不会产生任何网络请求。SoundFont 与吉他采样各自会清理失败缓存。
-  if (!melodyTonePreset || melodyTonePreset.localPiano) initSamplePiano(true);
+  if (!isLiberLiveInstrumentOutput() && (!melodyTonePreset || melodyTonePreset.localPiano)) initSamplePiano(true);
   startGameFromMenu();
 }
 
@@ -4695,6 +4753,38 @@ async function prepareStartAssets() {
   setLoadingStatus('解析 MIDI / WASM / 风格包…');
   setLoadingCategory('core', 0.08, '解析 MIDI · WASM · 风格包');
   await (midiReadyPromise || Promise.resolve());
+  if (isLiberLiveInstrumentOutput()) {
+    setLoadingStatus('正在把当前曲谱载入原琴…');
+    setLoadingCategory('core', 0.16, '正在发送原琴互动曲谱');
+    try {
+      const result = await window.FreezaLiberLiveUI?.ensureCurrentSongOnInstrument?.({
+        onProgress(value, current, total) {
+          setLoadingCategory('core', 0.16 + value * 0.84, `发送原琴曲谱 ${current} / ${total}`);
+        },
+      });
+      if (!result) throw new Error('原琴曲谱发送接口不可用');
+    } catch (cause) {
+      const error = new Error(cause?.message || '原琴曲谱发送失败');
+      error.code = 'LIBERLIVE_TRANSFER_FAILED';
+      error.cause = cause;
+      setLoadingCategory('core', 0.16, error.message, 'error', '失败');
+      throw error;
+    }
+    setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 已载入原琴`);
+    setLoadingCategory('piano', 1, '由 LiberLive 原琴发声');
+    setLoadingCategory('pickA', 1, '由原琴执行拨片 A');
+    setLoadingCategory('pickB', 1, '由原琴执行拨片 B');
+    setLoadingCategory('drums', 1, '由原琴执行鼓机与伴奏');
+    if (micEnabled) {
+      setLoadingCategory('mic', 0.1, '等待浏览器授权');
+      const ready = await loadingTaskTimeout(ensureMic(), 'microphone');
+      setLoadingCategory('mic', 1, ready ? '录音输入已连接' : '未获得权限', ready ? 'done' : 'error');
+    } else {
+      setLoadingCategory('mic', 1, '当前未启用');
+    }
+    setLoadingStatus('原琴已就绪 · App 保持静音');
+    return;
+  }
   setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 风格已解析`);
   setLoadingStatus('启动音频引擎并缓存全部音色…');
   ensureAudio();
@@ -6271,6 +6361,11 @@ async function startGameFromMenu() {
       showLoadingRetry(true);
       return;
     }
+    if (err?.code === 'LIBERLIVE_TRANSFER_FAILED') {
+      setLoadingStatus(`${err.message}，请确认琴仍已连接后重试。`);
+      showLoadingRetry(true);
+      return;
+    }
     screen?.classList.remove('loading');
     return;
   }
@@ -6467,6 +6562,10 @@ updateVolumeButtons();
 updatePlaybackToggles();
 setupSongScreen();
 setupStartScreen();
+window.addEventListener('freeza-liberlive-state', event => {
+  setLiberLiveInstrumentOutput(Boolean(event.detail?.connected));
+});
+setLiberLiveInstrumentOutput(Boolean(window.FreezaLiberLive?.snapshot?.().connected));
 setupGameUiSounds();
 window.FreezaPerformanceLyricNavigation?.bind({
   surface: document.querySelector('.karaoke'),
