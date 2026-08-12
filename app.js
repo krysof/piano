@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260812-02';
+const ASSET_VERSION = 'reset-20260813-01';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -2526,43 +2526,20 @@ function isLiberLiveInstrumentOutput() {
   return liberLiveInstrumentOutput;
 }
 
-function liberLiveRealtimeError(error) {
-  const message = error?.message || '原琴实时事件发送失败';
+function liberLiveStreamError(error) {
+  const message = error?.message || '原琴滚动曲谱发送失败';
   console.warn(message, error);
   if ($('nowPlaying')) $('nowPlaying').textContent = message;
 }
 
-function sendLiberLiveRealtimeChord(root, cue) {
+function advanceLiberLiveDeviceWindow(noteFrames = 4) {
   if (!isLiberLiveInstrumentOutput()) return Promise.resolve(null);
-  const request = window.FreezaLiberLive?.playRealtimeChord?.({
-    root,
-    chord: cue?.chord || root,
-    bpm: Number(song?.styleInfo?.tempo) || 75,
-  });
+  const request = window.FreezaLiberLive?.advanceDeviceSong?.({ noteFrames });
   if (!request) {
-    liberLiveRealtimeError(new Error('原琴实时和弦接口不可用'));
+    liberLiveStreamError(new Error('原琴滚动曲谱接口不可用'));
     return Promise.resolve(null);
   }
-  return request.catch(liberLiveRealtimeError);
-}
-
-function sendLiberLiveRealtimeNote(note, midi) {
-  if (!isLiberLiveInstrumentOutput()) return Promise.resolve(null);
-  const beatSeconds = Math.max(0.001, beatMs() / 1000);
-  const rawVelocity = Number(note?.velocity);
-  const velocity = Math.max(1, Math.min(127,
-    Math.round(Number.isFinite(rawVelocity) ? (rawVelocity <= 1 ? rawVelocity * 127 : rawVelocity) : 90)));
-  const request = window.FreezaLiberLive?.playRealtimeNote?.({
-    beat: Math.max(0, Number(note?.time) || 0) / beatSeconds,
-    duration: Math.max(0.03, Number(note?.duration) || 0.25) / beatSeconds,
-    pitch: Math.max(0, Math.min(127, Math.round(Number(midi) || 60))),
-    velocity,
-  });
-  if (!request) {
-    liberLiveRealtimeError(new Error('原琴实时音符接口不可用'));
-    return Promise.resolve(null);
-  }
-  return request.catch(liberLiveRealtimeError);
+  return request.catch(liberLiveStreamError);
 }
 
 function syncLiberLiveAudioOutput() {
@@ -4804,19 +4781,23 @@ async function prepareStartAssets() {
   setLoadingCategory('core', 0.08, '解析 MIDI · WASM · 风格包');
   await (midiReadyPromise || Promise.resolve());
   if (isLiberLiveInstrumentOutput()) {
-    setLoadingStatus('正在准备原琴实时演奏…');
-    setLoadingCategory('core', 0.35, '设置原琴速度 · 不预传整首曲谱');
+    setLoadingStatus('正在初始化原琴曲谱窗口…');
+    setLoadingCategory('core', 0.15, '初始化协议 · 只预载开头窗口');
     try {
-      const result = await window.FreezaLiberLiveUI?.ensureRealtimeInstrument?.();
-      if (!result) throw new Error('原琴实时演奏接口不可用');
+      const result = await window.FreezaLiberLiveUI?.ensureDeviceSongStream?.({
+        onProgress(value) {
+          setLoadingCategory('core', Math.max(0.15, Math.min(0.95, value)), '初始化协议 · 滚动曲谱窗口');
+        },
+      });
+      if (!result) throw new Error('原琴曲谱窗口接口不可用');
     } catch (cause) {
-      const error = new Error(cause?.message || '原琴实时演奏准备失败');
+      const error = new Error(cause?.message || '原琴曲谱窗口准备失败');
       error.code = 'LIBERLIVE_TRANSFER_FAILED';
       error.cause = cause;
       setLoadingCategory('core', 0.16, error.message, 'error', '失败');
       throw error;
     }
-    setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 实时事件模式`);
+    setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 原琴滚动窗口模式`);
     setLoadingCategory('piano', 1, '由 LiberLive 原琴发声');
     setLoadingCategory('pickA', 1, '由原琴执行拨片 A');
     setLoadingCategory('pickB', 1, '由原琴执行拨片 B');
@@ -5197,9 +5178,8 @@ function finishPlayback() {
 function restartPlayback() {
   resetTimingRatings();
   if (isLiberLiveInstrumentOutput()) {
-    window.FreezaLiberLive?.startRealtimeSong?.({
-      bpm: Number(song?.styleInfo?.tempo) || 75,
-    })?.catch(liberLiveRealtimeError);
+    window.FreezaLiberLive?.stopDeviceSong?.();
+    window.FreezaLiberLiveUI?.ensureDeviceSongStream?.().catch(liberLiveStreamError);
   }
   if (isFreeMode()) {
     playing = false;
@@ -5297,10 +5277,7 @@ function scheduleInteractiveMelodyEvent(note, idx, delay) {
     }, 'interactive-melody');
   }
   event.timer = setTimeout(() => {
-    if (isLiberLiveInstrumentOutput()) {
-      event.fired = true;
-      sendLiberLiveRealtimeNote(note, midi);
-    }
+    if (isLiberLiveInstrumentOutput()) event.fired = true;
     playOffset = note.time;
     showVisualNote(midi, 'playback');
     if (nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
@@ -5446,9 +5423,7 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     oneKeyLastBarDurationMs = 0;
   }
   const scheduleTiming = timingForInteractivePhrase(cue, timing);
-  if (isLiberLiveInstrumentOutput()) {
-    sendLiberLiveRealtimeChord(root, cue);
-  }
+  if (isLiberLiveInstrumentOutput()) advanceLiberLiveDeviceWindow();
   let melody = { events: [], segmentEnd: scheduleTiming.boundary };
   if (isManualMode()) {
     clearManualMelodyTimers();
@@ -5795,7 +5770,6 @@ function triggerChordKey(label, pickSlot, key) {
     showPickZoneFeedback(key, normalizedPickSlot);
     if (!isLiberLiveInstrumentOutput()) warmHarmonyTones(false);
     playWrongHarmonyPreview(label, pressedCue, normalizedPickSlot);
-    if (isLiberLiveInstrumentOutput()) sendLiberLiveRealtimeChord(label, pressedCue);
     animateChordPress(key);
     return true;
   }
@@ -6625,6 +6599,24 @@ setupSongScreen();
 setupStartScreen();
 window.addEventListener('freeza-liberlive-state', event => {
   setLiberLiveInstrumentOutput(Boolean(event.detail?.connected));
+});
+let lastLiberLivePhysicalPressAt = 0;
+window.addEventListener('freeza-liberlive-press', () => {
+  if (!isLiberLiveInstrumentOutput()
+    || !window.FreezaLiberLive?.snapshot?.().streamReady
+    || !document.body.classList.contains('game-started')
+    || countdownActive) return;
+  const now = performance.now();
+  if (now - lastLiberLivePhysicalPressAt < 80) return;
+  lastLiberLivePhysicalPressAt = now;
+  const pendingCue = activeCue?.cue
+    || nextCueAfter(interactiveSession.phrase?.cue)
+    || (song?.chordCues || [])[Math.max(0, oneKeyNextCueIndex)]
+    || chordAtTime(currentPlayTime());
+  const root = pendingCue?.root || rootFromChord(pendingCue?.chord) || 'C';
+  const key = document.querySelector(`#manualKeyboard .key[data-root="${root}"]`)
+    || document.querySelector('#manualKeyboard .key');
+  if (key) triggerChordKey(root, Math.max(0, harmonyToneMode - 1), key);
 });
 setLiberLiveInstrumentOutput(Boolean(window.FreezaLiberLive?.snapshot?.().connected));
 setupGameUiSounds();

@@ -22,10 +22,13 @@
     readCharacteristic: null,
     writeCharacteristic: null,
     uploading: false,
-    realtimeGeneration: 0,
-    realtimeQueue: Promise.resolve(),
-    realtimeFirstNote: true,
-    realtimeReady: false,
+    streamGeneration: 0,
+    streamQueue: Promise.resolve(),
+    streamRecords: [],
+    streamCursor: 0,
+    streamSentNotes: 0,
+    streamReady: false,
+    streamComplete: false,
     listenersReady: false,
     counter: Date.now() >>> 0,
     subscribers: new Set(),
@@ -107,6 +110,11 @@
     const counter = counterFromAFrame(data);
     if (counter !== null) state.counter = (counter + 100) >>> 0;
     window.dispatchEvent(new CustomEvent('freeza-liberlive-data', { detail: { source, data, counter } }));
+    // A101 event type 2 is the physical chord/strum input used by the original
+    // app.  Keep it separate from $A protocol acknowledgements.
+    if (source === 'notify' && data[0] === 0x02) {
+      window.dispatchEvent(new CustomEvent('freeza-liberlive-press', { detail: { data } }));
+    }
   }
 
   function toBase64(bytes) {
@@ -131,7 +139,10 @@
       devices: state.devices.map(device => ({ ...device })),
       error: state.error,
       uploading: state.uploading,
-      realtimeReady: state.realtimeReady,
+      streamReady: state.streamReady,
+      streamComplete: state.streamComplete,
+      streamCursor: state.streamCursor,
+      streamTotal: state.streamRecords.length,
     });
   }
 
@@ -267,9 +278,7 @@
   }
 
   async function disconnect() {
-    state.realtimeGeneration += 1;
-    state.realtimeReady = false;
-    state.realtimeFirstNote = true;
+    resetDeviceStream();
     if (nativeSupported()) await nativePlugin().disconnectLiberLive();
     else state.gatt?.disconnect?.();
     state.connected = false;
@@ -294,9 +303,9 @@
     return writeRaw(makeMFrame(xor(Uint8Array.from(body), KEY_A), counter));
   }
 
-  // BLEPlay's stable path does not preload set_fill_notes.  It writes the
-  // compact B1/1E command for the event that is due now.  Keep the same byte
-  // layout here so connected instruments never receive a whole song burst.
+  // B1/1E is retained only for byte-level protocol diagnostics. The working
+  // original-app flow uses encrypted $M bodies after the BLE initialization
+  // sequence; see prepareDeviceSong()/advanceDeviceSong() below.
   function legacyCommand(command, parts = []) {
     const payload = [];
     const appendU16 = value => {
@@ -366,51 +375,110 @@
     ]);
   }
 
-  function queueRealtimeWrite(bytes, generation = state.realtimeGeneration) {
-    const task = state.realtimeQueue.catch(() => {}).then(async () => {
-      if (generation !== state.realtimeGeneration) return { cancelled: true };
+  const STREAM_FRAME_DELAY_MS = 60;
+  const INITIAL_NOTE_WINDOW = 12;
+  const TOP_UP_NOTE_WINDOW = 4;
+
+  function plainRecordBody(record) {
+    return xor(record.body, KEY_A);
+  }
+
+  function recordKind(record) {
+    const plain = plainRecordBody(record);
+    if (plain[0] !== 0x01) return 'control';
+    if (plain[1] === 0x06) return 'meta';
+    if (plain[1] === 0x07) return 'note';
+    if (plain[1] === 0x0f) return 'reset';
+    return 'control';
+  }
+
+  function resetDeviceStream() {
+    state.streamGeneration += 1;
+    state.streamRecords = [];
+    state.streamCursor = 0;
+    state.streamSentNotes = 0;
+    state.streamReady = false;
+    state.streamComplete = false;
+    emit();
+  }
+
+  function queueStreamTask(operation) {
+    const generation = state.streamGeneration;
+    const task = state.streamQueue.catch(() => {}).then(async () => {
+      if (generation !== state.streamGeneration) return { cancelled: true };
       if (!state.connected) throw new Error('LiberLive 琴尚未连接');
-      await writeRaw(bytes);
-      return { written: true };
+      return operation(generation);
     });
-    state.realtimeQueue = task;
+    state.streamQueue = task;
     return task;
   }
 
-  async function startRealtimeSong({ bpm = 75 } = {}) {
+  async function sendStreamRecord(record, generation) {
+    if (generation !== state.streamGeneration) return false;
+    await writeRaw(makeMFrame(record.body));
+    // liberlive_play.py follows the captured app pacing instead of the old
+    // LLD1 8/12 ms burst. The fixed gap also prevents long songs rebooting the
+    // instrument while a rolling window is replenished.
+    await new Promise(resolve => setTimeout(resolve, STREAM_FRAME_DELAY_MS));
+    return generation === state.streamGeneration;
+  }
+
+  async function sendUntilNoteBudget(noteBudget, generation, onProgress) {
+    let notes = 0;
+    while (state.streamCursor < state.streamRecords.length) {
+      const record = state.streamRecords[state.streamCursor];
+      const kind = recordKind(record);
+      if (kind === 'note' && notes >= noteBudget) break;
+      if (!await sendStreamRecord(record, generation)) return { cancelled: true };
+      state.streamCursor += 1;
+      if (kind === 'note') {
+        notes += 1;
+        state.streamSentNotes += 1;
+      }
+      onProgress?.(state.streamCursor / state.streamRecords.length,
+        state.streamCursor, state.streamRecords.length);
+    }
+    state.streamComplete = state.streamCursor >= state.streamRecords.length;
+    emit();
+    return { frames: state.streamCursor, notes, complete: state.streamComplete };
+  }
+
+  async function prepareDeviceSong(payload, { onProgress } = {}) {
     if (!state.connected) throw new Error('LiberLive 琴尚未连接');
-    state.realtimeGeneration += 1;
-    state.realtimeFirstNote = true;
-    state.realtimeReady = false;
-    const generation = state.realtimeGeneration;
-    await queueRealtimeWrite(commandSetTempo(bpm), generation);
-    if (generation !== state.realtimeGeneration) return { cancelled: true };
-    state.realtimeReady = true;
+    const records = parseDevicePayload(payload);
+    if (!records.length) throw new Error('原琴载荷为空');
+    state.streamGeneration += 1;
+    state.streamRecords = records;
+    state.streamCursor = 0;
+    state.streamSentNotes = 0;
+    state.streamReady = false;
+    state.streamComplete = false;
+    const generation = state.streamGeneration;
     emit();
-    return { ready: true, mode: 'realtime' };
+    return queueStreamTask(async currentGeneration => {
+      if (currentGeneration !== generation) return { cancelled: true };
+      // Send device handshake/song setup plus only a bounded score window.
+      // The remaining note frames stay in memory and are replenished after
+      // physical/app presses, so the complete score is never burst at startup.
+      const result = await sendUntilNoteBudget(INITIAL_NOTE_WINDOW, generation, onProgress);
+      if (result.cancelled) return result;
+      state.streamReady = true;
+      emit();
+      return { ...result, ready: true, total: records.length };
+    });
   }
 
-  async function playRealtimeChord({ root, chord, bpm = 75 } = {}) {
-    if (!state.realtimeReady) await startRealtimeSong({ bpm });
-    const generation = state.realtimeGeneration;
-    // BLEPlay's proven B1/1E path always uses rhythm_id=0. Do not feed the
-    // web player's A/B pattern slot into this device-only protocol field.
-    await queueRealtimeWrite(commandPlayChord(root, chord, 0, bpm), generation);
-    return queueRealtimeWrite(commandRemindChord(root, chord), generation);
+  async function advanceDeviceSong({ noteFrames = TOP_UP_NOTE_WINDOW } = {}) {
+    if (!state.streamReady) throw new Error('原琴曲谱窗口尚未准备');
+    if (state.streamComplete) return { frames: state.streamCursor, notes: 0, complete: true };
+    return queueStreamTask(generation => sendUntilNoteBudget(
+      Math.max(1, Math.min(16, Math.round(Number(noteFrames) || TOP_UP_NOTE_WINDOW))),
+      generation,
+    ));
   }
 
-  async function playRealtimeNote({ beat = 0, duration = 0.25, pitch = 60, velocity = 90 } = {}) {
-    if (!state.realtimeReady) throw new Error('原琴实时演奏尚未准备');
-    const first = state.realtimeFirstNote;
-    state.realtimeFirstNote = false;
-    return queueRealtimeWrite(commandPlayNote(first, beat, duration, pitch, velocity));
-  }
-
-  function stopRealtimeSong() {
-    state.realtimeGeneration += 1;
-    state.realtimeReady = false;
-    state.realtimeFirstNote = true;
-    emit();
+  function stopDeviceSong() {
+    resetDeviceStream();
   }
 
   async function readResponse() {
@@ -491,7 +559,7 @@
     scan, connect, disconnect, writeRaw, writeBody, readResponse,
     parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
     legacyCommand, commandSetTempo, commandPlayChord, commandRemindChord, commandPlayNote,
-    startRealtimeSong, playRealtimeChord, playRealtimeNote, stopRealtimeSong,
+    recordKind, prepareDeviceSong, advanceDeviceSong, stopDeviceSong,
     snapshot, subscribe,
   });
 })();
