@@ -22,6 +22,10 @@
     readCharacteristic: null,
     writeCharacteristic: null,
     uploading: false,
+    realtimeGeneration: 0,
+    realtimeQueue: Promise.resolve(),
+    realtimeFirstNote: true,
+    realtimeReady: false,
     listenersReady: false,
     counter: Date.now() >>> 0,
     subscribers: new Set(),
@@ -127,6 +131,7 @@
       devices: state.devices.map(device => ({ ...device })),
       error: state.error,
       uploading: state.uploading,
+      realtimeReady: state.realtimeReady,
     });
   }
 
@@ -262,6 +267,9 @@
   }
 
   async function disconnect() {
+    state.realtimeGeneration += 1;
+    state.realtimeReady = false;
+    state.realtimeFirstNote = true;
     if (nativeSupported()) await nativePlugin().disconnectLiberLive();
     else state.gatt?.disconnect?.();
     state.connected = false;
@@ -284,6 +292,123 @@
 
   async function writeBody(body, counter) {
     return writeRaw(makeMFrame(xor(Uint8Array.from(body), KEY_A), counter));
+  }
+
+  // BLEPlay's stable path does not preload set_fill_notes.  It writes the
+  // compact B1/1E command for the event that is due now.  Keep the same byte
+  // layout here so connected instruments never receive a whole song burst.
+  function legacyCommand(command, parts = []) {
+    const payload = [];
+    const appendU16 = value => {
+      const number = Math.max(0, Math.min(0xffff, Math.round(Number(value) || 0)));
+      payload.push(number & 0xff, (number >>> 8) & 0xff);
+    };
+    const appendF32 = value => {
+      const buffer = new ArrayBuffer(4);
+      new DataView(buffer).setFloat32(0, Number(value) || 0, true);
+      payload.push(...new Uint8Array(buffer));
+    };
+    for (const part of parts) {
+      if (part?.type === 'u16') appendU16(part.value);
+      else if (part?.type === 'f32') appendF32(part.value);
+      else payload.push(Math.max(0, Math.min(0xff, Math.round(Number(part?.value ?? part) || 0))));
+    }
+    return Uint8Array.from([
+      0xb1, 0x1e, command & 0xff,
+      payload.length & 0xff, (payload.length >>> 8) & 0xff,
+      ...payload,
+    ]);
+  }
+
+  function commandSetTempo(bpm) {
+    return legacyCommand(0x1a, [{ type: 'u16', value: bpm }]);
+  }
+
+  function chordRootId(root) {
+    const letter = String(root || '').toUpperCase().match(/[A-G]/)?.[0];
+    return ({ C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 })[letter] ?? 0;
+  }
+
+  function chordTypeId(chord) {
+    const symbol = String(chord || '').split('/')[0].replace(/^[A-G](?:#|b)?/i, '').toLowerCase();
+    if (/^(m7b5|m7♭5|ø)/.test(symbol)) return 5;
+    if (/^(maj7|m7\+)/.test(symbol)) return 3;
+    if (/^m7/.test(symbol)) return 4;
+    if (/^(dim|o)/.test(symbol)) return 5;
+    if (/^(aug|\+)/.test(symbol)) return 6;
+    if (/^sus4/.test(symbol)) return 7;
+    if (/^sus2/.test(symbol)) return 8;
+    if (/^m(?!aj)/.test(symbol)) return 1;
+    if (/^7/.test(symbol)) return 2;
+    return 0;
+  }
+
+  function commandPlayChord(root, chord, rhythm, bpm) {
+    return legacyCommand(0x08, [
+      chordRootId(root),
+      chordTypeId(chord),
+      { type: 'u16', value: rhythm },
+      bpm,
+    ]);
+  }
+
+  function commandRemindChord(root, chord) {
+    return legacyCommand(0x0c, [chordRootId(root), chordTypeId(chord), 0]);
+  }
+
+  function commandPlayNote(first, beat, duration, pitch, velocity) {
+    return legacyCommand(0x22, [
+      first ? 1 : 0,
+      { type: 'f32', value: beat },
+      { type: 'f32', value: duration },
+      pitch,
+      velocity,
+    ]);
+  }
+
+  function queueRealtimeWrite(bytes, generation = state.realtimeGeneration) {
+    const task = state.realtimeQueue.catch(() => {}).then(async () => {
+      if (generation !== state.realtimeGeneration) return { cancelled: true };
+      if (!state.connected) throw new Error('LiberLive 琴尚未连接');
+      await writeRaw(bytes);
+      return { written: true };
+    });
+    state.realtimeQueue = task;
+    return task;
+  }
+
+  async function startRealtimeSong({ bpm = 75 } = {}) {
+    if (!state.connected) throw new Error('LiberLive 琴尚未连接');
+    state.realtimeGeneration += 1;
+    state.realtimeFirstNote = true;
+    state.realtimeReady = false;
+    const generation = state.realtimeGeneration;
+    await queueRealtimeWrite(commandSetTempo(bpm), generation);
+    if (generation !== state.realtimeGeneration) return { cancelled: true };
+    state.realtimeReady = true;
+    emit();
+    return { ready: true, mode: 'realtime' };
+  }
+
+  async function playRealtimeChord({ root, chord, rhythm = 0, bpm = 75 } = {}) {
+    if (!state.realtimeReady) await startRealtimeSong({ bpm });
+    const generation = state.realtimeGeneration;
+    await queueRealtimeWrite(commandPlayChord(root, chord, rhythm, bpm), generation);
+    return queueRealtimeWrite(commandRemindChord(root, chord), generation);
+  }
+
+  async function playRealtimeNote({ beat = 0, duration = 0.25, pitch = 60, velocity = 90 } = {}) {
+    if (!state.realtimeReady) throw new Error('原琴实时演奏尚未准备');
+    const first = state.realtimeFirstNote;
+    state.realtimeFirstNote = false;
+    return queueRealtimeWrite(commandPlayNote(first, beat, duration, pitch, velocity));
+  }
+
+  function stopRealtimeSong() {
+    state.realtimeGeneration += 1;
+    state.realtimeReady = false;
+    state.realtimeFirstNote = true;
+    emit();
   }
 
   async function readResponse() {
@@ -331,30 +456,9 @@
   }
 
   async function sendDevicePayload(payload, { onProgress } = {}) {
-    if (state.uploading) throw new Error('已有曲谱正在发送');
-    const records = parseDevicePayload(payload);
-    if (!records.length) throw new Error('原琴载荷为空');
-    state.uploading = true;
-    state.error = '';
-    emit();
-    try {
-      for (let index = 0; index < records.length; index += 1) {
-        const record = records[index];
-        await writeRaw(makeMFrame(record.body));
-        if (record.needsResponse) await readResponse();
-        onProgress?.((index + 1) / records.length, index + 1, records.length);
-        if (record.delayMs > 0 && index + 1 < records.length) {
-          await new Promise(resolve => setTimeout(resolve, record.delayMs));
-        }
-      }
-    } catch (error) {
-      state.error = error?.message || '原琴曲谱发送失败';
-      throw error;
-    } finally {
-      state.uploading = false;
-      emit();
-    }
-    return { frames: records.length };
+    void payload;
+    void onProgress;
+    throw new Error('整首曲谱发送已禁用；原琴使用逐事件实时演奏');
   }
 
   async function sendFrames(frames, { delay = 45, onProgress } = {}) {
@@ -384,6 +488,8 @@
     crc8, crc16, xor, makeMFrame, counterFromAFrame,
     scan, connect, disconnect, writeRaw, writeBody, readResponse,
     parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
+    legacyCommand, commandSetTempo, commandPlayChord, commandRemindChord, commandPlayNote,
+    startRealtimeSong, playRealtimeChord, playRealtimeNote, stopRealtimeSong,
     snapshot, subscribe,
   });
 })();

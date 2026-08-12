@@ -6,10 +6,10 @@
   const button = () => $('liberLiveConnectBtn');
   const statusLabel = () => $('liberLiveStartStatus');
   let transferGeneration = 0;
-  let currentPayload = null;
+  let currentSongInfo = null;
   let lastConnected = false;
-  let sentPayloadKey = '';
-  let sendPromise = null;
+  let preparedSongKey = '';
+  let preparePromise = null;
 
   function closeDialog() {
     const frame = dialog();
@@ -86,8 +86,8 @@
     if (justConnected) refreshTransfer(status);
     else if (!status.connected) {
       transferGeneration += 1;
-      currentPayload = null;
-      sentPayloadKey = '';
+      currentSongInfo = null;
+      preparedSongKey = '';
     }
     renderDevices(status);
   }
@@ -101,46 +101,43 @@
     if (send) send.disabled = true;
     if (detail) detail.textContent = '正在读取当前加密曲谱…';
     try {
-      const result = await window.FreezaCurrentSongDevicePayload?.();
+      const result = window.FreezaCurrentSongRealtimeInfo?.();
       if (generation !== transferGeneration) return;
-      currentPayload = result?.bytes?.length ? result : null;
-      if (title) title.textContent = result?.title ? `《${result.title}》` : '发送当前曲谱';
-      if (detail) detail.textContent = currentPayload
-        ? `已包含原琴载荷 · ${Math.round(currentPayload.bytes.length / 1024)} KB`
-        : '该曲暂无原琴载荷，请选择由原版多维曲谱导入的歌曲';
-      if (send) send.disabled = !currentPayload || status.uploading;
+      currentSongInfo = result?.songId ? result : null;
+      if (title) title.textContent = result?.title ? `《${result.title}》` : '准备实时演奏';
+      if (detail) detail.textContent = currentSongInfo
+        ? `实时逐事件演奏 · ${Math.round(Number(currentSongInfo.bpm) || 75)} BPM · 不预传整首曲谱`
+        : '请先选择歌曲';
+      if (send) send.disabled = !currentSongInfo;
     } catch (error) {
       if (generation !== transferGeneration) return;
-      currentPayload = null;
-      if (detail) detail.textContent = error?.message || '无法读取原琴载荷';
+      currentSongInfo = null;
+      if (detail) detail.textContent = error?.message || '无法读取当前歌曲信息';
     }
   }
 
-  function payloadKey(payload) {
-    if (!payload?.bytes?.length) return '';
-    return `${payload.title || ''}:${payload.bytes.length}`;
+  function songKey(info) {
+    if (!info?.songId) return '';
+    return `${info.songId}:${Number(info.bpm) || 75}`;
   }
 
-  async function ensureCurrentSongOnInstrument({ onProgress } = {}) {
+  async function ensureRealtimeInstrument() {
     const status = window.FreezaLiberLive?.snapshot?.();
     if (!status?.connected) throw new Error('LiberLive 琴尚未连接');
-    if (sendPromise) return sendPromise;
-    sendPromise = (async () => {
-      if (!currentPayload?.bytes?.length) {
-        const result = await window.FreezaCurrentSongDevicePayload?.();
-        currentPayload = result?.bytes?.length ? result : null;
-      }
-      if (!currentPayload) throw new Error('当前歌曲没有原琴载荷，不能由原琴演奏');
-      const key = payloadKey(currentPayload);
-      if (key && sentPayloadKey === key) return { frames: 0, cached: true };
-      const result = await window.FreezaLiberLive.sendDevicePayload(currentPayload.bytes, { onProgress });
-      sentPayloadKey = key;
+    if (preparePromise) return preparePromise;
+    preparePromise = (async () => {
+      currentSongInfo = window.FreezaCurrentSongRealtimeInfo?.() || currentSongInfo;
+      if (!currentSongInfo?.songId) throw new Error('请先选择歌曲');
+      const key = songKey(currentSongInfo);
+      if (key && preparedSongKey === key && status.realtimeReady) return { ready: true, cached: true };
+      const result = await window.FreezaLiberLive.startRealtimeSong({ bpm: currentSongInfo.bpm });
+      preparedSongKey = key;
       return result;
     })();
     try {
-      return await sendPromise;
+      return await preparePromise;
     } finally {
-      sendPromise = null;
+      preparePromise = null;
     }
   }
 
@@ -168,32 +165,36 @@
       closeDialog();
     });
     $('liberLiveSendSongBtn')?.addEventListener('click', async () => {
-      if (!currentPayload) return;
+      if (!currentSongInfo) return;
       const send = $('liberLiveSendSongBtn');
       const detail = $('liberLiveSongTransferStatus');
       const progress = $('liberLiveSongTransferProgress');
       send.disabled = true;
       if (progress) progress.value = 0;
       try {
-        const result = await ensureCurrentSongOnInstrument({
-          onProgress(value, current, total) {
-            if (progress) progress.value = Math.round(value * 100);
-            if (detail) detail.textContent = `正在发送 ${current} / ${total}`;
-          },
-        });
-        if (detail) detail.textContent = `发送完成 · ${result.frames} 帧`;
+        if (detail) detail.textContent = '正在设置原琴实时演奏速度…';
+        await ensureRealtimeInstrument();
+        if (progress) progress.value = 100;
+        if (detail) detail.textContent = '准备完成 · 按键时才发送当前和弦与旋律事件';
       } catch (error) {
-        if (detail) detail.textContent = error?.message || '发送失败，请重试';
+        if (detail) detail.textContent = error?.message || '准备失败，请重试';
       } finally {
-        send.disabled = !currentPayload;
+        send.disabled = !currentSongInfo;
       }
     });
-    window.addEventListener('freeza-song-loaded', () => refreshTransfer());
+    window.addEventListener('freeza-song-loaded', () => {
+      preparedSongKey = '';
+      window.FreezaLiberLive?.stopRealtimeSong?.();
+      refreshTransfer();
+    });
     document.querySelectorAll('[data-close-liberlive]').forEach(node => node.addEventListener('click', closeDialog));
   }
 
   window.FreezaLiberLiveUI = Object.freeze({
-    ensureCurrentSongOnInstrument,
+    ensureRealtimeInstrument,
+    // Compatibility name for older app.js bundles. It now only prepares the
+    // realtime path and can never upload an LLD1 song burst.
+    ensureCurrentSongOnInstrument: ensureRealtimeInstrument,
     refreshTransfer,
   });
 
