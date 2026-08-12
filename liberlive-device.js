@@ -390,10 +390,12 @@
     return { ready: true, mode: 'realtime' };
   }
 
-  async function playRealtimeChord({ root, chord, rhythm = 0, bpm = 75 } = {}) {
+  async function playRealtimeChord({ root, chord, bpm = 75 } = {}) {
     if (!state.realtimeReady) await startRealtimeSong({ bpm });
     const generation = state.realtimeGeneration;
-    await queueRealtimeWrite(commandPlayChord(root, chord, rhythm, bpm), generation);
+    // BLEPlay's proven B1/1E path always uses rhythm_id=0. Do not feed the
+    // web player's A/B pattern slot into this device-only protocol field.
+    await queueRealtimeWrite(commandPlayChord(root, chord, 0, bpm), generation);
     return queueRealtimeWrite(commandRemindChord(root, chord), generation);
   }
 

@@ -2532,12 +2532,11 @@ function liberLiveRealtimeError(error) {
   if ($('nowPlaying')) $('nowPlaying').textContent = message;
 }
 
-function sendLiberLiveRealtimeChord(root, cue, pickSlot = 0) {
+function sendLiberLiveRealtimeChord(root, cue) {
   if (!isLiberLiveInstrumentOutput()) return Promise.resolve(null);
   const request = window.FreezaLiberLive?.playRealtimeChord?.({
     root,
     chord: cue?.chord || root,
-    rhythm: Math.max(0, Number(pickSlot) || 0),
     bpm: Number(song?.styleInfo?.tempo) || 75,
   });
   if (!request) {
@@ -5448,7 +5447,7 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
   }
   const scheduleTiming = timingForInteractivePhrase(cue, timing);
   if (isLiberLiveInstrumentOutput()) {
-    sendLiberLiveRealtimeChord(root, cue, Math.max(0, harmonyToneMode - 1));
+    sendLiberLiveRealtimeChord(root, cue);
   }
   let melody = { events: [], segmentEnd: scheduleTiming.boundary };
   if (isManualMode()) {
@@ -5796,7 +5795,7 @@ function triggerChordKey(label, pickSlot, key) {
     showPickZoneFeedback(key, normalizedPickSlot);
     if (!isLiberLiveInstrumentOutput()) warmHarmonyTones(false);
     playWrongHarmonyPreview(label, pressedCue, normalizedPickSlot);
-    if (isLiberLiveInstrumentOutput()) sendLiberLiveRealtimeChord(label, pressedCue, normalizedPickSlot);
+    if (isLiberLiveInstrumentOutput()) sendLiberLiveRealtimeChord(label, pressedCue);
     animateChordPress(key);
     return true;
   }
