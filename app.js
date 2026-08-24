@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260825-03';
+const ASSET_VERSION = 'reset-20260825-04';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -4781,23 +4781,12 @@ async function prepareStartAssets() {
   setLoadingCategory('core', 0.08, '解析 MIDI · WASM · 风格包');
   await (midiReadyPromise || Promise.resolve());
   if (isLiberLiveInstrumentOutput()) {
-    setLoadingStatus('正在初始化原琴曲谱窗口…');
-    setLoadingCategory('core', 0.15, '初始化协议 · 只预载开头窗口');
-    try {
-      const result = await window.FreezaLiberLiveUI?.ensureDeviceSongStream?.({
-        onProgress(value) {
-          setLoadingCategory('core', Math.max(0.15, Math.min(0.95, value)), '初始化协议 · 滚动曲谱窗口');
-        },
-      });
-      if (!result) throw new Error('原琴曲谱窗口接口不可用');
-    } catch (cause) {
-      const error = new Error(cause?.message || '原琴曲谱窗口准备失败');
-      error.code = 'LIBERLIVE_TRANSFER_FAILED';
-      error.cause = cause;
-      setLoadingCategory('core', 0.16, error.message, 'error', '失败');
-      throw error;
-    }
-    setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 原琴滚动窗口模式`);
+    // Do not send any BLE song/setup command while the launch Loading screen is
+    // visible. set_remind_chord and the first fill frame light the instrument;
+    // sending them here made the guitar show a red cue at 3% while the App still
+    // showed no performance cue. The stream is prepared only after the game UI
+    // becomes visible, immediately before countdown.
+    setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 原琴曲谱已解析`);
     setLoadingCategory('piano', 1, '由 LiberLive 原琴发声');
     setLoadingCategory('pickA', 1, '由原琴执行拨片 A');
     setLoadingCategory('pickB', 1, '由原琴执行拨片 B');
@@ -4809,7 +4798,7 @@ async function prepareStartAssets() {
     } else {
       setLoadingCategory('mic', 1, '当前未启用');
     }
-    setLoadingStatus('原琴已就绪 · 按键时逐事件发送 · App 保持静音');
+    setLoadingStatus('解析完成 · 进入演奏画面后同步原琴');
     return;
   }
   setLoadingCategory('core', 1, `${song?.trackCount || 0} 轨 · 风格已解析`);
@@ -6421,6 +6410,20 @@ async function startGameFromMenu() {
   }
   refreshPerformanceLayout();
   positionCameraPip(!cameraPreviewState.userPositioned);
+  if (isLiberLiveInstrumentOutput()) {
+    const nowPlaying = $('nowPlaying');
+    if (nowPlaying) nowPlaying.textContent = '正在同步原琴开头谱面…';
+    try {
+      const result = await window.FreezaLiberLiveUI?.ensureDeviceSongStream?.();
+      if (!result) throw new Error('原琴曲谱窗口接口不可用');
+      if (nowPlaying) nowPlaying.textContent = '原琴已同步';
+    } catch (cause) {
+      console.warn('LiberLive performance-screen sync failed', cause);
+      if (nowPlaying) nowPlaying.textContent = cause?.message || '原琴同步失败，请重试';
+      startRequested = false;
+      return;
+    }
+  }
   // 默认半自动必须有主旋律；只有用户在开始页明确点了“主旋律关”才关闭。
   if (!melodyUserTouched && playMode === 'semi' && !guideMode) melodyEnabled = true;
   drumsEnabled = drumMode !== 'off';
