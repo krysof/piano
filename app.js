@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260825-04';
+const ASSET_VERSION = 'reset-20260825-06';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -4599,7 +4599,21 @@ function hideInteractivePhraseSymbol(phrase) {
   });
 }
 
-function enterPlaybackAfterCountdown() {
+async function enterPlaybackAfterCountdown() {
+  if (isLiberLiveInstrumentOutput()) {
+    const nowPlaying = $('nowPlaying');
+    if (nowPlaying) nowPlaying.textContent = '正在同步原琴第一个提示…';
+    try {
+      const result = await window.FreezaLiberLiveUI?.ensureDeviceSongStream?.();
+      if (!result) throw new Error('原琴曲谱窗口接口不可用');
+      if (nowPlaying) nowPlaying.textContent = '原琴已同步';
+    } catch (cause) {
+      console.warn('LiberLive post-countdown sync failed', cause);
+      if (nowPlaying) nowPlaying.textContent = cause?.message || '原琴同步失败，请重试';
+      startRequested = false;
+      return;
+    }
+  }
   if (isManualMode()) {
     if (guideMode) {
       playManualGuideIntro();
@@ -6412,14 +6426,14 @@ async function startGameFromMenu() {
   positionCameraPip(!cameraPreviewState.userPositioned);
   if (isLiberLiveInstrumentOutput()) {
     const nowPlaying = $('nowPlaying');
-    if (nowPlaying) nowPlaying.textContent = '正在同步原琴开头谱面…';
+    if (nowPlaying) nowPlaying.textContent = '正在复位原琴…';
     try {
-      const result = await window.FreezaLiberLiveUI?.ensureDeviceSongStream?.();
-      if (!result) throw new Error('原琴曲谱窗口接口不可用');
-      if (nowPlaying) nowPlaying.textContent = '原琴已同步';
+      const result = await window.FreezaLiberLive?.resetInstrumentSong?.();
+      if (!result) throw new Error('原琴复位接口不可用');
+      if (nowPlaying) nowPlaying.textContent = '原琴已复位 · 倒计时后发送第一个提示';
     } catch (cause) {
-      console.warn('LiberLive performance-screen sync failed', cause);
-      if (nowPlaying) nowPlaying.textContent = cause?.message || '原琴同步失败，请重试';
+      console.warn('LiberLive performance-screen reset failed', cause);
+      if (nowPlaying) nowPlaying.textContent = cause?.message || '原琴复位失败，请重试';
       startRequested = false;
       return;
     }

@@ -445,6 +445,22 @@
     emit();
   }
 
+  async function resetInstrumentSong() {
+    if (!state.connected) throw new Error('LiberLive 琴尚未连接');
+    resetDeviceStream();
+    const generation = state.streamGeneration;
+    return queueStreamTask(async currentGeneration => {
+      if (currentGeneration !== generation) return { cancelled: true };
+      const resetBody = xor(Uint8Array.from([0x01, 0x0f]), KEY_A);
+      await writeRaw(makeMFrame(resetBody));
+      await readResponse();
+      await new Promise(resolve => setTimeout(resolve, STREAM_FRAME_DELAY_MS));
+      if (currentGeneration !== state.streamGeneration) return { cancelled: true };
+      await writeRaw(makeMFrame(resetBody));
+      return { reset: true };
+    });
+  }
+
   function queueStreamTask(operation) {
     const generation = state.streamGeneration;
     const task = state.streamQueue.catch(() => {}).then(async () => {
@@ -608,7 +624,7 @@
     scan, connect, disconnect, writeRaw, writeBody, readResponse,
     parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
     legacyCommand, commandSetTempo, commandPlayChord, commandRemindChord, commandPlayNote,
-    recordKind, prepareDeviceSong, advanceDeviceSong, stopDeviceSong,
+    recordKind, resetInstrumentSong, prepareDeviceSong, advanceDeviceSong, stopDeviceSong,
     snapshot, subscribe,
   });
 })();
