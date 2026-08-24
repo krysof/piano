@@ -107,28 +107,9 @@
       currentPayload = result?.bytes?.length ? result : null;
       if (title) title.textContent = result?.title ? `《${result.title}》` : '准备实时演奏';
       if (detail) detail.textContent = currentPayload
-        ? `原琴滚动曲谱 · ${Math.round(currentPayload.bytes.length / 1024)} KB · 正在后台准备`
+        ? `原琴滚动曲谱 · ${Math.round(currentPayload.bytes.length / 1024)} KB · 开始演奏时载入`
         : '该曲没有原琴载荷';
       if (send) send.disabled = !currentPayload;
-      if (currentPayload) {
-        ensureDeviceSongStream({
-          onProgress(value, current, total) {
-            if (generation !== transferGeneration) return;
-            const progress = $('liberLiveSongTransferProgress');
-            if (progress) progress.value = Math.round(value * 100);
-            if (detail) detail.textContent = `后台准备原琴 ${current} / ${total}`;
-          },
-        }).then(() => {
-          if (generation !== transferGeneration) return;
-          const progress = $('liberLiveSongTransferProgress');
-          if (progress) progress.value = 100;
-          if (detail) detail.textContent = '原琴已准备 · 开始演奏无需再等待';
-        }).catch(error => {
-          if (generation === transferGeneration && detail) {
-            detail.textContent = error?.message || '原琴后台准备失败，请重试';
-          }
-        });
-      }
     } catch (error) {
       if (generation !== transferGeneration) return;
       currentPayload = null;
