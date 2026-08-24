@@ -105,15 +105,58 @@
       | (data[base + 3] ^ KEY_A[11])) >>> 0;
   }
 
+  function decodeAFrame(dataInput) {
+    const data = Uint8Array.from(dataInput || []);
+    if (data.length < 19 || data[0] !== 0x24 || data[1] !== 0x41) return null;
+    const total = data[2] | ((data[3] & 0x0f) << 8);
+    const headerSize = (data[3] >>> 4) & 0x0f;
+    if (total !== data.length || headerSize < 12 || data.length < 4 + headerSize + 3) return null;
+    const headerEnd = 4 + headerSize;
+    if (crc8(data.subarray(0, headerEnd)) !== data[headerEnd]) return null;
+    const encryptedBody = data.subarray(headerEnd + 1, data.length - 2);
+    const expectedBodyCrc = data[data.length - 2] | (data[data.length - 1] << 8);
+    if (crc16(encryptedBody) !== expectedBodyCrc) return null;
+    const iv = Uint8Array.from(data.subarray(4, headerEnd),
+      (value, index) => value ^ KEY_A[index % KEY_A.length]);
+    const frameKey = Uint8Array.from(iv,
+      (value, index) => value ^ KEY_A[index % KEY_A.length]);
+    const outerBody = Uint8Array.from(encryptedBody,
+      (value, index) => value ^ frameKey[index % frameKey.length]);
+    // A101 replies use the same inner KEY_A layer as app command bodies.
+    return xor(outerBody, KEY_A);
+  }
+
+  function commandNameFromBody(bodyInput) {
+    const body = Uint8Array.from(bodyInput || []);
+    const length = body[0] || 0;
+    if (length < 1 || length > 32 || body.length < length + 1) return '';
+    let name = '';
+    for (let index = 1; index <= length; index += 1) {
+      const value = body[index];
+      if (value < 0x20 || value > 0x7e) return '';
+      name += String.fromCharCode(value);
+    }
+    return name;
+  }
+
   function ingestDeviceData(source, dataInput) {
     const data = Uint8Array.from(dataInput || []);
     const counter = counterFromAFrame(data);
     if (counter !== null) state.counter = (counter + 100) >>> 0;
-    window.dispatchEvent(new CustomEvent('freeza-liberlive-data', { detail: { source, data, counter } }));
-    // A101 event type 2 is the physical chord/strum input used by the original
-    // app.  Keep it separate from $A protocol acknowledgements.
-    if (source === 'notify' && data[0] === 0x02) {
-      window.dispatchEvent(new CustomEvent('freeza-liberlive-press', { detail: { data } }));
+    const decoded = decodeAFrame(data);
+    const command = commandNameFromBody(decoded);
+    window.dispatchEvent(new CustomEvent('freeza-liberlive-data', {
+      detail: { source, data, counter, decoded, command },
+    }));
+    // Real A101 input arrives as an encrypted $A frame whose inner command is
+    // noti_chord/noti_note.  The old data[0] === 0x02 check only
+    // covered an early diagnostic packet, so the app stopped advancing after
+    // the initial preloaded window on real instruments.
+    const physicalCommand = command === 'noti_chord' || command === 'noti_note';
+    if (source === 'notify' && (physicalCommand || data[0] === 0x02)) {
+      window.dispatchEvent(new CustomEvent('freeza-liberlive-press', {
+        detail: { data, decoded, command },
+      }));
     }
   }
 
@@ -376,7 +419,7 @@
   }
 
   const STREAM_FRAME_DELAY_MS = 60;
-  const INITIAL_NOTE_WINDOW = 12;
+  const INITIAL_NOTE_WINDOW = 6;
   const TOP_UP_NOTE_WINDOW = 4;
 
   function plainRecordBody(record) {
@@ -416,10 +459,16 @@
   async function sendStreamRecord(record, generation) {
     if (generation !== state.streamGeneration) return false;
     await writeRaw(makeMFrame(record.body));
-    // liberlive_play.py follows the captured app pacing instead of the old
-    // LLD1 8/12 ms burst. The fixed gap also prevents long songs rebooting the
-    // instrument while a rolling window is replenished.
-    await new Promise(resolve => setTimeout(resolve, STREAM_FRAME_DELAY_MS));
+    // A102 replies are protocol acknowledgements, not CoreBluetooth write
+    // acknowledgements.  They must be consumed before the next setup command.
+    if (record.needsResponse) await readResponse();
+    // Setup frames retain the captured-app pacing.  Once fill-note streaming
+    // begins, the payload's short bounded delay keeps top-ups ahead of playing
+    // without making the launch screen wait on a large initial window.
+    const delay = recordKind(record) === 'note'
+      ? Math.max(8, Number(record.delayMs) || 0)
+      : Math.max(STREAM_FRAME_DELAY_MS, Number(record.delayMs) || 0);
+    if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
     return generation === state.streamGeneration;
   }
 
@@ -555,7 +604,7 @@
 
   window.FreezaLiberLive = Object.freeze({
     SERVICE, NOTIFY, READ, WRITE,
-    crc8, crc16, xor, makeMFrame, counterFromAFrame,
+    crc8, crc16, xor, makeMFrame, counterFromAFrame, decodeAFrame, commandNameFromBody,
     scan, connect, disconnect, writeRaw, writeBody, readResponse,
     parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
     legacyCommand, commandSetTempo, commandPlayChord, commandRemindChord, commandPlayNote,
