@@ -154,8 +154,16 @@
     // noti_chord/noti_note.  The old data[0] === 0x02 check only
     // covered an early diagnostic packet, so the app stopped advancing after
     // the initial preloaded window on real instruments.
-    const physicalCommand = command === 'noti_chord' || command === 'noti_note';
-    if (source === 'notify' && (physicalCommand || data[0] === 0x02)) {
+    // noti_chord is the physical chord-button action. noti_note is emitted by
+    // the instrument for melody notes after that action and must never consume
+    // another App chord cue.
+    const physicalCommand = command === 'noti_chord';
+    if (source === 'notify' && command === 'noti_note') {
+      window.dispatchEvent(new CustomEvent('freeza-liberlive-note', {
+        detail: { data, decoded, command },
+      }));
+    }
+    if (source === 'notify' && (physicalCommand || (!command && data[0] === 0x02))) {
       window.dispatchEvent(new CustomEvent('freeza-liberlive-press', {
         detail: { data, decoded, command },
       }));
@@ -429,6 +437,41 @@
     return xor(record.body, KEY_A);
   }
 
+  function transposeDeviceRecord(record, semitones = 0) {
+    const shift = Math.max(-14, Math.min(14, Math.round(Number(semitones) || 0)));
+    if (!shift) return record;
+    const plain = plainRecordBody(record);
+    const command = commandNameFromBody(plain);
+    const shifted = plain.slice();
+    if (command === 'set_remind_chord') {
+      const rootOffset = 1 + plain[0];
+      if (rootOffset < shifted.length) {
+        shifted[rootOffset] = ((shifted[rootOffset] % 12) + shift + 120) % 12;
+      }
+    } else if (plain[0] === 0x01 && plain[1] === 0x07 && plain.length >= 4) {
+      const itemTypes = [...plain.subarray(3, 3 + plain[2])];
+      let offset = 3 + plain[2];
+      for (const itemType of itemTypes) {
+        if (itemType === 0x01 && offset + 13 <= shifted.length) {
+          const marker = shifted[offset + 3] & 0x80;
+          const pitch = shifted[offset + 3] & 0x7f;
+          shifted[offset + 3] = marker | Math.max(0, Math.min(0x7f, pitch + shift));
+          offset += 13;
+        } else if (itemType === 0x02 && offset + 15 <= shifted.length) {
+          const flags = shifted[offset + 3] & 0xf0;
+          const root = shifted[offset + 3] & 0x0f;
+          shifted[offset + 3] = flags | ((root + shift + 120) % 12);
+          offset += 15;
+        } else if (itemType === 0x05 && offset + 8 <= shifted.length) {
+          offset += shifted[offset + 7] === 1 ? 12 : 10;
+        } else {
+          break;
+        }
+      }
+    }
+    return { ...record, body: xor(shifted, KEY_A) };
+  }
+
   function recordKind(record) {
     const plain = plainRecordBody(record);
     const remindName = 'set_remind_chord';
@@ -517,9 +560,10 @@
     return { frames: state.streamCursor, notes, complete: state.streamComplete };
   }
 
-  async function stageDeviceSong(payload, { onProgress } = {}) {
+  async function stageDeviceSong(payload, { onProgress, keyShift = 0 } = {}) {
     if (!state.connected) throw new Error('LiberLive 琴尚未连接');
-    const parsedRecords = parseDevicePayload(payload);
+    const parsedRecords = parseDevicePayload(payload)
+      .map(record => transposeDeviceRecord(record, keyShift));
     const reminderIndex = parsedRecords.findIndex(record => recordKind(record) === 'reminder');
     const reminder = reminderIndex >= 0 ? parsedRecords[reminderIndex] : null;
     const records = reminderIndex >= 0
@@ -662,7 +706,7 @@
     scan, connect, disconnect, writeRaw, writeBody, readResponse,
     parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
     legacyCommand, commandSetTempo, commandPlayChord, commandRemindChord, commandPlayNote,
-    recordKind, resetInstrumentSong, stageDeviceSong, activateDeviceSong,
+    recordKind, transposeDeviceRecord, resetInstrumentSong, stageDeviceSong, activateDeviceSong,
     prepareDeviceSong, advanceDeviceSong, stopDeviceSong,
     snapshot, subscribe,
   });

@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260825-10';
+const ASSET_VERSION = 'reset-20260825-11';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -3610,6 +3610,7 @@ window.FreezaCurrentSongDevicePayload = async () => {
     songId: selectedSongId,
     title: song?.catalog?.title || '',
     artist: song?.catalog?.artist || '',
+    keyShift: userKeyShift,
   };
 };
 
@@ -4584,17 +4585,21 @@ function showManualNextCuePreview(cue, preserveCurrentProgress = false) {
   });
 }
 
-function startManualWaitingCue(cue) {
+function startManualWaitingCue(cue, durationMs = 1000) {
   if (!cue?.root || !NATURAL_TO_MIDI[cue.root]) return;
   cue._id ||= `manual-wait-${cue.time}-${cue.chord}`;
   const midi = NATURAL_TO_MIDI[cue.root];
   const now = performance.now();
   activeCue = { cue, midi, hit: false, pressed: false, waiting: true };
-  startCue(midi, cue, { start: now, due: now + 1000, end: Infinity });
+  startCue(midi, cue, { start: now, due: now + Math.max(120, Number(durationMs) || 1000), end: Infinity });
   startCueRuntimeLoop();
 }
 
 function finishManualCurrentCueVisual(phrase) {
+  // A successful press immediately starts the following cue. Its visual has
+  // already replaced the completed phrase, so the old completion timer must
+  // not stop or erase that newer cue.
+  if (activeCue?.cue && activeCue.cue !== phrase?.cue) return;
   stopCueRuntimeLoop();
   const root = phrase?.cue?.root || phrase?.root;
   const midi = NATURAL_TO_MIDI[root];
@@ -4611,7 +4616,7 @@ function finishManualCurrentCueVisual(phrase) {
     }
   });
   cueState.delete(root);
-  activeCue = null;
+  if (activeCue?.cue === phrase?.cue) activeCue = null;
 }
 
 function hideInteractivePhraseSymbol(phrase) {
@@ -5492,23 +5497,20 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     phrase.timelineEnd = Number(scheduleTiming.boundary);
     cue._id ||= `interactive-${oneKeyNextCueIndex}-${cue.time}-${cue.chord}`;
     const phraseMidi = NATURAL_TO_MIDI[cue.root || rootFromChord(cue.chord) || root];
-    activeCue = { cue, midi: phraseMidi, hit: true, pressed: true, interactive: true };
-    startCue(phraseMidi, cue, {
-      start: phrase.musicStartAt,
-      due: phrase.musicEndAt,
-      end: phrase.musicStartAt + naturalDurationMs * 1.2,
-    });
-    startCueRuntimeLoop();
-  }
-  if (isManualMode()) {
-    const nextPreviewCue = nextCueAfter(phrase.cue);
-    if (nextPreviewCue) {
-      const previewTimer = setTimeout(() => {
-        if (interactiveSession.phrase !== phrase || interactiveSession.transitioning) return;
-        hideInteractivePhraseSymbol(phrase);
-        showManualNextCuePreview(nextPreviewCue, true);
-      }, Math.max(0, naturalDurationMs * 0.5));
-      manualMelodyTimers.push(previewTimer);
+    const nextWaitingCue = nextCueAfter(cue);
+    if (nextWaitingCue) {
+      // The guitar changes its illuminated reminder immediately after a chord
+      // press. Start the same next cue now instead of revealing it halfway
+      // through the current phrase, which made the App trail the guitar.
+      startManualWaitingCue(nextWaitingCue, naturalDurationMs);
+    } else {
+      activeCue = { cue, midi: phraseMidi, hit: true, pressed: true, interactive: true };
+      startCue(phraseMidi, cue, {
+        start: phrase.musicStartAt,
+        due: phrase.musicEndAt,
+        end: phrase.musicStartAt + naturalDurationMs * 1.2,
+      });
+      startCueRuntimeLoop();
     }
   }
   if (isOneKeyMode()) {
@@ -5558,7 +5560,7 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
       const next = nextCueAfter(completedPhrase.cue);
       finishManualCurrentCueVisual(completedPhrase);
       if (next) {
-        const alreadyShown = [...document.querySelectorAll('#manualKeyboard .chord-symbol[data-manual-next-preview="1"]')]
+        const alreadyShown = activeCue?.cue === next || [...document.querySelectorAll('#manualKeyboard .chord-symbol[data-manual-next-preview="1"]')]
           .some(symbol => symbol.dataset.cueId === (next?._id || ''));
         if (!alreadyShown) showManualNextCuePreview(next, true);
       } else finishPlayback();

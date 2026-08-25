@@ -66,15 +66,24 @@
     const connectButton = button();
     const label = statusLabel();
     if (!connectButton || !label) return;
+    const title = connectButton.querySelector('b');
     connectButton.classList.toggle('connected', status.connected);
     connectButton.classList.toggle('connecting', status.connecting || status.scanning);
     connectButton.classList.toggle('unsupported', !status.supported);
-    if (status.connected) label.textContent = '原琴已连接 · 手动模式';
+    if (status.connected) {
+      if (title) title.textContent = '断开 LiberLive 琴';
+      label.textContent = `${status.device?.name || '原琴'} · 手动模式`;
+      connectButton.setAttribute('aria-label', '断开原版 LiberLive 琴');
+    }
     else if (status.connecting) label.textContent = '正在建立控制连接…';
     else if (status.scanning) label.textContent = '正在扫描原版琴…';
     else if (status.error) label.textContent = status.error;
     else if (!status.supported) label.textContent = '请使用 Freeza Live App';
-    else label.textContent = '点击扫描 C1 / C2 / U1';
+    else {
+      if (title) title.textContent = 'LiberLive 琴';
+      label.textContent = '点击扫描 C1 / C2 / U1';
+      connectButton.setAttribute('aria-label', '连接原版 LiberLive 琴');
+    }
     const disconnect = $('liberLiveDisconnectBtn');
     const scanButton = $('liberLiveScanBtn');
     if (disconnect) disconnect.hidden = !status.connected;
@@ -89,7 +98,7 @@
 
   function songKey(info) {
     if (!info?.bytes?.length) return '';
-    return `${info.songId || info.title || ''}:${info.bytes.length}`;
+    return `${info.songId || info.title || ''}:${info.bytes.length}:key${Number(info.keyShift) || 0}`;
   }
 
   async function stageDeviceSongStream({ onProgress } = {}) {
@@ -110,7 +119,10 @@
     }
     preparePromiseKey = key;
     preparePromise = (async () => {
-      const result = await window.FreezaLiberLive.stageDeviceSong(currentPayload.bytes, { onProgress });
+      const result = await window.FreezaLiberLive.stageDeviceSong(currentPayload.bytes, {
+        onProgress,
+        keyShift: Number(currentPayload.keyShift) || 0,
+      });
       stagedSongKey = key;
       return result;
     })();
@@ -142,7 +154,8 @@
     if (!api) return;
     const current = api.snapshot();
     if (current.connected) {
-      openDialog();
+      await api.disconnect();
+      closeDialog();
       return;
     }
     window.playLaunchUiSound?.('select');
