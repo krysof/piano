@@ -25,8 +25,10 @@
     streamGeneration: 0,
     streamQueue: Promise.resolve(),
     streamRecords: [],
+    streamReminder: null,
     streamCursor: 0,
     streamSentNotes: 0,
+    streamStaged: false,
     streamReady: false,
     streamComplete: false,
     listenersReady: false,
@@ -183,6 +185,7 @@
       error: state.error,
       uploading: state.uploading,
       streamReady: state.streamReady,
+      streamStaged: state.streamStaged,
       streamComplete: state.streamComplete,
       streamCursor: state.streamCursor,
       streamTotal: state.streamRecords.length,
@@ -428,6 +431,10 @@
 
   function recordKind(record) {
     const plain = plainRecordBody(record);
+    const remindName = 'set_remind_chord';
+    const isReminder = plain.length >= remindName.length + 1
+      && [...remindName].every((char, index) => plain[index + 1] === char.charCodeAt(0));
+    if (isReminder) return 'reminder';
     if (plain[0] !== 0x01) return 'control';
     if (plain[1] === 0x06) return 'meta';
     if (plain[1] === 0x07) return 'note';
@@ -438,8 +445,10 @@
   function resetDeviceStream() {
     state.streamGeneration += 1;
     state.streamRecords = [];
+    state.streamReminder = null;
     state.streamCursor = 0;
     state.streamSentNotes = 0;
+    state.streamStaged = false;
     state.streamReady = false;
     state.streamComplete = false;
     emit();
@@ -508,29 +517,58 @@
     return { frames: state.streamCursor, notes, complete: state.streamComplete };
   }
 
-  async function prepareDeviceSong(payload, { onProgress } = {}) {
+  async function stageDeviceSong(payload, { onProgress } = {}) {
     if (!state.connected) throw new Error('LiberLive 琴尚未连接');
-    const records = parseDevicePayload(payload);
+    const parsedRecords = parseDevicePayload(payload);
+    const reminderIndex = parsedRecords.findIndex(record => recordKind(record) === 'reminder');
+    const reminder = reminderIndex >= 0 ? parsedRecords[reminderIndex] : null;
+    const records = reminderIndex >= 0
+      ? parsedRecords.filter((_record, index) => index !== reminderIndex)
+      : parsedRecords;
     if (!records.length) throw new Error('原琴载荷为空');
     state.streamGeneration += 1;
     state.streamRecords = records;
+    state.streamReminder = reminder;
     state.streamCursor = 0;
     state.streamSentNotes = 0;
+    state.streamStaged = false;
     state.streamReady = false;
     state.streamComplete = false;
     const generation = state.streamGeneration;
     emit();
     return queueStreamTask(async currentGeneration => {
       if (currentGeneration !== generation) return { cancelled: true };
-      // Send device handshake/song setup plus only a bounded score window.
-      // The remaining note frames stay in memory and are replenished after
-      // physical/app presses, so the complete score is never burst at startup.
+      // During 3/2/1 send only invisible setup/meta commands.  The reminder
+      // and first fill-note window are deliberately held back so neither the
+      // App nor the instrument shows C before performance actually starts.
+      const result = await sendUntilNoteBudget(0, generation, onProgress);
+      if (result.cancelled) return result;
+      state.streamStaged = true;
+      emit();
+      return { ...result, staged: true, total: records.length + (reminder ? 1 : 0) };
+    });
+  }
+
+  async function activateDeviceSong({ onProgress } = {}) {
+    if (!state.streamStaged) throw new Error('原琴曲谱初始化尚未完成');
+    const generation = state.streamGeneration;
+    return queueStreamTask(async currentGeneration => {
+      if (currentGeneration !== generation) return { cancelled: true };
+      if (state.streamReminder) {
+        if (!await sendStreamRecord(state.streamReminder, generation)) return { cancelled: true };
+        state.streamReminder = null;
+      }
       const result = await sendUntilNoteBudget(INITIAL_NOTE_WINDOW, generation, onProgress);
       if (result.cancelled) return result;
       state.streamReady = true;
       emit();
-      return { ...result, ready: true, total: records.length };
+      return { ...result, ready: true, total: state.streamRecords.length };
     });
+  }
+
+  async function prepareDeviceSong(payload, options = {}) {
+    await stageDeviceSong(payload, options);
+    return activateDeviceSong(options);
   }
 
   async function advanceDeviceSong({ noteFrames = TOP_UP_NOTE_WINDOW } = {}) {
@@ -624,7 +662,8 @@
     scan, connect, disconnect, writeRaw, writeBody, readResponse,
     parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
     legacyCommand, commandSetTempo, commandPlayChord, commandRemindChord, commandPlayNote,
-    recordKind, resetInstrumentSong, prepareDeviceSong, advanceDeviceSong, stopDeviceSong,
+    recordKind, resetInstrumentSong, stageDeviceSong, activateDeviceSong,
+    prepareDeviceSong, advanceDeviceSong, stopDeviceSong,
     snapshot, subscribe,
   });
 })();

@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260825-08';
+const ASSET_VERSION = 'reset-20260825-09';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -2559,7 +2559,7 @@ function syncLiberLiveAudioOutput() {
 function syncLiberLiveModeControls() {
   const screen = $('startScreen');
   const locked = isLiberLiveInstrumentOutput();
-  screen?.classList.toggle('liberlive-manual-locked', locked);
+  screen?.classList.toggle('liberlive-semi-locked', locked);
   screen?.querySelectorAll('[data-mode]').forEach(button => {
     button.disabled = locked;
     button.setAttribute('aria-disabled', locked ? 'true' : 'false');
@@ -2576,7 +2576,7 @@ function setLiberLiveInstrumentOutput(enabled) {
   if (active) {
     playModeBeforeLiberLive = playMode;
     liberLiveInstrumentOutput = true;
-    setPlayMode('manual', { force: true });
+    setPlayMode('semi', { force: true });
   } else {
     liberLiveInstrumentOutput = false;
     const previous = playModeBeforeLiberLive;
@@ -2593,7 +2593,7 @@ function setLiberLiveInstrumentOutput(enabled) {
 function setPlayMode(mode, { force = false } = {}) {
   const screen = $('startScreen');
   const requested = ['auto', 'one-key', 'semi', 'manual', 'free'].includes(mode) ? mode : 'semi';
-  playMode = isLiberLiveInstrumentOutput() && !force ? 'manual' : requested;
+  playMode = isLiberLiveInstrumentOutput() && !force ? 'semi' : requested;
   if (isFreeMode()) guideMode = false;
   screen?.querySelectorAll('[data-mode]').forEach(button => {
     button.classList.toggle('selected', button.dataset.mode === playMode);
@@ -4604,7 +4604,7 @@ async function enterPlaybackAfterCountdown() {
     const nowPlaying = $('nowPlaying');
     if (nowPlaying) nowPlaying.textContent = '正在同步原琴第一个提示…';
     try {
-      const result = await window.FreezaLiberLiveUI?.ensureDeviceSongStream?.();
+      const result = await window.FreezaLiberLiveUI?.activateDeviceSongStream?.();
       if (!result) throw new Error('原琴曲谱窗口接口不可用');
       if (nowPlaying) nowPlaying.textContent = '原琴已同步';
     } catch (cause) {
@@ -4876,7 +4876,9 @@ function startCountdownThenPlay() {
   let i = 0;
   countdownActive = true;
   interactiveSession.beginCountdown(playMode);
-  showCountdownCuePreview();
+  if (isLiberLiveInstrumentOutput()) {
+    window.FreezaLiberLiveUI?.stageDeviceSongStream?.().catch(liberLiveStreamError);
+  }
   const tick = () => {
     if (!el) return playPlayback();
     el.textContent = steps[i];

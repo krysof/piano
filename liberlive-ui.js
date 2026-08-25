@@ -9,6 +9,7 @@
   let currentPayload = null;
   let lastConnected = false;
   let preparedSongKey = '';
+  let stagedSongKey = '';
   let preparePromise = null;
   let preparePromiseKey = '';
 
@@ -70,7 +71,7 @@
     connectButton.classList.toggle('connected', status.connected);
     connectButton.classList.toggle('connecting', status.connecting || status.scanning);
     connectButton.classList.toggle('unsupported', !status.supported);
-    if (status.connected) label.textContent = '原琴发声 · App 静音 · 手动模式';
+    if (status.connected) label.textContent = '原琴发声 · App 静音 · 半自动模式';
     else if (status.connecting) label.textContent = '正在建立控制连接…';
     else if (status.scanning) label.textContent = '正在扫描原版琴…';
     else if (status.error) label.textContent = status.error;
@@ -89,6 +90,7 @@
       transferGeneration += 1;
       currentPayload = null;
       preparedSongKey = '';
+      stagedSongKey = '';
     }
     renderDevices(status);
   }
@@ -122,7 +124,7 @@
     return `${info.songId || info.title || ''}:${info.bytes.length}`;
   }
 
-  async function ensureDeviceSongStream({ onProgress } = {}) {
+  async function stageDeviceSongStream({ onProgress } = {}) {
     let status = window.FreezaLiberLive?.snapshot?.();
     if (!status?.connected) throw new Error('LiberLive 琴尚未连接');
     if (!currentPayload?.bytes?.length) {
@@ -131,7 +133,7 @@
     }
     if (!currentPayload) throw new Error('当前歌曲没有原琴载荷');
     const key = songKey(currentPayload);
-    if (key && preparedSongKey === key && status.streamReady) return { ready: true, cached: true };
+    if (key && stagedSongKey === key && status.streamStaged) return { staged: true, cached: true };
     if (preparePromise) {
       if (preparePromiseKey === key) return preparePromise;
       try { await preparePromise; } catch { /* a replaced song cancels the previous stream */ }
@@ -140,8 +142,8 @@
     }
     preparePromiseKey = key;
     preparePromise = (async () => {
-      const result = await window.FreezaLiberLive.prepareDeviceSong(currentPayload.bytes, { onProgress });
-      preparedSongKey = key;
+      const result = await window.FreezaLiberLive.stageDeviceSong(currentPayload.bytes, { onProgress });
+      stagedSongKey = key;
       return result;
     })();
     try {
@@ -150,6 +152,21 @@
       preparePromise = null;
       preparePromiseKey = '';
     }
+  }
+
+  async function activateDeviceSongStream({ onProgress } = {}) {
+    const staged = await stageDeviceSongStream({ onProgress });
+    if (staged?.cancelled) return staged;
+    const status = window.FreezaLiberLive?.snapshot?.();
+    if (status?.streamReady) return { ready: true, cached: true };
+    const result = await window.FreezaLiberLive?.activateDeviceSong?.({ onProgress });
+    if (!result) throw new Error('原琴首个提示接口不可用');
+    preparedSongKey = stagedSongKey;
+    return result;
+  }
+
+  async function ensureDeviceSongStream(options = {}) {
+    return activateDeviceSongStream(options);
   }
 
   async function scanFromClick() {
@@ -200,6 +217,7 @@
     });
     window.addEventListener('freeza-song-loaded', () => {
       preparedSongKey = '';
+      stagedSongKey = '';
       currentPayload = null;
       window.FreezaLiberLive?.stopDeviceSong?.();
       refreshTransfer();
@@ -209,6 +227,8 @@
 
   window.FreezaLiberLiveUI = Object.freeze({
     ensureDeviceSongStream,
+    stageDeviceSongStream,
+    activateDeviceSongStream,
     ensureCurrentSongOnInstrument: ensureDeviceSongStream,
     refreshTransfer,
   });
