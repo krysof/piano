@@ -5,9 +5,7 @@
   const dialog = () => $('liberLiveDeviceDialog');
   const button = () => $('liberLiveConnectBtn');
   const statusLabel = () => $('liberLiveStartStatus');
-  let transferGeneration = 0;
   let currentPayload = null;
-  let lastConnected = false;
   let preparedSongKey = '';
   let stagedSongKey = '';
   let preparePromise = null;
@@ -71,52 +69,22 @@
     connectButton.classList.toggle('connected', status.connected);
     connectButton.classList.toggle('connecting', status.connecting || status.scanning);
     connectButton.classList.toggle('unsupported', !status.supported);
-    if (status.connected) label.textContent = '原琴发声 · App 静音 · 半自动模式';
+    if (status.connected) label.textContent = '原琴已连接 · 手动模式';
     else if (status.connecting) label.textContent = '正在建立控制连接…';
     else if (status.scanning) label.textContent = '正在扫描原版琴…';
     else if (status.error) label.textContent = status.error;
     else if (!status.supported) label.textContent = '请使用 Freeza Live App';
     else label.textContent = '点击扫描 C1 / C2 / U1';
-    const transfer = $('liberLiveSongTransfer');
     const disconnect = $('liberLiveDisconnectBtn');
     const scanButton = $('liberLiveScanBtn');
-    if (transfer) transfer.hidden = !status.connected;
     if (disconnect) disconnect.hidden = !status.connected;
     if (scanButton) scanButton.hidden = status.connected;
-    const justConnected = status.connected && !lastConnected;
-    lastConnected = status.connected;
-    if (justConnected) refreshTransfer(status);
-    else if (!status.connected) {
-      transferGeneration += 1;
+    if (!status.connected) {
       currentPayload = null;
       preparedSongKey = '';
       stagedSongKey = '';
     }
     renderDevices(status);
-  }
-
-  async function refreshTransfer(status = window.FreezaLiberLive?.snapshot()) {
-    if (!status?.connected) return;
-    const generation = ++transferGeneration;
-    const title = $('liberLiveSongTransferTitle');
-    const detail = $('liberLiveSongTransferStatus');
-    const send = $('liberLiveSendSongBtn');
-    if (send) send.disabled = true;
-    if (detail) detail.textContent = '正在读取当前加密曲谱…';
-    try {
-      const result = await window.FreezaCurrentSongDevicePayload?.();
-      if (generation !== transferGeneration) return;
-      currentPayload = result?.bytes?.length ? result : null;
-      if (title) title.textContent = result?.title ? `《${result.title}》` : '准备实时演奏';
-      if (detail) detail.textContent = currentPayload
-        ? `原琴滚动曲谱 · ${Math.round(currentPayload.bytes.length / 1024)} KB · 开始演奏时载入`
-        : '该曲没有原琴载荷';
-      if (send) send.disabled = !currentPayload;
-    } catch (error) {
-      if (generation !== transferGeneration) return;
-      currentPayload = null;
-      if (detail) detail.textContent = error?.message || '无法读取当前歌曲信息';
-    }
   }
 
   function songKey(info) {
@@ -192,35 +160,11 @@
       await window.FreezaLiberLive.disconnect();
       closeDialog();
     });
-    $('liberLiveSendSongBtn')?.addEventListener('click', async () => {
-      if (!currentPayload) return;
-      const send = $('liberLiveSendSongBtn');
-      const detail = $('liberLiveSongTransferStatus');
-      const progress = $('liberLiveSongTransferProgress');
-      send.disabled = true;
-      if (progress) progress.value = 0;
-      try {
-        if (detail) detail.textContent = '正在初始化原琴并预载开头窗口…';
-        await ensureDeviceSongStream({
-          onProgress(value, current, total) {
-            if (progress) progress.value = Math.round(value * 100);
-            if (detail) detail.textContent = `正在准备 ${current} / ${total}`;
-          },
-        });
-        if (progress) progress.value = 100;
-        if (detail) detail.textContent = '准备完成 · 原琴按键时滚动补充后续曲谱';
-      } catch (error) {
-        if (detail) detail.textContent = error?.message || '准备失败，请重试';
-      } finally {
-        send.disabled = !currentPayload;
-      }
-    });
     window.addEventListener('freeza-song-loaded', () => {
       preparedSongKey = '';
       stagedSongKey = '';
       currentPayload = null;
       window.FreezaLiberLive?.stopDeviceSong?.();
-      refreshTransfer();
     });
     document.querySelectorAll('[data-close-liberlive]').forEach(node => node.addEventListener('click', closeDialog));
   }
@@ -230,7 +174,6 @@
     stageDeviceSongStream,
     activateDeviceSongStream,
     ensureCurrentSongOnInstrument: ensureDeviceSongStream,
-    refreshTransfer,
   });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });

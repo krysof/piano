@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260825-09';
+const ASSET_VERSION = 'reset-20260825-10';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -1142,14 +1142,15 @@ function showVisualNote(midi, source) {
   $('nowPlaying').textContent = source === 'manual' ? `手动弹奏：${labelOf(midi)}` : `主旋律：${labelOf(midi)}`;
 }
 
-function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42, toneMode = harmonyToneMode) {
+function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42,
+  toneMode = harmonyToneMode, localAudio = false) {
   const event = {
     midi, duration, velocity, toneMode,
     dueAt: performance.now() + Math.max(0, delay),
     fired: false,
     timer: null,
   };
-  if (!isLiberLiveInstrumentOutput()) {
+  if (!isLiberLiveInstrumentOutput() || localAudio) {
     ensureAudio();
     event.audioTask = audioScheduler.scheduleAudio(audio.ctx, delay, when => {
       event.fired = true;
@@ -1157,7 +1158,7 @@ function playHarmonyVisualNote(midi, delay = 0, duration = 0.58, velocity = 0.42
     }, 'harmony');
   }
   const timer = setTimeout(() => {
-    if (isLiberLiveInstrumentOutput()) event.fired = true;
+    if (isLiberLiveInstrumentOutput() && !localAudio) event.fired = true;
     flash('playbackKeyboard', midi, Math.max(360, duration * 720), 'harmony');
   }, delay);
   event.timer = timer;
@@ -2543,23 +2544,23 @@ function advanceLiberLiveDeviceWindow(noteFrames = 4) {
 }
 
 function syncLiberLiveAudioOutput() {
-  const muted = isLiberLiveInstrumentOutput();
+  const connected = isLiberLiveInstrumentOutput();
   if (audio.master && audio.ctx) {
     const now = audio.ctx.currentTime;
     audio.master.gain.cancelScheduledValues(now);
-    audio.master.gain.setTargetAtTime(muted ? 0 : APP_MASTER_GAIN, now, 0.012);
+    audio.master.gain.setTargetAtTime(APP_MASTER_GAIN, now, 0.012);
   }
   if (window.Tone) {
     const destination = Tone.getDestination ? Tone.getDestination() : Tone.Destination;
-    if (destination) destination.mute = muted;
+    if (destination) destination.mute = false;
   }
-  document.body.classList.toggle('liberlive-instrument-output', muted);
+  document.body.classList.toggle('liberlive-instrument-output', connected);
 }
 
 function syncLiberLiveModeControls() {
   const screen = $('startScreen');
   const locked = isLiberLiveInstrumentOutput();
-  screen?.classList.toggle('liberlive-semi-locked', locked);
+  screen?.classList.toggle('liberlive-manual-locked', locked);
   screen?.querySelectorAll('[data-mode]').forEach(button => {
     button.disabled = locked;
     button.setAttribute('aria-disabled', locked ? 'true' : 'false');
@@ -2576,7 +2577,11 @@ function setLiberLiveInstrumentOutput(enabled) {
   if (active) {
     playModeBeforeLiberLive = playMode;
     liberLiveInstrumentOutput = true;
-    setPlayMode('semi', { force: true });
+    setPlayMode('manual', { force: true });
+    // Physical presses are rendered by the instrument, while tapping the App's
+    // own keys must still be audible locally. Warm those local voices in the
+    // background without delaying BLE connection or the Loading screen.
+    Promise.allSettled([warmHarmonyTones(true), warmMelodyTone()]).catch(() => {});
   } else {
     liberLiveInstrumentOutput = false;
     const previous = playModeBeforeLiberLive;
@@ -2593,7 +2598,7 @@ function setLiberLiveInstrumentOutput(enabled) {
 function setPlayMode(mode, { force = false } = {}) {
   const screen = $('startScreen');
   const requested = ['auto', 'one-key', 'semi', 'manual', 'free'].includes(mode) ? mode : 'semi';
-  playMode = isLiberLiveInstrumentOutput() && !force ? 'semi' : requested;
+  playMode = isLiberLiveInstrumentOutput() && !force ? 'manual' : requested;
   if (isFreeMode()) guideMode = false;
   screen?.querySelectorAll('[data-mode]').forEach(button => {
     button.classList.toggle('selected', button.dataset.mode === playMode);
@@ -4444,11 +4449,25 @@ function setCueFillProgress(key, progress) {
 
 function updateCueRuntime() {
   if ((!playing && !isManualMode()) || !song?.chordCues?.length) return;
-  // 手动/一键模式的色块是“已经开始演奏的小节进度”，不是谱面提前提示。
-  // 没按键、没有正在演奏的小节时，键盘上不产生进度条。
+  // 手动/一键模式在倒计时结束后先让第一个待按提示上移；按下后再改为
+  // 当前演奏片段的进度。倒计时期间两端都不提前显示提示。
   if (isManualMode()) {
     const phrase = interactiveSession.phrase;
-    if (!phrase || phrase.musicVisualComplete
+    if (!phrase) {
+      const cue = activeCue?.cue;
+      const midi = activeCue?.midi;
+      const state = cue ? cueState.get(cue.root) : null;
+      if (!cue || !Number.isFinite(midi) || !state) return;
+      const duration = Math.max(1, state.due - state.start);
+      const progress = Math.max(0, Math.min(100,
+        ((performance.now() - state.start) / duration) * 100));
+      document.querySelectorAll(`#manualKeyboard .key[data-midi="${midi}"]`).forEach(key => {
+        setCueFillProgress(key, progress);
+        if (progress >= 100) key.classList.add('chord-due');
+      });
+      return;
+    }
+    if (phrase.musicVisualComplete
       || !Number.isFinite(phrase.musicStartAt) || !Number.isFinite(phrase.musicEndAt)) return;
     const duration = Math.max(1, phrase.musicEndAt - phrase.musicStartAt);
     const progress = ((performance.now() - phrase.musicStartAt) / duration) * 100;
@@ -4565,6 +4584,16 @@ function showManualNextCuePreview(cue, preserveCurrentProgress = false) {
   });
 }
 
+function startManualWaitingCue(cue) {
+  if (!cue?.root || !NATURAL_TO_MIDI[cue.root]) return;
+  cue._id ||= `manual-wait-${cue.time}-${cue.chord}`;
+  const midi = NATURAL_TO_MIDI[cue.root];
+  const now = performance.now();
+  activeCue = { cue, midi, hit: false, pressed: false, waiting: true };
+  startCue(midi, cue, { start: now, due: now + 1000, end: Infinity });
+  startCueRuntimeLoop();
+}
+
 function finishManualCurrentCueVisual(phrase) {
   stopCueRuntimeLoop();
   const root = phrase?.cue?.root || phrase?.root;
@@ -4623,7 +4652,7 @@ async function enterPlaybackAfterCountdown() {
     clearTimers();
     ensureManualClock();
     scheduleChordCues(0);
-    showManualNextCuePreview((song?.chordCues || [])[0]);
+    startManualWaitingCue((song?.chordCues || [])[0]);
     updateClock();
     updateLyrics();
   } else {
@@ -5033,6 +5062,7 @@ function normalizedHarmonyVelocity(rawVelocity) {
 function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) {
   const replaceExisting = options.replaceExisting !== false;
   const advancePhase = options.advancePhase !== false;
+  const localAudio = Boolean(options.localAudio);
   if (replaceExisting) clearHarmonyTimers();
   const now = currentPlayTime();
   const cue = forcedCue || chordAtTime(now) || { chord: root, root };
@@ -5040,7 +5070,7 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
   const scheduled = [];
   let segmentEnd = nextChordCueTimeAfter(Number.isFinite(cue?.time) ? cue.time : now);
   if (!Number.isFinite(segmentEnd) || segmentEnd <= now + 0.02) segmentEnd = Math.min(song?.duration || now + 1.8, now + 1.8);
-  if (!isLiberLiveInstrumentOutput()) warmHarmonyTones(false);
+  if (!isLiberLiveInstrumentOutput() || localAudio) warmHarmonyTones(false);
   const { slot, code, pattern } = chordPatternAtTime(now);
   if (pattern?.notes?.length) {
     const previousHalf = harmonyRepeat.get('last');
@@ -5081,6 +5111,7 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
           Math.max(0.045, Number(event.duration) * timeScale),
           velocity,
           slot + 1,
+          localAudio,
         ));
       }
     }
@@ -5112,7 +5143,9 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
       const n = event.note;
       const delay = Math.max(0, (n.time - start) * 1000 * speed);
       const velocity = Math.max(0.04, Math.min(0.98, event.velocity * densityGain));
-      scheduled.push(playHarmonyVisualNote(shiftedMidi(n.note), delay, event.duration, velocity, harmonyToneMode));
+      scheduled.push(playHarmonyVisualNote(
+        shiftedMidi(n.note), delay, event.duration, velocity, harmonyToneMode, localAudio,
+      ));
     }
     console.warn('No LiberLive chord pattern loaded; using Track 2 fallback chord notes for', code || currentHarmonyPreset()?.code);
     return { root, cue, segmentEnd, events: scheduled };
@@ -5122,7 +5155,7 @@ function playStyledHarmony(root, forcedCue = null, timeScale = 1, options = {}) 
   return { root, cue, segmentEnd, events: scheduled };
 }
 
-function playWrongHarmonyPreview(root, cue, pickSlot = 0) {
+function playWrongHarmonyPreview(root, cue, pickSlot = 0, localAudio = false) {
   // 错键必须听得出是错误和弦，但不能再启动一整段 pattern。完整 pattern 会
   // 与当前正确伴奏持续交叠，连续错按后就像调度器乱序。这里只播放一个短促、
   // 同时发声的和弦击键，而且不创建任何会被下一小节继承的 timer/phase 状态。
@@ -5132,7 +5165,7 @@ function playWrongHarmonyPreview(root, cue, pickSlot = 0) {
   const notes = [...new Set(parseChordNotes(chordName).map(Number).filter(Number.isFinite))].slice(0, 2);
   const toneMode = Math.max(1, Math.min(HARMONY_TONES.length, Number(pickSlot) + 1));
   for (const midi of notes) {
-    if (!isLiberLiveInstrumentOutput()) playHarmonyToneNote(midi, 0.14, 0.38, toneMode);
+    if (!isLiberLiveInstrumentOutput() || localAudio) playHarmonyToneNote(midi, 0.14, 0.38, toneMode);
     flash('playbackKeyboard', midi, 180, 'harmony');
   }
 }
@@ -5270,11 +5303,11 @@ function cancelMelodyAndDrumAudio() {
   audioScheduler.cancelGroup('interactive-melody');
 }
 
-function scheduleInteractiveMelodyEvent(note, idx, delay) {
+function scheduleInteractiveMelodyEvent(note, idx, delay, localAudio = false) {
   const midi = shiftedMidi(note.note);
   const velocity = note.velocity || 0.65;
   const event = { note, idx, dueAt: performance.now() + delay, fired: false, timer: null, audioTask: null };
-  if (!isLiberLiveInstrumentOutput()) {
+  if (!isLiberLiveInstrumentOutput() || localAudio) {
     ensureAudio();
     event.audioTask = audioScheduler.scheduleAudio(audio.ctx, delay, when => {
       event.fired = true;
@@ -5282,7 +5315,7 @@ function scheduleInteractiveMelodyEvent(note, idx, delay) {
     }, 'interactive-melody');
   }
   event.timer = setTimeout(() => {
-    if (isLiberLiveInstrumentOutput()) event.fired = true;
+    if (isLiberLiveInstrumentOutput() && !localAudio) event.fired = true;
     playOffset = note.time;
     showVisualNote(midi, 'playback');
     if (nextManualMelodyIndex <= idx) nextManualMelodyIndex = idx + 1;
@@ -5298,7 +5331,7 @@ function ensureManualClock() {
   startClockLoop(true, 30);
 }
 
-function playNextManualMelodyNote(cue, timeScale = 1) {
+function playNextManualMelodyNote(cue, timeScale = 1, localAudio = false) {
   const notes = song?.melodyTrack?.notes || [];
   if (!notes.length || nextManualMelodyIndex >= notes.length) return { events: [], segmentEnd: playOffset };
   ensureManualClock();
@@ -5324,7 +5357,7 @@ function playNextManualMelodyNote(cue, timeScale = 1) {
   const events = chunk.map((note, localIndex) => {
     const idx = startIndex + localIndex;
     const delay = Math.max(0, (note.time - cueStart) * timeScale * 1000);
-    return scheduleInteractiveMelodyEvent(note, idx, delay);
+    return scheduleInteractiveMelodyEvent(note, idx, delay, localAudio);
   });
   return { events, segmentEnd: chunkEnd, endIndex, startTime: cueStart };
 }
@@ -5432,15 +5465,18 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
   let melody = { events: [], segmentEnd: scheduleTiming.boundary };
   if (isManualMode()) {
     clearManualMelodyTimers();
-    melody = playNextManualMelodyNote(cue, scheduleTiming.timeScale);
+    melody = playNextManualMelodyNote(cue, scheduleTiming.timeScale, Boolean(timing.localAudio));
   }
-  const harmony = playStyledHarmony(root, cue, scheduleTiming.timeScale);
+  const harmony = playStyledHarmony(root, cue, scheduleTiming.timeScale, {
+    localAudio: Boolean(timing.localAudio),
+  });
   interactiveSession.startPhrase({
     root,
     cue: harmony?.cue || cue,
     segmentEnd: Math.max(Number(melody?.segmentEnd || 0), Number(harmony?.segmentEnd || 0)),
     melodyEvents: melody?.events || [],
     harmonyEvents: harmony?.events || [],
+    localAudio: Boolean(timing.localAudio),
   });
   const phrase = interactiveSession.phrase;
   const phraseStartedAt = performance.now();
@@ -5608,6 +5644,7 @@ function finishInteractiveTransition(mode, boundary) {
 
 function accelerateInteractivePhrase() {
   if (!interactiveSession.phrase || interactiveSession.transitioning) return;
+  const localAudio = Boolean(interactiveSession.phrase.localAudio);
   const mode = isManualMode() ? 'manual' : 'semi';
   const nowSong = currentPlayTime();
   const nowPerf = performance.now();
@@ -5627,10 +5664,12 @@ function accelerateInteractivePhrase() {
     const delay = Math.max(0, Number(catchup.delays?.[index] ?? item.remaining * scale) * 1000);
     if (item.type === 'harmony') {
       const event = item.event;
-      playHarmonyVisualNote(event.midi, delay, Math.max(0.045, event.duration * scale), event.velocity, event.toneMode);
+      playHarmonyVisualNote(
+        event.midi, delay, Math.max(0.045, event.duration * scale), event.velocity, event.toneMode, localAudio,
+      );
     } else {
       const { note, idx } = item.event;
-      scheduleInteractiveMelodyEvent(note, idx, delay);
+      scheduleInteractiveMelodyEvent(note, idx, delay, localAudio);
     }
   }
   const settleMs = catchupDuration <= 0.08 ? 8 : 45;
@@ -5707,7 +5746,7 @@ function triggerFreeChord(label, pickSlot, key) {
   return true;
 }
 
-function triggerChordKey(label, pickSlot, key) {
+function triggerChordKey(label, pickSlot, key, { source = 'screen' } = {}) {
   if (!key || !song || !document.body.classList.contains('game-started')) return false;
   if (isFreeMode()) return triggerFreeChord(label, pickSlot, key);
   // 3/2/1 只是准备阶段。任何触屏、鼠标或外接 MIDI 输入都不能消费 cue、
@@ -5762,6 +5801,7 @@ function triggerChordKey(label, pickSlot, key) {
     }
   }
   const normalizedPickSlot = pickSlot > 0 ? 1 : 0;
+  const localAudio = source !== 'instrument';
   if (manualMode && (!matchesManualCue || !manualPress.accepted)) {
     // 错键是完全隔离的试听：不写入用户拨片事件、不改变全局音色、不推进
     // pattern 前后半、不进入交互队列，也不接触当前主旋律/伴奏的计时状态。
@@ -5773,8 +5813,8 @@ function triggerChordKey(label, pickSlot, key) {
     showTimingRating(key, 'MISS');
     rejectEarlyChordPress(key);
     showPickZoneFeedback(key, normalizedPickSlot);
-    if (!isLiberLiveInstrumentOutput()) warmHarmonyTones(false);
-    playWrongHarmonyPreview(label, pressedCue, normalizedPickSlot);
+    if (!isLiberLiveInstrumentOutput() || localAudio) warmHarmonyTones(false);
+    playWrongHarmonyPreview(label, pressedCue, normalizedPickSlot, localAudio);
     animateChordPress(key);
     return true;
   }
@@ -5785,7 +5825,7 @@ function triggerChordKey(label, pickSlot, key) {
   const pickTime = currentPlayTime();
   insertUserPickEvent(normalizedPickSlot, pickTime);
   showPickZoneFeedback(key, normalizedPickSlot);
-  if (!isLiberLiveInstrumentOutput()) warmHarmonyTones(false);
+  if (!isLiberLiveInstrumentOutput() || localAudio) warmHarmonyTones(false);
   // 命中判定只影响计分/歌词推进，视觉与 autoPressCue 完全同款（docs/UI.md）。
   const matchesActiveCue = Boolean(activeCue && (activeCue.cue?.root === label
     || key.dataset.cueId === activeCue.cue?._id));
@@ -5812,11 +5852,15 @@ function triggerChordKey(label, pickSlot, key) {
   if (wrongInteractiveKey) {
     // 错误和弦只作为独立试听：不能清除当前小节尚未触发的伴奏 timer，
     // 也不能推进正常 pattern 的前/后半 phase，否则下一次正确输入会异常追赶快放。
-    playStyledHarmony(label, pressedCue, 1, { replaceExisting: false, advancePhase: false });
+    playStyledHarmony(label, pressedCue, 1, {
+      replaceExisting: false, advancePhase: false, localAudio,
+    });
   } else if (isSemiAutoMode() || isManualMode()) {
-    requestInteractivePhrase(performedRoot, pressedCue, { progress: pressProgress, dueAt: pressCueState?.due });
+    requestInteractivePhrase(performedRoot, pressedCue, {
+      progress: pressProgress, dueAt: pressCueState?.due, localAudio,
+    });
   } else {
-    playStyledHarmony(performedRoot, pressedCue);
+    playStyledHarmony(performedRoot, pressedCue, 1, { localAudio });
   }
   // 小节切换会先清理旧状态；清理完成后再启动本次按压动画，避免旧 timer
   // 在下一小节重新给第一个琴键补上 release 颜色。
@@ -6635,7 +6679,7 @@ window.addEventListener('freeza-liberlive-press', () => {
   const root = pendingCue?.root || rootFromChord(pendingCue?.chord) || 'C';
   const key = document.querySelector(`#manualKeyboard .key[data-root="${root}"]`)
     || document.querySelector('#manualKeyboard .key');
-  if (key) triggerChordKey(root, Math.max(0, harmonyToneMode - 1), key);
+  if (key) triggerChordKey(root, Math.max(0, harmonyToneMode - 1), key, { source: 'instrument' });
 });
 setLiberLiveInstrumentOutput(Boolean(window.FreezaLiberLive?.snapshot?.().connected));
 setupGameUiSounds();

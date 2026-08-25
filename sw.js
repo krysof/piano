@@ -1,4 +1,4 @@
-const BUILD = 'freeza-live-20260825-09';
+const BUILD = 'freeza-live-20260825-10';
 const AUDIO_CACHE = 'freeza-live-audio-v1';
 
 self.addEventListener('install', event => {

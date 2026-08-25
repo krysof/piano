@@ -373,19 +373,19 @@ body.game-started #startScreen {
   color: #b8acd9;
 }
 
-.liberlive-semi-locked .launch-choice:disabled {
+.liberlive-manual-locked .launch-choice:disabled {
   cursor: not-allowed;
   opacity: 0.38;
 }
 
-.liberlive-semi-locked .launch-choice[data-mode="semi"]:disabled {
+.liberlive-manual-locked .launch-choice[data-mode="manual"]:disabled {
   opacity: 1;
   border-color: rgba(96, 226, 207, 0.58);
   background: linear-gradient(100deg, rgba(46, 174, 158, 0.3), rgba(61, 103, 142, 0.14));
   box-shadow: inset 3px 0 0 #65dfcf, 0 7px 18px rgba(19, 78, 72, 0.2);
 }
 
-.liberlive-semi-locked .launch-choice[data-mode="semi"] span {
+.liberlive-manual-locked .launch-choice[data-mode="manual"] span {
   color: #9cded5;
 }
 
@@ -885,14 +885,7 @@ body.game-started #startScreen {
 .liberlive-device-empty { display: grid; place-items: center; min-height: 82px; color: #7b8296; font-size: 11px; text-align: center; }
 .liberlive-device-empty.error { min-height: auto; padding: 10px; color: #ff9da6; }
 .liberlive-scan-btn { width: 100%; margin-top: 13px; padding: 12px; border: 1px solid rgba(150,113,255,.32); border-radius: 13px; color: #c9baff; background: rgba(114,74,225,.12); font-weight: 800; }
-.liberlive-song-transfer { display: grid; gap: 10px; margin-top: 14px; padding: 14px; border: 1px solid rgba(104,225,208,.22); border-radius: 15px; background: rgba(51,188,176,.07); }
-.liberlive-song-transfer[hidden] { display: none; }
-.liberlive-song-transfer > div { display: grid; gap: 3px; }
-.liberlive-song-transfer b { color: #e9fcf9; font-size: 13px; }
-.liberlive-song-transfer small { color: #7faaa5; font-size: 10px; line-height: 1.5; }
-.liberlive-song-transfer progress { width: 100%; height: 7px; accent-color: #68e1d0; }
-.liberlive-song-transfer button, .liberlive-disconnect-btn { width: 100%; padding: 12px; border: 1px solid rgba(104,225,208,.3); border-radius: 12px; color: #e9fffb; background: rgba(51,188,176,.15); font-weight: 850; }
-.liberlive-song-transfer button:disabled { opacity: .42; }
+.liberlive-disconnect-btn { width: 100%; margin-top: 14px; padding: 12px; border: 1px solid rgba(104,225,208,.3); border-radius: 12px; color: #e9fffb; background: rgba(51,188,176,.15); font-weight: 850; }
 .liberlive-disconnect-btn { margin-top: 10px; border-color: rgba(255,120,140,.22); color: #ffafb9; background: rgba(184,59,79,.08); }
 
 .launch-footnote {
