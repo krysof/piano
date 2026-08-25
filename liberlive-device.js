@@ -598,10 +598,10 @@
     const generation = state.streamGeneration;
     return queueStreamTask(async currentGeneration => {
       if (currentGeneration !== generation) return { cancelled: true };
-      if (state.streamReminder) {
-        if (!await sendStreamRecord(state.streamReminder, generation)) return { cancelled: true };
-        state.streamReminder = null;
-      }
+      // The first fill-note frame already contains the first chord and makes
+      // the instrument show its reminder. Sending set_remind_chord immediately
+      // before it produces the same first (usually red/C) cue twice.
+      state.streamReminder = null;
       const result = await sendUntilNoteBudget(INITIAL_NOTE_WINDOW, generation, onProgress);
       if (result.cancelled) return result;
       state.streamReady = true;
