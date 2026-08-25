@@ -10,6 +10,7 @@
   let stagedSongKey = '';
   let preparePromise = null;
   let preparePromiseKey = '';
+  let connectedDeviceIds = new Set();
 
   function closeDialog() {
     const frame = dialog();
@@ -46,14 +47,17 @@
       title.textContent = device.name || 'LiberLive';
       const detail = document.createElement('small');
       detail.textContent = device.id || 'BLE 控制设备';
+      const connected = Boolean(device.connected
+        || status.connectedDevices?.some(item => item.id === device.id));
       const arrow = document.createElement('i');
-      arrow.textContent = '连接';
+      arrow.textContent = connected ? '断开' : (device.connecting ? '连接中…' : '连接');
+      item.classList.toggle('connected', connected);
       item.append(title, detail, arrow);
       item.addEventListener('click', async () => {
         item.disabled = true;
         try {
-          await window.FreezaLiberLive.connect(device.id);
-          closeDialog();
+          if (connected) await window.FreezaLiberLive.disconnect(device.id);
+          else await window.FreezaLiberLive.connect(device.id);
         } catch {
           item.disabled = false;
         }
@@ -66,14 +70,23 @@
     const connectButton = button();
     const label = statusLabel();
     if (!connectButton || !label) return;
+    const nextConnectedIds = new Set((status.connectedDevices || []).map(device => device.id));
+    const addedDevice = [...nextConnectedIds].some(id => !connectedDeviceIds.has(id));
+    connectedDeviceIds = nextConnectedIds;
+    if (addedDevice && (preparedSongKey || stagedSongKey)) {
+      preparedSongKey = '';
+      stagedSongKey = '';
+      window.FreezaLiberLive?.stopDeviceSong?.();
+    }
     const title = connectButton.querySelector('b');
     connectButton.classList.toggle('connected', status.connected);
     connectButton.classList.toggle('connecting', status.connecting || status.scanning);
     connectButton.classList.toggle('unsupported', !status.supported);
     if (status.connected) {
-      if (title) title.textContent = '断开 LiberLive 琴';
-      label.textContent = `${status.device?.name || '原琴'} · 手动模式`;
-      connectButton.setAttribute('aria-label', '断开原版 LiberLive 琴');
+      const count = status.connectedDevices?.length || 1;
+      if (title) title.textContent = 'LiberLive 琴';
+      label.textContent = `已连接 ${count} 把 · 点击管理`;
+      connectButton.setAttribute('aria-label', '管理已连接的原版 LiberLive 琴');
     }
     else if (status.connecting) label.textContent = '正在建立控制连接…';
     else if (status.scanning) label.textContent = '正在扫描原版琴…';
@@ -86,8 +99,8 @@
     }
     const disconnect = $('liberLiveDisconnectBtn');
     const scanButton = $('liberLiveScanBtn');
-    if (disconnect) disconnect.hidden = !status.connected;
-    if (scanButton) scanButton.hidden = status.connected;
+    if (disconnect) disconnect.hidden = true;
+    if (scanButton) scanButton.hidden = false;
     if (!status.connected) {
       currentPayload = null;
       preparedSongKey = '';
@@ -122,6 +135,7 @@
       const result = await window.FreezaLiberLive.stageDeviceSong(currentPayload.bytes, {
         onProgress,
         keyShift: Number(currentPayload.keyShift) || 0,
+        cueTimeline: currentPayload.cueTimeline || [],
       });
       stagedSongKey = key;
       return result;
@@ -153,15 +167,10 @@
     const api = window.FreezaLiberLive;
     if (!api) return;
     const current = api.snapshot();
-    if (current.connected) {
-      await api.disconnect();
-      closeDialog();
-      return;
-    }
     window.playLaunchUiSound?.('select');
-    if (current.native) openDialog();
+    openDialog();
     const result = await api.scan();
-    if (result.native && !result.connected) openDialog();
+    if (result.native || result.connected) openDialog();
   }
 
   function init() {
@@ -169,10 +178,7 @@
     window.FreezaLiberLive.subscribe(render);
     button().addEventListener('click', scanFromClick);
     $('liberLiveScanBtn')?.addEventListener('click', scanFromClick);
-    $('liberLiveDisconnectBtn')?.addEventListener('click', async () => {
-      await window.FreezaLiberLive.disconnect();
-      closeDialog();
-    });
+    $('liberLiveDisconnectBtn')?.addEventListener('click', () => {});
     window.addEventListener('freeza-song-loaded', () => {
       preparedSongKey = '';
       stagedSongKey = '';

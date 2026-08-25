@@ -17,6 +17,7 @@
     connected: false,
     device: null,
     devices: [],
+    connections: new Map(),
     error: '',
     gatt: null,
     readCharacteristic: null,
@@ -28,6 +29,8 @@
     streamReminder: null,
     streamCursor: 0,
     streamSentNotes: 0,
+    streamQueuedCues: 0,
+    streamCueTotal: 0,
     streamStaged: false,
     streamReady: false,
     streamComplete: false,
@@ -142,13 +145,18 @@
   }
 
   function ingestDeviceData(source, dataInput) {
+    let device = null;
+    if (source && typeof source === 'object') {
+      device = { id: String(source.id || ''), name: String(source.name || 'LiberLive') };
+      source = String(source.source || '');
+    }
     const data = Uint8Array.from(dataInput || []);
     const counter = counterFromAFrame(data);
     if (counter !== null) state.counter = (counter + 100) >>> 0;
     const decoded = decodeAFrame(data);
     const command = commandNameFromBody(decoded);
     window.dispatchEvent(new CustomEvent('freeza-liberlive-data', {
-      detail: { source, data, counter, decoded, command },
+      detail: { source, device, data, counter, decoded, command },
     }));
     // Real A101 input arrives as an encrypted $A frame whose inner command is
     // noti_chord/noti_note.  The old data[0] === 0x02 check only
@@ -160,12 +168,12 @@
     const physicalCommand = command === 'noti_chord';
     if (source === 'notify' && command === 'noti_note') {
       window.dispatchEvent(new CustomEvent('freeza-liberlive-note', {
-        detail: { data, decoded, command },
+        detail: { device, data, decoded, command },
       }));
     }
     if (source === 'notify' && (physicalCommand || (!command && data[0] === 0x02))) {
       window.dispatchEvent(new CustomEvent('freeza-liberlive-press', {
-        detail: { data, decoded, command },
+        detail: { device, data, decoded, command },
       }));
     }
   }
@@ -182,6 +190,11 @@
   }
 
   function snapshot() {
+    const connectedDevices = [...state.connections.values()].map(connection => ({
+      id: String(connection.id || connection.device?.id || ''),
+      name: String(connection.name || connection.device?.name || 'LiberLive'),
+      connected: true,
+    }));
     return Object.freeze({
       supported: supported(),
       native: nativeSupported(),
@@ -189,7 +202,11 @@
       connecting: state.connecting,
       connected: state.connected,
       device: state.device ? { ...state.device } : null,
-      devices: state.devices.map(device => ({ ...device })),
+      connectedDevices,
+      devices: state.devices.map(device => ({
+        ...device,
+        connected: connectedDevices.some(item => item.id === device.id),
+      })),
       error: state.error,
       uploading: state.uploading,
       streamReady: state.streamReady,
@@ -206,6 +223,14 @@
     window.dispatchEvent(new CustomEvent('freeza-liberlive-state', { detail: value }));
   }
 
+  function refreshConnectionState() {
+    const connected = [...state.connections.values()];
+    state.connected = connected.length > 0;
+    state.device = connected[0]
+      ? { id: String(connected[0].id || ''), name: String(connected[0].name || 'LiberLive') }
+      : null;
+  }
+
   function remember(device) {
     try { localStorage.setItem(REMEMBER_KEY, JSON.stringify(device)); } catch { /* optional */ }
   }
@@ -216,26 +241,39 @@
     const plugin = nativePlugin();
     await plugin.addListener('liberLiveDevicesChanged', event => {
       state.scanning = Boolean(event?.scanning);
-      state.devices = Array.from(event?.devices || []).map(device => ({ id: String(device.id), name: String(device.name || 'LiberLive') }));
+      state.devices = Array.from(event?.devices || []).map(device => ({
+        id: String(device.id),
+        name: String(device.name || 'LiberLive'),
+        connected: Boolean(device.connected),
+        connecting: Boolean(device.connecting),
+      }));
+      for (const device of state.devices) {
+        if (device.connected) state.connections.set(device.id, { id: device.id, name: device.name, native: true });
+        else if (!device.connecting) state.connections.delete(device.id);
+      }
+      refreshConnectionState();
       state.error = String(event?.error || '');
       emit();
     });
     await plugin.addListener('liberLiveConnectionChanged', event => {
       const next = String(event?.state || '');
-      state.connecting = next === 'connecting' || next === 'discovering';
-      state.connected = next === 'connected';
-      if (state.connected) {
-        state.device = { id: state.device?.id || '', name: String(event?.name || state.device?.name || 'LiberLive') };
-        remember(state.device);
-      } else if (next === 'disconnected' || next === 'error') {
-        state.device = null;
+      const id = String(event?.id || '');
+      const name = String(event?.name || state.devices.find(device => device.id === id)?.name || 'LiberLive');
+      state.connecting = state.devices.some(device => device.connecting)
+        || next === 'connecting' || next === 'discovering';
+      if (next === 'connected' && id) {
+        state.connections.set(id, { id, name, native: true });
+        remember({ id, name });
+      } else if ((next === 'disconnected' || next === 'error') && id) {
+        state.connections.delete(id);
       }
+      refreshConnectionState();
       state.error = String(event?.error || '');
       emit();
     });
     await plugin.addListener('liberLiveData', event => {
       const data = fromBase64(event?.data || '');
-      ingestDeviceData(event?.source || '', data);
+      ingestDeviceData({ source: event?.source || '', id: event?.id || '', name: event?.name || '' }, data);
     });
   }
 
@@ -249,11 +287,13 @@
     if (nativeSupported()) {
       await ensureNativeListeners();
       state.scanning = true;
-      state.devices = [];
       emit();
       try {
         const result = await nativePlugin().scanLiberLive();
-        state.devices = Array.from(result?.devices || []).map(device => ({ id: String(device.id), name: String(device.name || 'LiberLive') }));
+        state.devices = Array.from(result?.devices || []).map(device => ({
+          id: String(device.id), name: String(device.name || 'LiberLive'),
+          connected: Boolean(device.connected), connecting: Boolean(device.connecting),
+        }));
       } catch (error) {
         state.scanning = false;
         state.error = error?.message || 'LiberLive 扫描失败';
@@ -270,7 +310,8 @@
         optionalServices: [SERVICE],
       });
       if (device.name?.startsWith('LiberLiveAudio')) throw new Error('请选择 LiberLiveC1/C2/U1 控制设备，不是 LiberLiveAudio');
-      state.devices = [{ id: device.id, name: device.name || 'LiberLive', nativeDevice: device }];
+      const previous = state.devices.filter(item => item.id !== device.id);
+      state.devices = [...previous, { id: device.id, name: device.name || 'LiberLive', nativeDevice: device }];
       await connect(device.id);
     } catch (error) {
       if (error?.name !== 'NotFoundError') state.error = error?.message || 'LiberLive 扫描失败';
@@ -282,7 +323,7 @@
   async function connect(id) {
     const found = state.devices.find(device => device.id === id);
     if (!found) throw new Error('未找到 LiberLive 琴');
-    state.device = { id: found.id, name: found.name };
+    if (state.connections.has(found.id)) return snapshot();
     state.connecting = true;
     state.error = '';
     emit();
@@ -290,38 +331,39 @@
       if (nativeSupported()) {
         await ensureNativeListeners();
         const result = await nativePlugin().connectLiberLive({ id });
-        state.device = { id, name: String(result?.name || found.name) };
+        const name = String(result?.name || found.name);
+        state.connections.set(id, { id, name, native: true });
       } else {
         const device = found.nativeDevice;
         device.addEventListener('gattserverdisconnected', () => {
-          state.connected = false;
-          state.connecting = false;
-          state.gatt = null;
-          state.readCharacteristic = null;
-          state.writeCharacteristic = null;
+          state.connections.delete(found.id);
+          refreshConnectionState();
           emit();
         }, { once: true });
-        state.gatt = await device.gatt.connect();
-        const service = await state.gatt.getPrimaryService(SERVICE);
+        const gatt = await device.gatt.connect();
+        const service = await gatt.getPrimaryService(SERVICE);
         const notify = await service.getCharacteristic(NOTIFY);
-        state.readCharacteristic = await service.getCharacteristic(READ);
-        state.writeCharacteristic = await service.getCharacteristic(WRITE);
+        const readCharacteristic = await service.getCharacteristic(READ);
+        const writeCharacteristic = await service.getCharacteristic(WRITE);
         await notify.startNotifications();
         notify.addEventListener('characteristicvaluechanged', event => {
           const view = event.target.value;
           const data = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-          ingestDeviceData('notify', data);
+          ingestDeviceData({ source: 'notify', id: found.id, name: found.name }, data);
+        });
+        state.connections.set(found.id, {
+          id: found.id, name: found.name, device, gatt, readCharacteristic, writeCharacteristic,
         });
         try {
-          const value = await state.readCharacteristic.readValue();
-          ingestDeviceData('read', new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+          const value = await readCharacteristic.readValue();
+          ingestDeviceData({ source: 'read', id: found.id, name: found.name }, new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
         } catch { /* A101 notifications are sufficient after setup. */ }
       }
-      state.connected = true;
-      remember(state.device);
+      refreshConnectionState();
+      remember({ id: found.id, name: found.name });
     } catch (error) {
-      state.device = null;
-      state.connected = false;
+      state.connections.delete(found.id);
+      refreshConnectionState();
       state.error = error?.message || 'LiberLive 连接失败';
       throw error;
     } finally {
@@ -331,16 +373,20 @@
     return snapshot();
   }
 
-  async function disconnect() {
-    resetDeviceStream();
-    if (nativeSupported()) await nativePlugin().disconnectLiberLive();
-    else state.gatt?.disconnect?.();
-    state.connected = false;
+  async function disconnect(id = '') {
+    const targetId = String(id || '');
+    if (nativeSupported()) await nativePlugin().disconnectLiberLive(targetId ? { id: targetId } : {});
+    else {
+      const targets = targetId
+        ? [state.connections.get(targetId)].filter(Boolean)
+        : [...state.connections.values()];
+      targets.forEach(connection => connection.gatt?.disconnect?.());
+    }
+    if (targetId) state.connections.delete(targetId);
+    else state.connections.clear();
+    refreshConnectionState();
     state.connecting = false;
-    state.device = null;
-    state.gatt = null;
-    state.readCharacteristic = null;
-    state.writeCharacteristic = null;
+    if (!state.connected) resetDeviceStream();
     emit();
   }
 
@@ -348,9 +394,14 @@
     const data = Uint8Array.from(bytes);
     if (!state.connected) throw new Error('LiberLive 琴尚未连接');
     if (nativeSupported()) return nativePlugin().writeLiberLive({ data: toBase64(data) });
-    if (!state.writeCharacteristic) throw new Error('LiberLive 写入特征不可用');
-    if (state.writeCharacteristic.writeValueWithResponse) return state.writeCharacteristic.writeValueWithResponse(data);
-    return state.writeCharacteristic.writeValue(data);
+    const targets = [...state.connections.values()];
+    if (!targets.length) throw new Error('LiberLive 写入特征不可用');
+    await Promise.all(targets.map(connection => {
+      const characteristic = connection.writeCharacteristic;
+      if (!characteristic) throw new Error(`${connection.name} 写入特征不可用`);
+      if (characteristic.writeValueWithResponse) return characteristic.writeValueWithResponse(data);
+      return characteristic.writeValue(data);
+    }));
   }
 
   async function writeBody(body, counter) {
@@ -430,8 +481,10 @@
   }
 
   const STREAM_FRAME_DELAY_MS = 60;
-  const INITIAL_NOTE_WINDOW = 6;
-  const TOP_UP_NOTE_WINDOW = 4;
+  const INITIAL_CUE_WINDOW = 4;
+  const TOP_UP_CUE_WINDOW = 1;
+  const LEGACY_INITIAL_NOTE_WINDOW = 6;
+  const LEGACY_TOP_UP_NOTE_WINDOW = 4;
 
   function plainRecordBody(record) {
     return xor(record.body, KEY_A);
@@ -485,12 +538,66 @@
     return 'control';
   }
 
+  function deviceRecordChord(record) {
+    const plain = plainRecordBody(record);
+    if (plain[0] !== 0x01 || plain[1] !== 0x07 || plain.length < 4) return null;
+    const itemTypes = [...plain.subarray(3, 3 + plain[2])];
+    let offset = 3 + plain[2];
+    for (const itemType of itemTypes) {
+      if (itemType === 0x01 && offset + 13 <= plain.length) offset += 13;
+      else if (itemType === 0x02 && offset + 15 <= plain.length) {
+        const view = new DataView(plain.buffer, plain.byteOffset + offset, 15);
+        return {
+          root: plain[offset + 3] & 0x0f,
+          index: view.getUint16(1, true),
+          position: view.getFloat32(7, true),
+        };
+      } else if (itemType === 0x05 && offset + 8 <= plain.length) {
+        offset += plain[offset + 7] === 1 ? 12 : 10;
+      } else break;
+    }
+    return null;
+  }
+
+  function chordRootSemitone(chord) {
+    const match = String(chord || '').trim().replaceAll('♯', '#').replaceAll('♭', 'b')
+      .match(/^([A-G])([#b]?)/i);
+    if (!match) return null;
+    const natural = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[match[1].toUpperCase()];
+    return (natural + (match[2] === '#' ? 1 : match[2] === 'b' ? -1 : 0) + 12) % 12;
+  }
+
+  function bindCanonicalCueTimeline(records, cues) {
+    const timeline = Array.from(cues || []);
+    let cueIndex = 0;
+    for (const record of records) {
+      const deviceChord = deviceRecordChord(record);
+      record.cueIndex = -1;
+      if (!deviceChord) continue;
+      const cue = timeline[cueIndex];
+      if (!cue) throw new Error(`原琴曲谱多出第 ${cueIndex + 1} 个和弦事件`);
+      const expectedRoot = chordRootSemitone(cue.chord || cue.root);
+      if (expectedRoot != null && expectedRoot !== deviceChord.root) {
+        throw new Error(`原琴与画面第 ${cueIndex + 1} 个和弦不一致`);
+      }
+      record.cueIndex = cueIndex;
+      record.deviceChord = deviceChord;
+      cueIndex += 1;
+    }
+    if (timeline.length && cueIndex !== timeline.length) {
+      throw new Error(`原琴与画面和弦数量不一致（${cueIndex}/${timeline.length}）`);
+    }
+    return cueIndex;
+  }
+
   function resetDeviceStream() {
     state.streamGeneration += 1;
     state.streamRecords = [];
     state.streamReminder = null;
     state.streamCursor = 0;
     state.streamSentNotes = 0;
+    state.streamQueuedCues = 0;
+    state.streamCueTotal = 0;
     state.streamStaged = false;
     state.streamReady = false;
     state.streamComplete = false;
@@ -552,6 +659,7 @@
         notes += 1;
         state.streamSentNotes += 1;
       }
+      if (record.cueIndex >= 0) state.streamQueuedCues = record.cueIndex + 1;
       onProgress?.(state.streamCursor / state.streamRecords.length,
         state.streamCursor, state.streamRecords.length);
     }
@@ -560,21 +668,47 @@
     return { frames: state.streamCursor, notes, complete: state.streamComplete };
   }
 
-  async function stageDeviceSong(payload, { onProgress, keyShift = 0 } = {}) {
+
+  async function sendUntilCueTarget(cueTarget, generation, onProgress, drainAfterLastCue = false) {
+    const target = Math.max(0, Math.min(state.streamCueTotal, Math.round(Number(cueTarget) || 0)));
+    const drainTail = drainAfterLastCue && state.streamCueTotal > 0 && target >= state.streamCueTotal;
+    while (state.streamCursor < state.streamRecords.length
+      && (state.streamQueuedCues < target || drainTail)) {
+      const record = state.streamRecords[state.streamCursor];
+      if (!await sendStreamRecord(record, generation)) return { cancelled: true };
+      state.streamCursor += 1;
+      if (recordKind(record) === 'note') state.streamSentNotes += 1;
+      if (record.cueIndex >= 0) state.streamQueuedCues = record.cueIndex + 1;
+      onProgress?.(state.streamCursor / state.streamRecords.length,
+        state.streamCursor, state.streamRecords.length);
+    }
+    state.streamComplete = state.streamCursor >= state.streamRecords.length;
+    emit();
+    return {
+      frames: state.streamCursor,
+      queuedCues: state.streamQueuedCues,
+      complete: state.streamComplete,
+    };
+  }
+
+  async function stageDeviceSong(payload, { onProgress, keyShift = 0, cueTimeline = [] } = {}) {
     if (!state.connected) throw new Error('LiberLive 琴尚未连接');
-    const parsedRecords = parseDevicePayload(payload)
-      .map(record => transposeDeviceRecord(record, keyShift));
+    const parsedRecords = parseDevicePayload(payload);
     const reminderIndex = parsedRecords.findIndex(record => recordKind(record) === 'reminder');
     const reminder = reminderIndex >= 0 ? parsedRecords[reminderIndex] : null;
-    const records = reminderIndex >= 0
+    const rawRecords = reminderIndex >= 0
       ? parsedRecords.filter((_record, index) => index !== reminderIndex)
       : parsedRecords;
+    const cueTotal = bindCanonicalCueTimeline(rawRecords, cueTimeline);
+    const records = rawRecords.map(record => transposeDeviceRecord(record, keyShift));
     if (!records.length) throw new Error('原琴载荷为空');
     state.streamGeneration += 1;
     state.streamRecords = records;
     state.streamReminder = reminder;
     state.streamCursor = 0;
     state.streamSentNotes = 0;
+    state.streamQueuedCues = 0;
+    state.streamCueTotal = cueTotal;
     state.streamStaged = false;
     state.streamReady = false;
     state.streamComplete = false;
@@ -602,7 +736,9 @@
       // the instrument show its reminder. Sending set_remind_chord immediately
       // before it produces the same first (usually red/C) cue twice.
       state.streamReminder = null;
-      const result = await sendUntilNoteBudget(INITIAL_NOTE_WINDOW, generation, onProgress);
+      const result = state.streamCueTotal > 0
+        ? await sendUntilCueTarget(INITIAL_CUE_WINDOW, generation, onProgress)
+        : await sendUntilNoteBudget(LEGACY_INITIAL_NOTE_WINDOW, generation, onProgress);
       if (result.cancelled) return result;
       state.streamReady = true;
       emit();
@@ -615,12 +751,21 @@
     return activateDeviceSong(options);
   }
 
-  async function advanceDeviceSong({ noteFrames = TOP_UP_NOTE_WINDOW } = {}) {
+  async function advanceDeviceSong({ cueIndex = null, cueCount = TOP_UP_CUE_WINDOW } = {}) {
     if (!state.streamReady) throw new Error('原琴曲谱窗口尚未准备');
     if (state.streamComplete) return { frames: state.streamCursor, notes: 0, complete: true };
-    return queueStreamTask(generation => sendUntilNoteBudget(
-      Math.max(1, Math.min(16, Math.round(Number(noteFrames) || TOP_UP_NOTE_WINDOW))),
+    if (state.streamCueTotal <= 0) {
+      return queueStreamTask(generation => sendUntilNoteBudget(LEGACY_TOP_UP_NOTE_WINDOW, generation));
+    }
+    const consumed = Number.isFinite(Number(cueIndex))
+      ? Math.max(0, Math.round(Number(cueIndex)) + 1)
+      : Math.max(0, state.streamQueuedCues - INITIAL_CUE_WINDOW + 1);
+    const target = consumed + INITIAL_CUE_WINDOW + Math.max(0, Math.round(Number(cueCount) || 0));
+    return queueStreamTask(generation => sendUntilCueTarget(
+      target,
       generation,
+      null,
+      consumed >= state.streamCueTotal,
     ));
   }
 
@@ -635,11 +780,16 @@
       const data = fromBase64(result?.data || '');
       return data;
     }
-    if (!state.readCharacteristic) throw new Error('LiberLive 读取特征不可用');
-    const value = await state.readCharacteristic.readValue();
-    const data = new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice();
-    ingestDeviceData('read', data);
-    return data;
+    const targets = [...state.connections.values()];
+    if (!targets.length) throw new Error('LiberLive 读取特征不可用');
+    const replies = await Promise.all(targets.map(async connection => {
+      if (!connection.readCharacteristic) throw new Error(`${connection.name} 读取特征不可用`);
+      const value = await connection.readCharacteristic.readValue();
+      const data = new Uint8Array(value.buffer, value.byteOffset, value.byteLength).slice();
+      ingestDeviceData({ source: 'read', id: connection.id, name: connection.name }, data);
+      return data;
+    }));
+    return replies[0] || new Uint8Array();
   }
 
   function parseDevicePayload(input) {
@@ -706,7 +856,7 @@
     scan, connect, disconnect, writeRaw, writeBody, readResponse,
     parseDevicePayload, sendDevicePayload, sendFrames, sendBodies,
     legacyCommand, commandSetTempo, commandPlayChord, commandRemindChord, commandPlayNote,
-    recordKind, transposeDeviceRecord, resetInstrumentSong, stageDeviceSong, activateDeviceSong,
+    recordKind, deviceRecordChord, bindCanonicalCueTimeline, transposeDeviceRecord, resetInstrumentSong, stageDeviceSong, activateDeviceSong,
     prepareDeviceSong, advanceDeviceSong, stopDeviceSong,
     snapshot, subscribe,
   });

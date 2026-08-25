@@ -1,5 +1,5 @@
 const $ = (id) => document.getElementById(id);
-const ASSET_VERSION = 'reset-20260825-12';
+const ASSET_VERSION = 'reset-20260825-13';
 const runtimeAssetUrl = value => window.FreezaMobileRuntime?.assetUrl?.(value) || value;
 const SONG_CATALOG = Object.freeze([
   ...Array.from(window.FreezaSongCatalog || []),
@@ -2533,9 +2533,12 @@ function liberLiveStreamError(error) {
   if ($('nowPlaying')) $('nowPlaying').textContent = message;
 }
 
-function advanceLiberLiveDeviceWindow(noteFrames = 4) {
+function advanceLiberLiveDeviceWindow(cue = null) {
   if (!isLiberLiveInstrumentOutput()) return Promise.resolve(null);
-  const request = window.FreezaLiberLive?.advanceDeviceSong?.({ noteFrames });
+  const cueIndex = cue ? (song?.chordCues || []).indexOf(cue) : -1;
+  const request = window.FreezaLiberLive?.advanceDeviceSong?.({
+    cueIndex: cueIndex >= 0 ? cueIndex : null,
+  });
   if (!request) {
     liberLiveStreamError(new Error('原琴滚动曲谱接口不可用'));
     return Promise.resolve(null);
@@ -3611,6 +3614,11 @@ window.FreezaCurrentSongDevicePayload = async () => {
     title: song?.catalog?.title || '',
     artist: song?.catalog?.artist || '',
     keyShift: userKeyShift,
+    cueTimeline: (song?.chordCues || []).map((cue, index) => ({
+      index,
+      time: Number(cue.time) || 0,
+      chord: String(cue.chord || cue.root || ''),
+    })),
   };
 };
 
@@ -5466,7 +5474,7 @@ function startInteractivePhraseNow(root, cue, timing = {}) {
     oneKeyLastBarDurationMs = 0;
   }
   const scheduleTiming = timingForInteractivePhrase(cue, timing);
-  if (isLiberLiveInstrumentOutput()) advanceLiberLiveDeviceWindow();
+  if (isLiberLiveInstrumentOutput()) advanceLiberLiveDeviceWindow(cue);
   let melody = { events: [], segmentEnd: scheduleTiming.boundary };
   if (isManualMode()) {
     clearManualMelodyTimers();
@@ -6665,15 +6673,16 @@ setupStartScreen();
 window.addEventListener('freeza-liberlive-state', event => {
   setLiberLiveInstrumentOutput(Boolean(event.detail?.connected));
 });
-let lastLiberLivePhysicalPressAt = 0;
-window.addEventListener('freeza-liberlive-press', () => {
+const lastLiberLivePhysicalPressAt = new Map();
+window.addEventListener('freeza-liberlive-press', event => {
   if (!isLiberLiveInstrumentOutput()
     || !window.FreezaLiberLive?.snapshot?.().streamReady
     || !document.body.classList.contains('game-started')
     || countdownActive) return;
   const now = performance.now();
-  if (now - lastLiberLivePhysicalPressAt < 80) return;
-  lastLiberLivePhysicalPressAt = now;
+  const deviceId = String(event.detail?.device?.id || 'unknown');
+  if (now - (lastLiberLivePhysicalPressAt.get(deviceId) || 0) < 80) return;
+  lastLiberLivePhysicalPressAt.set(deviceId, now);
   const pendingCue = activeCue?.cue
     || nextCueAfter(interactiveSession.phrase?.cue)
     || (song?.chordCues || [])[Math.max(0, oneKeyNextCueIndex)]
